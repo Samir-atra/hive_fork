@@ -49,6 +49,7 @@ To add a new credential:
 from .airtable import AIRTABLE_CREDENTIALS
 from .base import CredentialError, CredentialManager, CredentialSpec
 from .db import DB_CREDENTIALS
+from .gitlab import GITLAB_CREDENTIALS
 from .llm import LLM_CREDENTIALS
 from .search import SEARCH_CREDENTIALS
 from .store_adapter import CredentialStoreAdapter
@@ -59,6 +60,7 @@ CREDENTIAL_SPECS = {
     **SEARCH_CREDENTIALS,
     **DB_CREDENTIALS,
     **AIRTABLE_CREDENTIALS,
+    **GITLAB_CREDENTIALS,
 }
 
 __all__ = [
@@ -75,4 +77,5 @@ __all__ = [
     "SEARCH_CREDENTIALS",
     "DB_CREDENTIALS",
     "AIRTABLE_CREDENTIALS",
+    "GITLAB_CREDENTIALS",
 ]

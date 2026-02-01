@@ -36,6 +36,7 @@ from .file_system_toolkits.replace_file_content import (
 # Import file system toolkits
 from .file_system_toolkits.view_file import register_tools as register_view_file
 from .file_system_toolkits.write_to_file import register_tools as register_write_to_file
+from .gitlab_tool import register_tools as register_gitlab
 from .pdf_read_tool import register_tools as register_pdf_read
 from .postgres_tool import register_tools as register_postgres
 from .web_scrape_tool import register_tools as register_web_scrape
@@ -81,6 +82,9 @@ def register_all_tools(
     # Register Airtable tools
     register_airtable(mcp, credentials=credentials)
 
+    # Register GitLab tools
+    register_gitlab(mcp, credentials=credentials)
+
     return [
         "example_tool",
         "web_search",
@@ -106,6 +110,12 @@ def register_all_tools(
         "airtable_list_records",
         "airtable_create_record",
         "airtable_update_record",
+        # GitLab tools
+        "gitlab_list_projects",
+        "gitlab_list_issues",
+        "gitlab_get_merge_request",
+        "gitlab_create_issue",
+        "gitlab_trigger_pipeline",
     ]
 
 
