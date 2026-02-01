@@ -38,6 +38,7 @@ from .file_system_toolkits.write_to_file import register_tools as register_write
 from .pdf_read_tool import register_tools as register_pdf_read
 from .web_scrape_tool import register_tools as register_web_scrape
 from .web_search_tool import register_tools as register_web_search
+from .postgres_tool import register_tools as register_postgres
 
 
 def register_all_tools(
@@ -74,6 +75,7 @@ def register_all_tools(
     register_grep_search(mcp)
     register_execute_command(mcp)
     register_csv(mcp)
+    register_postgres(mcp, credentials=credentials)
 
     return [
         "example_tool",
@@ -93,6 +95,7 @@ def register_all_tools(
         "csv_append",
         "csv_info",
         "csv_sql",
+        "postgres_read_query",
     ]
 
 
