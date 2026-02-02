@@ -43,6 +43,18 @@ class CredentialSpec:
     description: str = ""
     """Human-readable description of what this credential is for"""
 
+    api_key_instructions: str = ""
+    """Step-by-step guide for obtaining an API key"""
+
+    health_check_endpoint: str = ""
+    """API endpoint to use for validating credentials"""
+
+    credential_id: str = ""
+    """Logical identifier for the credential (e.g., 'greenhouse')"""
+
+    credential_key: str = ""
+    """Key name in the credential store (e.g., 'api_key')"""
+
 
 class CredentialError(Exception):
     """Raised when required credentials are missing."""
