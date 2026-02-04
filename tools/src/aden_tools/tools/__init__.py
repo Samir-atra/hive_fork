@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from aden_tools.credentials import CredentialManager
 
 # Import register_tools from each tool module
+from .calendly_tool import register_tools as register_calendly
 from .csv_tool import register_tools as register_csv
 from .example_tool import register_tools as register_example
 from .file_system_toolkits.apply_diff import register_tools as register_apply_diff
@@ -74,6 +75,9 @@ def register_all_tools(
     register_grep_search(mcp)
     register_execute_command(mcp)
     register_csv(mcp)
+    
+    # Register Calendly tools
+    register_calendly(mcp, credentials=credentials)
 
     return [
         "example_tool",
@@ -93,6 +97,9 @@ def register_all_tools(
         "csv_append",
         "csv_info",
         "csv_sql",
+        # Calendly tools
+        "calendly_list_event_types",
+        "calendly_create_scheduling_link",
     ]
 
 
