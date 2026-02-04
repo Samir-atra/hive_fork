@@ -28,6 +28,7 @@ cp .env.example .env
 | `BRAVE_SEARCH_API_KEY` | `web_search` tool (Brave)     | [brave.com/search/api](https://brave.com/search/api/)   |
 | `GOOGLE_API_KEY`       | `web_search` tool (Google)    | [console.cloud.google.com](https://console.cloud.google.com/) |
 | `GOOGLE_CSE_ID`        | `web_search` tool (Google)    | [programmablesearchengine.google.com](https://programmablesearchengine.google.com/) |
+| `GREENHOUSE_API_KEY`   | `greenhouse_tool`             | [harvest.greenhouse.io](https://harvest.greenhouse.io/) |
 
 > **Note:** `web_search` supports multiple providers. Set either Brave OR Google credentials. Brave is preferred for backward compatibility.
 
@@ -75,6 +76,17 @@ python mcp_server.py
 | `web_search`           | Search the web (Google or Brave, auto-detected) |
 | `web_scrape`           | Scrape and extract content from webpages       |
 | `pdf_read`             | Read and extract text from PDF files           |
+| `greenhouse_list_jobs` | List job postings from Greenhouse              |
+| `greenhouse_get_job`   | Get details for a specific job                 |
+| `greenhouse_list_candidates` | List candidates (with filtering)               |
+| `greenhouse_get_candidate` | Get full candidate profile                     |
+| `greenhouse_add_candidate` | Add a new candidate to Greenhouse              |
+| `greenhouse_list_applications` | List applications for a job                    |
+| `csv_read`             | Read data from a CSV file                      |
+| `csv_write`            | Write data to a new CSV file                   |
+| `csv_append`           | Append rows to an existing CSV                 |
+| `csv_info`             | Get metadata (rows, columns) for a CSV         |
+| `csv_sql`              | Query a CSV using SQL (DuckDB)                 |
 
 ## Project Structure
 
@@ -84,7 +96,9 @@ tools/
 │   ├── __init__.py          # Main exports
 │   ├── credentials/         # Credential management
 │   └── tools/               # Tool implementations
+│       ├── csv_tool/
 │       ├── example_tool/
+│       ├── greenhouse_tool/
 │       ├── file_system_toolkits/  # File operation tools
 │       │   ├── view_file.py
 │       │   ├── write_to_file.py

@@ -1,12 +1,12 @@
 """Greenhouse tool registration."""
-
+import os
 from typing import TYPE_CHECKING
 from fastmcp import FastMCP
 
 from .greenhouse import GreenhouseClient
 
 if TYPE_CHECKING:
-    from aden_tools.credentials import CredentialManager
+    from aden_tools.credentials import CredentialStoreAdapter
 
 
 def register_tools(mcp: FastMCP, credentials: "CredentialManager | None" = None) -> None:
@@ -14,9 +14,16 @@ def register_tools(mcp: FastMCP, credentials: "CredentialManager | None" = None)
     client = None
 
     def get_client() -> GreenhouseClient:
+        if credentials is not None:
+            api_key = credentials.get("greenhouse_api_key")
+        else:
+            api_key = os.getenv("GREENHOUSE_API_KEY")
         nonlocal client
         if client is None:
-            api_key = credentials.get("greenhouse_api_key") if credentials else None
+            if credentials is not None:
+                api_key = credentials.get("greenhouse_api_key")
+            else:
+                api_key = os.getenv("GREENHOUSE_API_KEY")
             # Fallback to os.getenv if credentials manager not used
             client = GreenhouseClient(api_key=api_key)
         return client

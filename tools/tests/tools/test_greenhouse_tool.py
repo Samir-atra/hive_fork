@@ -3,8 +3,43 @@
 import pytest
 import httpx
 from unittest.mock import MagicMock, patch
+from fastmcp import FastMCP
 
+from aden_tools.tools.greenhouse_tool import register_tools
 from aden_tools.tools.greenhouse_tool.greenhouse import GreenhouseClient
+
+
+class TestToolRegistration:
+    """Test Suite for MCP tool registration."""
+
+    @pytest.fixture
+    def mcp(self):
+        """Create a FastMCP instance for testing."""
+        return FastMCP("test-greenhouse")
+
+    def test_tool_registration(self, mcp):
+        """Test that all greenhouse tools are registered."""
+        register_tools(mcp)
+        tools = mcp._tool_manager._tools
+
+        expected_tools = [
+            "greenhouse_list_jobs",
+            "greenhouse_get_job",
+            "greenhouse_list_candidates",
+            "greenhouse_get_candidate",
+            "greenhouse_add_candidate",
+            "greenhouse_list_applications",
+        ]
+        for tool_name in expected_tools:
+            assert tool_name in tools, f"Tool '{tool_name}' not registered"
+
+    def test_tool_count(self, mcp):
+        """Test that exactly 6 greenhouse tools are registered."""
+        register_tools(mcp)
+        tools = mcp._tool_manager._tools
+
+        greenhouse_tools = [t for t in tools if t.startswith("greenhouse_")]
+        assert len(greenhouse_tools) == 6
 
 
 class TestGreenhouseClient:
@@ -181,25 +216,31 @@ class TestGreenhouseClient:
 
     @patch("aden_tools.tools.greenhouse_tool.greenhouse.httpx.request")
     def test_error_handling_401(self, mock_request, client):
-        """Test handling of invalid API key."""
+        """Test handling of invalid API key returns error dict."""
         mock_response = MagicMock()
         mock_response.status_code = 401
         mock_request.return_value = mock_response
 
-        with pytest.raises(
-            ValueError, match="Authenticaton failed: Invalid Greenhouse API key"
-        ):
-            client.list_jobs()
+        result = client.list_jobs()
+        # list_jobs returns a List[dict] via _get_paginated
+        assert isinstance(result, list)
+        assert len(result) > 0
+        assert "error" in result[0]
+        assert "Authentication failed" in result[0]["error"]
 
     @patch("aden_tools.tools.greenhouse_tool.greenhouse.httpx.request")
     def test_error_handling_403(self, mock_request, client):
-        """Test handling of permission/HTTPS errors."""
+        """Test handling of permission/HTTPS errors returns error dict."""
         mock_response = MagicMock()
         mock_response.status_code = 403
         mock_request.return_value = mock_response
 
-        with pytest.raises(PermissionError):
-            client.list_jobs()
+        result = client.list_jobs()
+        # list_jobs returns a List[dict] via _get_paginated
+        assert isinstance(result, list)
+        assert len(result) > 0
+        assert "error" in result[0]
+        assert "Access denied" in result[0]["error"]
 
     @patch("aden_tools.tools.greenhouse_tool.greenhouse.httpx.request")
     def test_error_handling_404(self, mock_request, client):

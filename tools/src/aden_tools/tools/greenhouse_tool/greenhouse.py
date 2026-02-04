@@ -74,9 +74,9 @@ class GreenhouseClient:
             )
 
             if response.status_code == 401:
-                raise ValueError("Authenticaton failed: Invalid Greenhouse API key")
+                return {"error": "Authentication failed: Invalid Greenhouse API key"}
             elif response.status_code == 403:
-                raise PermissionError("Access denied: Check permissions or use HTTPS")
+                return {"error": "Access denied: Check API permissions or use HTTPS"}
             elif response.status_code == 404:
                 return {"error": "Resource not found", "status": 404}
             elif response.status_code == 429:
@@ -222,7 +222,7 @@ class GreenhouseClient:
             notes += f"\n\nResume URL: {resume_url}"
 
         if notes:
-             data["notes"] = [{"body": notes, "visibility": "admin_only"}]
+            data["notes"] = [{"body": notes, "visibility": "admin_only"}]
 
         return self._make_request("POST", "candidates", json_data=data)
 
