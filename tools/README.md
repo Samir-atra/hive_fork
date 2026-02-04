@@ -28,6 +28,10 @@ cp .env.example .env
 | `BRAVE_SEARCH_API_KEY` | `web_search` tool (Brave)     | [brave.com/search/api](https://brave.com/search/api/)   |
 | `GOOGLE_API_KEY`       | `web_search` tool (Google)    | [console.cloud.google.com](https://console.cloud.google.com/) |
 | `GOOGLE_CSE_ID`        | `web_search` tool (Google)    | [programmablesearchengine.google.com](https://programmablesearchengine.google.com/) |
+| `MSSQL_HOST`           | `mssql` tools                 | Your MSSQL server hostname or IP                        |
+| `MSSQL_USER`           | `mssql` tools                 | Database username                                       |
+| `MSSQL_PASSWORD`       | `mssql` tools                 | Database password                                       |
+| `MSSQL_DATABASE`       | `mssql` tools                 | (Optional) Target database name                         |
 
 > **Note:** `web_search` supports multiple providers. Set either Brave OR Google credentials. Brave is preferred for backward compatibility.
 
@@ -75,6 +79,7 @@ python mcp_server.py
 | `web_search`           | Search the web (Google or Brave, auto-detected) |
 | `web_scrape`           | Scrape and extract content from webpages       |
 | `pdf_read`             | Read and extract text from PDF files           |
+| `mssql`                | Query and inspect Microsoft SQL Server databases|
 
 ## Project Structure
 
@@ -96,7 +101,8 @@ tools/
 │       │   └── execute_command_tool.py
 │       ├── web_search_tool/
 │       ├── web_scrape_tool/
-│       └── pdf_read_tool/
+│       ├── pdf_read_tool/
+│       └── mssql_tool/
 ├── tests/                   # Test suite
 ├── mcp_server.py            # MCP server entry point
 ├── README.md
