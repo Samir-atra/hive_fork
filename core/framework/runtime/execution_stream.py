@@ -148,6 +148,7 @@ class ExecutionStream:
             stream_id=stream_id,
             storage=storage,
             outcome_aggregator=outcome_aggregator,
+            event_bus=self._event_bus,
         )
 
         # Execution tracking

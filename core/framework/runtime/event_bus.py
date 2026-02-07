@@ -28,6 +28,10 @@ class EventType(str, Enum):
     EXECUTION_PAUSED = "execution_paused"
     EXECUTION_RESUMED = "execution_resumed"
 
+    # Node lifecycle
+    NODE_STARTED = "node_started"
+    NODE_COMPLETED = "node_completed"
+
     # State changes
     STATE_CHANGED = "state_changed"
     STATE_CONFLICT = "state_conflict"
@@ -36,6 +40,10 @@ class EventType(str, Enum):
     GOAL_PROGRESS = "goal_progress"
     GOAL_ACHIEVED = "goal_achieved"
     CONSTRAINT_VIOLATION = "constraint_violation"
+
+    # HITL
+    WAITING_FOR_APPROVAL = "waiting_for_approval"
+    APPROVAL_RECEIVED = "approval_received"
 
     # Stream lifecycle
     STREAM_STARTED = "stream_started"

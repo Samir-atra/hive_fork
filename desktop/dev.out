@@ -1,0 +1,6 @@
+npm error Missing script: "dev"
+npm error
+npm error To see a list of scripts, run:
+npm error   npm run
+npm error A complete log of this run can be found in: /home/samer/.npm/_logs/2026-02-06T04_16_10_171Z-debug-0.log
+ERROR conda.cli.main_run:execute(125): `conda run npm run dev` failed. (See above for error)

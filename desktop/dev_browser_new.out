@@ -1,0 +1,10 @@
+
+> desktop@0.0.0 dev:browser
+> vite --config vite.browser.config.ts
+
+1:55:08 PM [vite] (client) Re-optimizing dependencies because vite config has changed
+
+  VITE v7.3.1  ready in 125 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+  ➜  press h + enter to show help

@@ -308,9 +308,24 @@ class GraphExecutor:
 
                 # Execute node
                 self.logger.info("   Executing...")
+                
+                # Emit NODE_STARTED event
+                if hasattr(self.runtime, "emit_event"):
+                    self.runtime.emit_event(
+                        EventType.NODE_STARTED,
+                        {"node_id": current_node_id, "step": steps}
+                    )
+                
                 result = await node_impl.execute(ctx)
 
                 if result.success:
+                    # Emit NODE_COMPLETED event
+                    if hasattr(self.runtime, "emit_event"):
+                        self.runtime.emit_event(
+                            EventType.NODE_COMPLETED,
+                            {"node_id": current_node_id, "step": steps, "success": True}
+                        )
+                    
                     # Validate output before accepting it
                     if result.output and node_spec.output_keys:
                         validation = self.validator.validate_all(

@@ -75,6 +75,7 @@ class StreamRuntime:
         stream_id: str,
         storage: ConcurrentStorage,
         outcome_aggregator: "OutcomeAggregator | None" = None,
+        event_bus: Any | None = None,
     ):
         """
         Initialize stream runtime.
@@ -83,10 +84,12 @@ class StreamRuntime:
             stream_id: Unique identifier for this stream
             storage: Concurrent storage backend
             outcome_aggregator: Optional aggregator for cross-stream evaluation
+            event_bus: Optional event bus for publishing events
         """
         self.stream_id = stream_id
         self._storage = storage
         self._outcome_aggregator = outcome_aggregator
+        self._event_bus = event_bus
 
         # Track runs by execution_id (thread-safe via lock)
         self._runs: dict[str, Run] = {}
@@ -185,6 +188,27 @@ class StreamRuntime:
     def get_run(self, execution_id: str) -> Run | None:
         """Get the current run for an execution."""
         return self._runs.get(execution_id)
+
+    # === EVENT EMISSION ===
+    def emit_event(
+        self,
+        execution_id: str,
+        event_type: Any,
+        data: dict[str, Any],
+    ) -> None:
+        """
+        Publish an event related to a specific execution.
+        """
+        if self._event_bus:
+            # We use the generic publish method of EventBus
+            from framework.runtime.event_bus import AgentEvent
+            event = AgentEvent(
+                type=event_type,
+                execution_id=execution_id,
+                stream_id=self.stream_id,
+                data=data
+            )
+            self._event_bus.publish(event)
 
     # === DECISION RECORDING ===
 
@@ -547,4 +571,18 @@ class StreamRuntimeAdapter:
             action=action,
             reasoning=reasoning,
             node_id=node_id or self._current_node,
+        )
+
+    def emit_event(self, event_type: Any, data: dict[str, Any]) -> None:
+        """
+        Emit an event from the current execution.
+        
+        Args:
+            event_type: Type of event
+            data: Event data
+        """
+        self._runtime.emit_event(
+            execution_id=self._execution_id,
+            event_type=event_type,
+            data=data
         )
