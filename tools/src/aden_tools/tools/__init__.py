@@ -46,6 +46,7 @@ from .pdf_read_tool import register_tools as register_pdf_read
 from .runtime_logs_tool import register_tools as register_runtime_logs
 from .slack_tool import register_tools as register_slack
 from .web_scrape_tool import register_tools as register_web_scrape
+from .twitter_tool import register_tools as register_twitter
 from .web_search_tool import register_tools as register_web_search
 
 
@@ -79,6 +80,7 @@ def register_all_tools(
     register_hubspot(mcp, credentials=credentials)
     register_apollo(mcp, credentials=credentials)
     register_slack(mcp, credentials=credentials)
+    register_twitter(mcp, credentials=credentials)
 
     # Register file system toolkits
     register_view_file(mcp)
@@ -209,6 +211,9 @@ def register_all_tools(
         "slack_kick_user_from_channel",
         "slack_delete_file",
         "slack_get_team_stats",
+        "twitter_search_recent",
+        "twitter_get_tweet",
+        "twitter_get_user_profile",
     ]
 
 
