@@ -77,12 +77,32 @@ Use Hive when you need:
 - **[Report Issues](https://github.com/adenhq/hive/issues)** - Bug reports and feature requests
 - **[Contributing](CONTRIBUTING.md)** - How to contribute and submit PRs
 
+## How It Works
+
+1. **[Define Your Goal](docs/key_concepts/goals_outcome.md)** → Describe what you want to achieve in plain English
+2. **Coding Agent Generates** → Creates the [agent graph](docs/key_concepts/graph.md), connection code, and test cases
+3. **[Workers Execute](docs/key_concepts/worker_agent.md)** → SDK-wrapped nodes run with full observability and tool access
+4. **Control Plane Monitors** → Real-time metrics, budget enforcement, policy management
+5. **[Adaptiveness](docs/key_concepts/evolution.md)** → On failure, the system evolves the graph and redeploys automatically
+
+### Agent Execution Flow
+
+1. **Goal**: You submit a goal (e.g., "Research competitor pricing").
+2. **Planning**: The coding agent decomposes this into a graph of nodes (steps).
+3. **Execution**: The runtime executes the graph. Each node:
+   - Receives context (memory, goal).
+   - Executes tools or LLM calls.
+   - Returns output to the shared state.
+4. **Evaluation**: If a step fails or the final outcome doesn't match the goal, the **Adaptation Loop** triggers to fix the graph or retry.
+
 ## Quick Start
 
 ### Prerequisites
 
 - Python 3.11+ for agent development
 - Claude Code or Cursor for utilizing agent skills
+
+> **New here?** Check out [DEVELOPER.md](docs/developer-guide.md) for a deep dive into the setup and your first working example.
 
 > **Note for Windows Users:** It is strongly recommended to use **WSL (Windows Subsystem for Linux)** or **Git Bash** to run this framework. Some core automation scripts may not execute correctly in standard Command Prompt or PowerShell.
 
@@ -100,27 +120,66 @@ cd hive
 This sets up:
 
 - **framework** - Core agent runtime and graph executor (in `core/.venv`)
-- **aden_tools** - MCP tools for agent capabilities (in `tools/.venv`)
+- **tools** - MCP server and standard tool library (package source in `tools/src/aden_tools`, setup in `tools/.venv`)
 - **credential store** - Encrypted API key storage (`~/.hive/credentials`)
 - **LLM provider** - Interactive default model configuration
 - All required Python dependencies with `uv`
 
+### Troubleshooting
+
+If you encounter issues during setup or execution:
+
+| Symptom | Likely Cause | Fix |
+|:--- |:--- |:--- |
+| `command not found: uv` | `uv` not installed or not in PATH | Install uv: `curl -LsSf https://astral.sh/uv/install.sh | sh` |
+| `ImportError: No module named framework` | `PYTHONPATH` not set | Run with `PYTHONPATH=core python ...` |
+| `KeyError: 'ANTHROPIC_API_KEY'` | API Keys missing | Check `.env` or run `./quickstart.sh` again |
+
 ### Build Your First Agent
 
+You can build agents using our coding assistant integration (easiest) or manually via CLI.
+
+#### Option A: Using Claude Code (Recommended)
+
+1. **Launch the Builder**:
+   Start a conversation with the Hive coding agent.
+
+   ```bash
+   claude> /hive
+   ```
+
+2. **Define Your Goal**:
+   Describe what you want the agent to do (e.g., "Build a summarizer for Hacker News").
+   - The agent will generate the architecture (nodes, edges) and code for you.
+   - It saves the agent to `exports/your_agent_name`.
+
+3. **Verify and Run**:
+   Test the agent with debug commands or visually.
+
+   ```bash
+   # Test execution
+   claude> /hive-debugger
+   
+   # Or use the visual dashboard
+   hive tui
+   ```
+
+#### Option B: Standard CLI (Manual Creation)
+
+If you prefer to create an agent manually or without an AI assistant:
+
 ```bash
-# Build an agent using Claude Code
-claude> /hive
+# 1. Create a new agent from template
+# (This creates a new folder in exports/my_agent with standard structure)
+cp -r examples/templates/tech_news_reporter exports/my_first_agent
 
-# Test your agent
-claude> /hive-debugger
+# 2. Run the agent
+hive run exports/my_first_agent --input '{"task": "Latest AI news"}'
 
-# (at separate terminal) Launch the interactive dashboard
+# 3. View in dashboard
 hive tui
-
-# Or run directly
-hive run exports/your_agent_name --input '{"key": "value"}'
 ```
-##  Coding Agent Support
+## Coding Agent Support
 ### Opencode 
 Hive includes native support for [Opencode](https://github.com/opencode-ai/opencode).
 
@@ -202,13 +261,7 @@ flowchart LR
 | Separate monitoring setup  | Built-in real-time observability       |
 | DIY budget management      | Integrated cost controls & degradation |
 
-### How It Works
 
-1. **[Define Your Goal](docs/key_concepts/goals_outcome.md)** → Describe what you want to achieve in plain English
-2. **Coding Agent Generates** → Creates the [agent graph](docs/key_concepts/graph.md), connection code, and test cases
-3. **[Workers Execute](docs/key_concepts/worker_agent.md)** → SDK-wrapped nodes run with full observability and tool access
-4. **Control Plane Monitors** → Real-time metrics, budget enforcement, policy management
-5. **[Adaptiveness](docs/key_concepts/evolution.md)** → On failure, the system evolves the graph and redeploys automatically
 
 ## Run Agents
 
@@ -228,11 +281,32 @@ hive run exports/my_agent --tui
 hive shell
 ```
 
+### Verifying Success
+
+When you run an agent, look for:
+- **Status Codes**: `Exit code 0` indicates the process completed without system error.
+- **Output JSON**: The final JSON object printed to stdout is the agent's result (e.g., `{"summary": "..."}`).
+- **Logs**: Detailed execution logs are in the TUI or printed to stderr if verbose is enabled.
+
 The TUI scans both `exports/` and `examples/templates/` for available agents.
 
 > **Using Python directly (alternative):** You can also run agents with `PYTHONPATH=exports uv run python -m agent_name run --input '{...}'`
 
 See [environment-setup.md](docs/environment-setup.md) for complete setup instructions.
+
+## Development
+
+### Running Tests
+
+To run the test suite locally, use `pytest` with the `PYTHONPATH` set to the `core` directory. This ensures all internal imports adhere to the module structure.
+
+```bash
+# Run all tests
+PYTHONPATH=core pytest
+
+# Run specific test file
+PYTHONPATH=core pytest core/tests/test_agent_runner.py
+```
 
 ## Documentation
 

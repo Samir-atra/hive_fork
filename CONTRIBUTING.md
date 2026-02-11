@@ -6,6 +6,13 @@ Thank you for your interest in contributing to the Aden Agent Framework! This do
 
 By participating in this project, you agree to abide by our [Code of Conduct](docs/CODE_OF_CONDUCT.md).
 
+## Where to Start?
+
+New to the project? We have curated a list of issues perfect for first-time contributors.
+
+- **[Good First Issues](https://github.com/adenhq/hive/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22)**: Small, self-contained tasks to help you get familiar with the codebase.
+- **Documentation**: Improving docs is a significant contribution and a great way to learn the system.
+
 ## Issue Assignment Policy
 
 To prevent duplicate work and respect contributors' time, we require issue assignment before submitting PRs.
