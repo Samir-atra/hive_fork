@@ -99,3 +99,39 @@ When you define goals with weighted criteria and constraints, three things happe
 3. **Humans stay in control.** Constraints define the boundaries. The agent has freedom to find creative solutions within those boundaries, but it can't cross the lines you've drawn.
 
 The goal lifecycle flows through `DRAFT → READY → ACTIVE → COMPLETED / FAILED / SUSPENDED`, giving you visibility into where each objective stands at any point during execution.
+
+## How to Define Goals
+
+There are two primary ways to define goals for your agent:
+
+### 1. Interactive Definition (Recommended)
+When you run the `/hive` command in Claude Code, the **Coding Agent** interviews you to understand your objective. It then generates the structured `Goal` object, including success criteria and constraints, and saves it to `agent.json`.
+
+**Example Interaction:**
+> **User:** "I want an agent that finds new AI papers and summarizes them."
+> **Coding Agent:** "How many papers should it find? What creates a 'good' summary? Are there specific sources?"
+> *(Coding Agent generates the JSON based on your answers)*
+
+### 2. Manual Definition
+For advanced users, you can edit the `agent.json` file directly to fine-tune your goal.
+
+**File:** `exports/my_agent/agent.json`
+```json
+"goal": {
+  "id": "research-papers",
+  "name": "Paper Researcher",
+  "success_criteria": [
+    {
+      "description": "Find at least 5 papers from last week",
+      "weight": 0.5,
+      "metric": "count >= 5"
+    }
+  ]
+}
+```
+
+### Runtime Inputs vs. Static Goals
+*   **Static Goal:** The broad objective (e.g., "Research AI News") is defined once in `agent.json`.
+*   **Runtime Input:** Specific parameters for a single run (e.g., "Focus on LLM reasoning" or "Look for news about Apple") are passed at runtime via the `--input` flag.
+
+The agent combines the static goal with the runtime input to form its immediate context.

@@ -48,6 +48,10 @@ https://github.com/user-attachments/assets/846c0cc7-ffd6-47fa-b4b7-495494857a55
 
 Hive is designed for developers and teams who want to build **production-grade AI agents** without manually wiring complex workflows.
 
+**Imagine you're a Product Manager or Engineer:** You want to automate a complex business process—like researching market trends, summarizing them, and generating a report—but you don't want to spend weeks writing boilerplate code for retries, error handling, and API integrations.
+
+**With Hive:** You describe your goal ("Research the latest AI trends and generate a report"), and the framework builds the agent graph, manages the execution, handles failures, and delivers the result.
+
 Hive is a good fit if you:
 
 - Want AI agents that **execute real business processes**, not demos
@@ -67,6 +71,8 @@ Use Hive when you need:
 - Continuous improvement based on failures
 - Multi-agent coordination
 - A framework that evolves with your goals
+
+[📖 **Production Readiness Guide**](docs/production-readiness.md) — Learn which use cases are production-ready today.
 
 ## Quick Links
 
@@ -105,7 +111,18 @@ This sets up:
 - **LLM provider** - Interactive default model configuration
 - All required Python dependencies with `uv`
 
-### Build Your First Agent
+### Run Your First Agent (10 Minutes)
+
+Want to see Hive in action immediately? Follow our **[Step-by-Step Guide: Your First Agent](docs/getting-started/your-first-agent.md)**.
+
+In this guide, you will:
+1.  **Clone** a production-ready template (Tech News Reporter).
+2.  **Run** the agent with a single command.
+3.  **Watch** it browse the web and generate a report live.
+
+[👉 Go to the Guide](docs/getting-started/your-first-agent.md)
+
+### Build Your Own Agent
 
 ```bash
 # Build an agent using Claude Code
