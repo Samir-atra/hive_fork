@@ -79,8 +79,11 @@ def main():
 
     # Register testing commands (test-run, test-debug, test-list, test-stats)
     from framework.testing.cli import register_testing_commands
-
     register_testing_commands(subparsers)
+
+    # Register regression commands (test-baseline, test-regress)
+    from framework.testing.regression.cli import register_regression_commands
+    register_regression_commands(subparsers)
 
     args = parser.parse_args()
 
