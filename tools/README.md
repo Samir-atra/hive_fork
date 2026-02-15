@@ -28,6 +28,8 @@ Some tools require API keys to function. Credentials are managed through the enc
 | `BRAVE_SEARCH_API_KEY` | `web_search` tool (Brave)     | [brave.com/search/api](https://brave.com/search/api/)   |
 | `GOOGLE_API_KEY`       | `web_search` tool (Google)    | [console.cloud.google.com](https://console.cloud.google.com/) |
 | `GOOGLE_CSE_ID`        | `web_search` tool (Google)    | [programmablesearchengine.google.com](https://programmablesearchengine.google.com/) |
+| `BASEROW_TOKEN`       | `baserow` tools               | [baserow.io](https://baserow.io/) |
+| `BASEROW_URL`         | `baserow` tools (Self-hosted) | Optional custom base URL |
 
 > **Note:** `web_search` supports multiple providers. Set either Brave OR Google credentials. Brave is preferred for backward compatibility.
 
@@ -84,6 +86,9 @@ python mcp_server.py
 | `calendar_delete_event`| Delete a calendar event                        |
 | `calendar_get_calendar`| Get calendar metadata                          |
 | `calendar_check_availability` | Check free/busy status for attendees    |
+| `baserow_list_rows`    | List rows from a Baserow table                 |
+| `baserow_create_row`   | Create a new row in a Baserow table            |
+| `baserow_update_row`   | Update an existing row in a Baserow table      |
 
 ## Project Structure
 

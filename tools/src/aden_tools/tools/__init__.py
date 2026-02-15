@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 # Import register_tools from each tool module
 from .apollo_tool import register_tools as register_apollo
 from .bigquery_tool import register_tools as register_bigquery
+from .baserow_tool import register_tools as register_baserow
 from .calcom_tool import register_tools as register_calcom
 from .calendar_tool import register_tools as register_calendar
 from .csv_tool import register_tools as register_csv
@@ -101,6 +102,7 @@ def register_all_tools(
     register_vision(mcp, credentials=credentials)
     register_google_maps(mcp, credentials=credentials)
     register_bigquery(mcp, credentials=credentials)
+    register_baserow(mcp, credentials=credentials)
 
     # Register file system toolkits
     register_view_file(mcp)
@@ -283,6 +285,11 @@ def register_all_tools(
         "maps_place_search",
         "run_bigquery_query",
         "describe_dataset",
+        "baserow_list_rows",
+        "baserow_get_row",
+        "baserow_create_row",
+        "baserow_update_row",
+        "baserow_delete_row",
     ]
 
 
