@@ -84,6 +84,9 @@ python mcp_server.py
 | `calendar_delete_event`| Delete a calendar event                        |
 | `calendar_get_calendar`| Get calendar metadata                          |
 | `calendar_check_availability` | Check free/busy status for attendees    |
+| `docker_list_containers` | List Docker containers on the host      |
+| `docker_container_action` | Start/Stop/Restart/Kill Docker containers |
+| `docker_pull_image` | Pull Docker images from registries      |
 
 ## Project Structure
 

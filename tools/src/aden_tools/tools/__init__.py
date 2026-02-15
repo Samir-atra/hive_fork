@@ -26,6 +26,7 @@ from .bigquery_tool import register_tools as register_bigquery
 from .calcom_tool import register_tools as register_calcom
 from .calendar_tool import register_tools as register_calendar
 from .csv_tool import register_tools as register_csv
+from .docker_tool import register_tools as register_docker
 from .email_tool import register_tools as register_email
 from .example_tool import register_tools as register_example
 from .excel_tool import register_tools as register_excel
@@ -81,6 +82,7 @@ def register_all_tools(
     register_pdf_read(mcp)
     register_time(mcp)
     register_runtime_logs(mcp)
+    register_docker(mcp)
 
     # Tools that need credentials (pass credentials if provided)
     # web_search supports multiple providers (Google, Brave) with auto-detection
@@ -203,6 +205,15 @@ def register_all_tools(
         "query_runtime_logs",
         "query_runtime_log_details",
         "query_runtime_log_raw",
+        "docker_list_containers",
+        "docker_container_action",
+        "docker_get_logs",
+        "docker_remove_container",
+        "docker_list_images",
+        "docker_pull_image",
+        "docker_remove_image",
+        "docker_get_stats",
+        "docker_inspect",
         "scholar_search",
         "scholar_get_citations",
         "scholar_get_author",
