@@ -51,6 +51,7 @@ from .file_system_toolkits.write_to_file import register_tools as register_write
 from .github_tool import register_tools as register_github
 from .gmail_tool import register_tools as register_gmail
 from .google_maps_tool import register_tools as register_google_maps
+from .google_meet_tool import register_tools as register_google_meet
 from .http_headers_scanner import register_tools as register_http_headers_scanner
 from .hubspot_tool import register_tools as register_hubspot
 from .news_tool import register_tools as register_news
@@ -113,6 +114,7 @@ def register_all_tools(
     register_telegram(mcp, credentials=credentials)
     register_vision(mcp, credentials=credentials)
     register_google_maps(mcp, credentials=credentials)
+    register_google_meet(mcp, credentials=credentials)
     register_bigquery(mcp, credentials=credentials)
 
     # Register file system toolkits
@@ -309,6 +311,9 @@ def register_all_tools(
         "maps_distance_matrix",
         "maps_place_details",
         "maps_place_search",
+        "create_meet_event",
+        "extract_meeting_outcomes",
+        "orchestrate_followup",
         "run_bigquery_query",
         "describe_dataset",
         # Security scanning tools
