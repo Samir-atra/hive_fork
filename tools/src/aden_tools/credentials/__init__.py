@@ -68,6 +68,7 @@ from .health_check import HealthCheckResult, check_credential_health
 from .hubspot import HUBSPOT_CREDENTIALS
 from .llm import LLM_CREDENTIALS
 from .news import NEWS_CREDENTIALS
+from .pagerduty import PAGERDUTY_CREDENTIALS
 from .razorpay import RAZORPAY_CREDENTIALS
 from .search import SEARCH_CREDENTIALS
 from .serpapi import SERPAPI_CREDENTIALS
@@ -100,6 +101,7 @@ CREDENTIAL_SPECS = {
     **TELEGRAM_CREDENTIALS,
     **BIGQUERY_CREDENTIALS,
     **CALCOM_CREDENTIALS,
+    **PAGERDUTY_CREDENTIALS,
 }
 
 __all__ = [
@@ -141,4 +143,5 @@ __all__ = [
     "BIGQUERY_CREDENTIALS",
     "CALCOM_CREDENTIALS",
     "DISCORD_CREDENTIALS",
+    "PAGERDUTY_CREDENTIALS",
 ]

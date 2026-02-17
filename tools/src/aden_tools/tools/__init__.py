@@ -55,7 +55,12 @@ from .google_maps_tool import register_tools as register_google_maps
 from .http_headers_scanner import register_tools as register_http_headers_scanner
 from .hubspot_tool import register_tools as register_hubspot
 from .news_tool import register_tools as register_news
-from .pdf_read_tool import register_tools as register_pdf_read
+from .pagerduty_tool import register_tools as register_pagerduty
+try:
+    from .pdf_read_tool import register_tools as register_pdf_read
+except ImportError:
+    def register_pdf_read(*args, **kwargs):
+        pass
 from .port_scanner import register_tools as register_port_scanner
 from .razorpay_tool import register_tools as register_razorpay
 from .risk_scorer import register_tools as register_risk_scorer
@@ -116,6 +121,7 @@ def register_all_tools(
     register_vision(mcp, credentials=credentials)
     register_google_maps(mcp, credentials=credentials)
     register_bigquery(mcp, credentials=credentials)
+    register_pagerduty(mcp, credentials=credentials)
 
     # Register file system toolkits
     register_view_file(mcp)
@@ -325,6 +331,13 @@ def register_all_tools(
         "tech_stack_detect",
         "subdomain_enumerate",
         "risk_score",
+        "pagerduty_trigger_incident",
+        "pagerduty_acknowledge_incident",
+        "pagerduty_resolve_incident",
+        "pagerduty_get_incident",
+        "pagerduty_list_incidents",
+        "pagerduty_add_incident_note",
+        "pagerduty_list_services",
         # Exa Search tools
         "exa_search",
         "exa_find_similar",
