@@ -381,6 +381,32 @@ PYTHONPATH=exports uv run python -m agent_name test --parallel 4
 PYTHONPATH=exports uv run python -m agent_name test --fail-fast
 ```
 
+### Visualization & Debugging
+
+Use `hive visualize` to generate Mermaid.js flowcharts of agent graphs:
+
+```bash
+# Print Mermaid syntax to stdout
+hive visualize exports/my_agent
+
+# Generate interactive HTML viewer
+hive visualize exports/my_agent --format html --output graph.html
+
+# Get graph statistics as JSON
+hive visualize exports/my_agent --format json
+
+# Left-to-right layout instead of top-to-bottom
+hive visualize exports/my_agent --direction LR
+```
+
+**Key Features:**
+- **No API Keys Required:** The visualizer loads only the graph structure, so you can debug logic without valid credentials or invoking LLMs.
+- **Interactive HTML:** The HTML output includes pan/zoom controls, making it easy to navigate large, complex agent graphs.
+- **Conditional Logic:** Edge labels display the exact Python expressions used for routing, helping you verify decision logic at a glance.
+# Custom title
+hive visualize exports/my_agent --title "My Agent Pipeline"
+```
+
 ### Writing Custom Tests
 
 ```python

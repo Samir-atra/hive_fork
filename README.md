@@ -252,6 +252,11 @@ hive run exports/my_agent --tui
 
 # Interactive REPL
 hive shell
+
+# Visualize an agent's execution graph
+hive visualize exports/my_agent                       # Print Mermaid syntax
+hive visualize exports/my_agent -F html -o graph.html # Interactive HTML
+hive visualize exports/my_agent -F json               # Graph stats as JSON
 ```
 
 The TUI scans both `exports/` and `examples/templates/` for available agents.
