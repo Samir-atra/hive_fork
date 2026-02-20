@@ -12,6 +12,7 @@ from aden_tools.credentials.health_check import (
     GoogleCalendarHealthChecker,
     GoogleMapsHealthChecker,
     GoogleSearchHealthChecker,
+    MongoDBHealthChecker,
     ResendHealthChecker,
     check_credential_health,
 )
@@ -39,6 +40,11 @@ class TestHealthCheckerRegistry:
         """ResendHealthChecker is registered in HEALTH_CHECKERS."""
         assert "resend" in HEALTH_CHECKERS
         assert isinstance(HEALTH_CHECKERS["resend"], ResendHealthChecker)
+
+    def test_mongodb_registered(self):
+        """MongoDBHealthChecker is registered in HEALTH_CHECKERS."""
+        assert "mongodb" in HEALTH_CHECKERS
+        assert isinstance(HEALTH_CHECKERS["mongodb"], MongoDBHealthChecker)
 
     def test_google_maps_registered(self):
         """GoogleMapsHealthChecker is registered in HEALTH_CHECKERS."""
@@ -68,6 +74,7 @@ class TestHealthCheckerRegistry:
             "google_calendar_oauth",
             "slack",
             "discord",
+            "mongodb",
         }
         assert set(HEALTH_CHECKERS.keys()) == expected
 
@@ -378,6 +385,54 @@ class TestGoogleMapsHealthChecker:
 
         assert result.valid is False
         assert "connection failed" in result.details["error"]
+
+
+class TestMongoDBHealthChecker:
+    """Tests for MongoDBHealthChecker."""
+
+    @patch("aden_tools.credentials.health_check.pymongo", create=True)
+    def test_valid_connection(self, mock_pymongo):
+        mock_client = MagicMock()
+        mock_pymongo.MongoClient.return_value = mock_client
+        mock_client.admin.command.return_value = {'ok': 1.0}
+
+        checker = MongoDBHealthChecker()
+        result = checker.check("mongodb://valid-uri")
+
+        assert result.valid is True
+        assert "valid" in result.message.lower()
+
+    @patch("aden_tools.credentials.health_check.pymongo", create=True)
+    def test_invalid_ping(self, mock_pymongo):
+        mock_client = MagicMock()
+        mock_pymongo.MongoClient.return_value = mock_client
+        mock_client.admin.command.return_value = {'ok': 0}
+
+        checker = MongoDBHealthChecker()
+        result = checker.check("mongodb://invalid-uri")
+
+        assert result.valid is False
+        assert "did not return ok=1.0" in result.message
+
+    @patch("aden_tools.credentials.health_check.pymongo", create=True)
+    def test_connection_error(self, mock_pymongo):
+        mock_pymongo.MongoClient.side_effect = Exception("Connection timeout")
+
+        checker = MongoDBHealthChecker()
+        result = checker.check("mongodb://timeout-uri")
+
+        assert result.valid is False
+        assert "Failed to connect to MongoDB" in result.message
+        assert "Connection timeout" in result.details["error"]
+
+    def test_missing_dependency(self):
+        with patch.dict("sys.modules", {"pymongo": None}):
+            checker = MongoDBHealthChecker()
+            result = checker.check("mongodb://uri")
+
+            assert result.valid is False
+            assert "pymongo not installed" in result.message
+            assert result.details["error"] == "missing_dependency"
 
 
 class TestCheckCredentialHealthDispatcher:

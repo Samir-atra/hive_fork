@@ -679,6 +679,47 @@ class GoogleMapsHealthChecker:
             )
 
 
+class MongoDBHealthChecker:
+    """Health checker for MongoDB URI credentials."""
+
+    def check(self, connection_string: str) -> HealthCheckResult:
+        """
+        Validate MongoDB connection string by sending a ping command.
+        """
+        try:
+            import pymongo
+        except ImportError:
+            return HealthCheckResult(
+                valid=False,
+                message="pymongo not installed. Please verify your connection manually or install pymongo.",
+                details={"error": "missing_dependency"},
+            )
+
+        try:
+            # Use a short timeout so we don't block if the host is unreachable
+            client = pymongo.MongoClient(connection_string, serverSelectionTimeoutMS=5000)
+            
+            # Send a ping to confirm a successful connection
+            response = client.admin.command('ping')
+            
+            if response.get('ok') == 1.0:
+                return HealthCheckResult(
+                    valid=True,
+                    message="MongoDB connection string valid",
+                )
+            else:
+                return HealthCheckResult(
+                    valid=False,
+                    message="MongoDB ping did not return ok=1.0",
+                )
+        except Exception as e:
+            return HealthCheckResult(
+                valid=False,
+                message=f"Failed to connect to MongoDB: {e}",
+                details={"error": str(e)},
+            )
+
+
 # Registry of health checkers
 HEALTH_CHECKERS: dict[str, CredentialHealthChecker] = {
     "discord": DiscordHealthChecker(),
@@ -691,6 +732,7 @@ HEALTH_CHECKERS: dict[str, CredentialHealthChecker] = {
     "anthropic": AnthropicHealthChecker(),
     "github": GitHubHealthChecker(),
     "resend": ResendHealthChecker(),
+    "mongodb": MongoDBHealthChecker(),
 }
 
 

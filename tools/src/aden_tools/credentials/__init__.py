@@ -67,6 +67,7 @@ from .google_maps import GOOGLE_MAPS_CREDENTIALS
 from .health_check import HealthCheckResult, check_credential_health
 from .hubspot import HUBSPOT_CREDENTIALS
 from .llm import LLM_CREDENTIALS
+from .mongodb import MONGODB_CREDENTIALS
 from .news import NEWS_CREDENTIALS
 from .razorpay import RAZORPAY_CREDENTIALS
 from .search import SEARCH_CREDENTIALS
@@ -100,6 +101,7 @@ CREDENTIAL_SPECS = {
     **TELEGRAM_CREDENTIALS,
     **BIGQUERY_CREDENTIALS,
     **CALCOM_CREDENTIALS,
+    **MONGODB_CREDENTIALS,
 }
 
 __all__ = [
@@ -141,4 +143,5 @@ __all__ = [
     "BIGQUERY_CREDENTIALS",
     "CALCOM_CREDENTIALS",
     "DISCORD_CREDENTIALS",
+    "MONGODB_CREDENTIALS",
 ]

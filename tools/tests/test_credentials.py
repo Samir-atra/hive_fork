@@ -321,6 +321,17 @@ class TestCredentialSpecs:
         assert spec.startup_required is False
         assert "anthropic.com" in spec.help_url
 
+    def test_mongodb_spec_exists(self):
+        """CREDENTIAL_SPECS includes mongodb."""
+        assert "mongodb" in CREDENTIAL_SPECS
+
+        spec = CREDENTIAL_SPECS["mongodb"]
+        assert spec.env_var == "MONGODB_URI"
+        assert "mongodb_insert_document" in spec.tools
+        assert spec.required is False
+        assert spec.startup_required is False
+        assert "mongodb.com" in spec.help_url
+
 
 class TestNodeTypeValidation:
     """Tests for node type credential validation."""
