@@ -370,6 +370,55 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
     )
     setup_creds_parser.set_defaults(func=cmd_setup_credentials)
 
+    # health command (agent health monitoring)
+    health_parser = subparsers.add_parser(
+        "health",
+        help="Check agent health and performance",
+        description="Analyze agent performance metrics, identify issues, and monitor health.",
+    )
+    health_parser.add_argument(
+        "agent_path",
+        type=str,
+        help="Path to agent folder (containing agent.json)",
+    )
+    health_parser.add_argument(
+        "--days",
+        "-d",
+        type=int,
+        default=7,
+        help="Number of days to analyze (default: 7)",
+    )
+    health_parser.add_argument(
+        "--watch",
+        "-w",
+        action="store_true",
+        help="Enable real-time watch mode with live updates",
+    )
+    health_parser.add_argument(
+        "--interval",
+        "-i",
+        type=float,
+        default=5.0,
+        help="Watch mode update interval in seconds (default: 5.0)",
+    )
+    health_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output as JSON for programmatic access",
+    )
+    health_parser.add_argument(
+        "--prometheus",
+        action="store_true",
+        help="Output in Prometheus format for monitoring integration",
+    )
+    health_parser.add_argument(
+        "--webhook",
+        type=str,
+        default=None,
+        help="Webhook URL for notifications on health status changes",
+    )
+    health_parser.set_defaults(func=cmd_health)
+
 
 def _load_resume_state(
     agent_path: str, session_id: str, checkpoint_id: str | None = None
@@ -1915,3 +1964,32 @@ def cmd_setup_credentials(args: argparse.Namespace) -> int:
 
     result = session.run_interactive()
     return 0 if result.success else 1
+
+
+def cmd_health(args: argparse.Namespace) -> int:
+    """Check agent health with optional real-time monitoring."""
+    from framework.runner.agent_health import AgentHealthMonitor
+
+    agent_path = args.agent_path
+    days = args.days
+    webhook_url = getattr(args, "webhook", None)
+
+    monitor = AgentHealthMonitor(agent_path, webhook_url=webhook_url)
+
+    if getattr(args, "watch", False):
+        interval = getattr(args, "interval", 5.0)
+        asyncio.run(monitor.watch(interval=interval, days=days))
+        return 0
+
+    report = monitor.analyze(days)
+
+    if getattr(args, "prometheus", False):
+        print(monitor.to_prometheus(report))
+        return 0
+
+    if getattr(args, "json", False):
+        print(monitor.to_json(report))
+        return 0
+
+    monitor._display_report(report)
+    return 0
