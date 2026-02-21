@@ -232,3 +232,80 @@ class TestEdgeCases:
 
         with pytest.raises(MemoryWriteError):
             memory.write("output", content)
+
+
+class TestSharedMemoryReadAllDeepCopy:
+    """Test that read_all() returns a deep copy to prevent unintended mutation."""
+
+    def test_read_all_returns_deep_copy_of_list(self):
+        """Modifying a list in the returned dict should not affect shared memory."""
+        memory = SharedMemory()
+        memory.write("items", [1, 2, 3])
+
+        data = memory.read_all()
+        data["items"].append(4)
+
+        assert memory.read("items") == [1, 2, 3]
+        assert data["items"] == [1, 2, 3, 4]
+
+    def test_read_all_returns_deep_copy_of_dict(self):
+        """Modifying a nested dict in the returned dict should not affect shared memory."""
+        memory = SharedMemory()
+        memory.write("config", {"nested": {"value": 42}})
+
+        data = memory.read_all()
+        data["config"]["nested"]["value"] = 999
+
+        assert memory.read("config") == {"nested": {"value": 42}}
+        assert data["config"]["nested"]["value"] == 999
+
+    def test_read_all_returns_deep_copy_of_nested_structure(self):
+        """Modifying deeply nested structures should not affect shared memory."""
+        memory = SharedMemory()
+        memory.write("data", {"list": [{"id": 1}, {"id": 2}]})
+
+        data = memory.read_all()
+        data["data"]["list"][0]["id"] = 100
+
+        assert memory.read("data") == {"list": [{"id": 1}, {"id": 2}]}
+        assert data["data"]["list"][0]["id"] == 100
+
+    def test_read_all_dict_keys_are_independent(self):
+        """Adding/removing keys in returned dict should not affect shared memory."""
+        memory = SharedMemory()
+        memory.write("key1", "value1")
+
+        data = memory.read_all()
+        data["key2"] = "value2"
+        del data["key1"]
+
+        assert memory.read("key1") == "value1"
+        assert memory.read("key2") is None
+        assert "key1" not in data
+        assert "key2" in data
+
+    def test_read_all_with_permissions_returns_deep_copy(self):
+        """read_all with permissions should also return deep copy."""
+        memory = SharedMemory()
+        memory.write("allowed", {"nested": [1, 2, 3]})
+        memory.write("restricted", {"secret": "data"})
+
+        scoped = memory.with_permissions(read_keys=["allowed"], write_keys=[])
+        data = scoped.read_all()
+
+        data["allowed"]["nested"].append(4)
+        data["allowed"]["nested"] = "modified"
+
+        assert memory.read("allowed") == {"nested": [1, 2, 3]}
+        assert "restricted" not in data
+
+    def test_read_all_with_mutable_set(self):
+        """Modifying a set in returned dict should not affect shared memory."""
+        memory = SharedMemory()
+        memory.write("tags", {"a", "b", "c"})
+
+        data = memory.read_all()
+        data["tags"].add("d")
+
+        assert memory.read("tags") == {"a", "b", "c"}
+        assert "d" in data["tags"]

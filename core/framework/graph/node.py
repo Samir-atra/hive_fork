@@ -16,6 +16,7 @@ Protocol:
 """
 
 import asyncio
+import copy
 import json
 import logging
 from abc import ABC, abstractmethod
@@ -428,10 +429,15 @@ class SharedMemory:
         return False
 
     def read_all(self) -> dict[str, Any]:
-        """Read all accessible data."""
+        """Read all accessible data.
+
+        Returns a deep copy to prevent unintended mutation of shared state.
+        Modifications to the returned dictionary or its values will not
+        affect the internal state.
+        """
         if self._allowed_read:
-            return {k: v for k, v in self._data.items() if k in self._allowed_read}
-        return dict(self._data)
+            return copy.deepcopy({k: v for k, v in self._data.items() if k in self._allowed_read})
+        return copy.deepcopy(self._data)
 
     def with_permissions(
         self,
