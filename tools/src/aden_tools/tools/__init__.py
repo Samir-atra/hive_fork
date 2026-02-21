@@ -56,6 +56,7 @@ from .google_docs_tool import register_tools as register_google_docs
 from .google_maps_tool import register_tools as register_google_maps
 from .http_headers_scanner import register_tools as register_http_headers_scanner
 from .hubspot_tool import register_tools as register_hubspot
+from .mastercard_tool import register_tools as register_mastercard
 from .news_tool import register_tools as register_news
 from .pdf_read_tool import register_tools as register_pdf_read
 from .port_scanner import register_tools as register_port_scanner
@@ -144,6 +145,7 @@ def register_all_tools(
     register_subdomain_enumerator(mcp)
     register_risk_scorer(mcp)
     register_stripe(mcp, credentials=credentials)
+    register_mastercard(mcp, credentials=credentials)
 
     # Return the list of all registered tool names
     return list(mcp._tool_manager._tools.keys())

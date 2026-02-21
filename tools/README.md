@@ -141,6 +141,7 @@ python mcp_server.py
 | `google_docs_*` | Read and write Google Docs |
 | `maps_*` | Places search, geocoding, directions (Google Maps) |
 | `run_bigquery_query`, `describe_dataset` | Run queries against Google BigQuery |
+| `mastercard_*` | Mastercard payment processing: tokenization, authorization, capture, refund, 3DS verification |
 | `razorpay_*` | Razorpay payments and orders |
 | `github_*` | GitHub repos, issues, and pull requests |
 
