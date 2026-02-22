@@ -10,7 +10,13 @@ def register_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     def replace_file_content(
-        path: str, target: str, replacement: str, workspace_id: str, agent_id: str, session_id: str
+        path: str,
+        target: str,
+        replacement: str,
+        workspace_id: str,
+        agent_id: str,
+        session_id: str,
+        max_file_size: int = 10 * 1024 * 1024,
     ) -> dict:
         """
         Purpose
@@ -33,6 +39,7 @@ def register_tools(mcp: FastMCP) -> None:
             workspace_id: The ID of the workspace
             agent_id: The ID of the agent
             session_id: The ID of the current session
+            max_file_size: Maximum file size in bytes (default: 10 MB)
 
         Returns:
             Dict with replacement count and status, or error dict
@@ -41,6 +48,10 @@ def register_tools(mcp: FastMCP) -> None:
             secure_path = get_secure_path(path, workspace_id, agent_id, session_id)
             if not os.path.exists(secure_path):
                 return {"error": f"File not found at {path}"}
+
+            file_size = os.path.getsize(secure_path)
+            if file_size > max_file_size:
+                return {"error": f"File too large: {file_size} bytes (max: {max_file_size})"}
 
             with open(secure_path, encoding="utf-8") as f:
                 content = f.read()

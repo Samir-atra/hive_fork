@@ -431,6 +431,70 @@ class TestReplaceFileContentTool:
         assert result["occurrences_replaced"] == 2
         assert test_file.read_text() == "Line 1\nDONE: fix this\nLine 3\nDONE: add tests\n"
 
+    def test_replace_file_too_large(
+        self, replace_file_content_fn, mock_workspace, mock_secure_path, tmp_path
+    ):
+        """Replacing content in a file exceeding max_file_size returns error."""
+        test_file = tmp_path / "large.txt"
+        test_file.write_text("Hello World")
+
+        result = replace_file_content_fn(
+            path="large.txt", target="Hello", replacement="Hi", max_file_size=5, **mock_workspace
+        )
+
+        assert "error" in result
+        assert "too large" in result["error"].lower()
+        assert "11 bytes" in result["error"]
+        assert "max: 5" in result["error"]
+
+    def test_replace_file_exactly_at_size_limit(
+        self, replace_file_content_fn, mock_workspace, mock_secure_path, tmp_path
+    ):
+        """Replacing content in file exactly at size limit succeeds."""
+        test_file = tmp_path / "exact.txt"
+        content = "Hello World"
+        test_file.write_text(content)
+
+        result = replace_file_content_fn(
+            path="exact.txt",
+            target="Hello",
+            replacement="Hi",
+            max_file_size=len(content.encode("utf-8")),
+            **mock_workspace,
+        )
+
+        assert result["success"] is True
+        assert result["occurrences_replaced"] == 1
+
+    def test_replace_file_with_custom_max_size(
+        self, replace_file_content_fn, mock_workspace, mock_secure_path, tmp_path
+    ):
+        """Replacing content with custom max_file_size works correctly."""
+        test_file = tmp_path / "custom.txt"
+        test_file.write_text("Hello World")
+
+        result = replace_file_content_fn(
+            path="custom.txt", target="Hello", replacement="Hi", max_file_size=100, **mock_workspace
+        )
+
+        assert result["success"] is True
+        assert result["occurrences_replaced"] == 1
+        assert test_file.read_text() == "Hi World"
+
+    def test_replace_file_default_max_size(
+        self, replace_file_content_fn, mock_workspace, mock_secure_path, tmp_path
+    ):
+        """Default max_file_size is 10 MB."""
+        test_file = tmp_path / "default.txt"
+        test_file.write_text("Hello World")
+
+        result = replace_file_content_fn(
+            path="default.txt", target="Hello", replacement="Hi", **mock_workspace
+        )
+
+        assert result["success"] is True
+        assert result["occurrences_replaced"] == 1
+
 
 class TestGrepSearchTool:
     """Tests for grep_search tool."""
