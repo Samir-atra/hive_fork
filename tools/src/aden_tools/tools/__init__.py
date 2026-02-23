@@ -68,6 +68,7 @@ from .ssl_tls_scanner import register_tools as register_ssl_tls_scanner
 from .stripe_tool import register_tools as register_stripe
 from .subdomain_enumerator import register_tools as register_subdomain_enumerator
 from .tech_stack_detector import register_tools as register_tech_stack_detector
+from .terraform_tool import register_tools as register_terraform
 from .telegram_tool import register_tools as register_telegram
 from .time_tool import register_tools as register_time
 from .vision_tool import register_tools as register_vision
@@ -143,6 +144,9 @@ def register_all_tools(
     register_tech_stack_detector(mcp)
     register_subdomain_enumerator(mcp)
     register_risk_scorer(mcp)
+
+    # Infrastructure as Code tools (no credentials needed)
+    register_terraform(mcp)
     register_stripe(mcp, credentials=credentials)
 
     # Return the list of all registered tool names
