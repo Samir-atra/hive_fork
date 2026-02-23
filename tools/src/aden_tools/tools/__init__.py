@@ -59,6 +59,7 @@ from .http_headers_scanner import register_tools as register_http_headers_scanne
 from .hubspot_tool import register_tools as register_hubspot
 from .news_tool import register_tools as register_news
 from .pdf_read_tool import register_tools as register_pdf_read
+from .pinecone_tool import register_tools as register_pinecone
 from .port_scanner import register_tools as register_port_scanner
 from .postgres_tool import register_tools as register_postgres
 from .razorpay_tool import register_tools as register_razorpay
@@ -150,6 +151,9 @@ def register_all_tools(
 
     # Postgres tool
     register_postgres(mcp, credentials=credentials)
+
+    # Pinecone vector database tool
+    register_pinecone(mcp, credentials=credentials)
 
     # Return the list of all registered tool names
     return list(mcp._tool_manager._tools.keys())

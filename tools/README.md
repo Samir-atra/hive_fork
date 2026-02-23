@@ -28,6 +28,7 @@ Some tools require API keys to function. Credentials are managed through the enc
 | `BRAVE_SEARCH_API_KEY` | `web_search` tool (Brave)     | [brave.com/search/api](https://brave.com/search/api/)   |
 | `GOOGLE_API_KEY`       | `web_search` tool (Google)    | [console.cloud.google.com](https://console.cloud.google.com/) |
 | `GOOGLE_CSE_ID`        | `web_search` tool (Google)    | [programmablesearchengine.google.com](https://programmablesearchengine.google.com/) |
+| `PINECONE_API_KEY`     | `pinecone_*` tools            | [app.pinecone.io](https://app.pinecone.io/)             |
 
 > **Note:** `web_search` supports multiple providers. Set either Brave OR Google credentials. Brave is preferred for backward compatibility.
 
@@ -141,9 +142,16 @@ python mcp_server.py
 | `vision_*` | Analyze images with Google Cloud Vision (labels, OCR, faces, objects, etc.) |
 | `google_docs_*` | Read and write Google Docs |
 | `maps_*` | Places search, geocoding, directions (Google Maps) |
-| `run_bigquery_query`, `describe_dataset` | Run queries against Google BigQuery |
 | `razorpay_*` | Razorpay payments and orders |
 | `github_*` | GitHub repos, issues, and pull requests |
+
+### Databases
+
+| Tool | Description |
+| ---- | ----------- |
+| `pinecone_*` | Pinecone vector database for RAG workflows |
+| `run_bigquery_query`, `describe_dataset` | Run queries against Google BigQuery |
+| `postgres_*` | PostgreSQL database operations |
 
 ### Security
 
