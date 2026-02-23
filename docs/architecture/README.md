@@ -760,6 +760,155 @@ class SignalWeights:
 
 ---
 
+## Closed-Loop Agent Evolution (Implemented)
+
+The Online Learning roadmap described above is now implemented as a three-phase Closed-Loop Agent Evolution system. This system enables agents to learn from every execution and improve over time.
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      CLOSED-LOOP AGENT EVOLUTION                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   ┌─────────────┐      ┌─────────────┐      ┌─────────────┐             │
+│   │  EXECUTION  │─────►│   EPISODE   │─────►│  EVOLUTION  │             │
+│   │   TRACING   │      │   MEMORY    │      │   PIPELINE  │             │
+│   └─────────────┘      └─────────────┘      └─────────────┘             │
+│         │                    │                    │                      │
+│         ▼                    ▼                    ▼                      │
+│   ┌─────────────┐      ┌─────────────┐      ┌─────────────┐             │
+│   │   Trace     │      │   Episode   │      │  Fitness    │             │
+│   │   Capture   │      │   Index     │      │  Function   │             │
+│   └─────────────┘      └─────────────┘      └─────────────┘             │
+│         │                    │                    │                      │
+│         ▼                    ▼                    ▼                      │
+│   ┌─────────────┐      ┌─────────────┐      ┌─────────────┐             │
+│   │   Replay    │      │  Retriever  │      │  Mutation   │             │
+│   │   Engine    │      │             │      │  Operator   │             │
+│   └─────────────┘      └─────────────┘      └─────────────┘             │
+│                                                    │                     │
+│                                                    ▼                     │
+│                                              ┌─────────────┐             │
+│                                              │    HITL     │             │
+│                                              │  Approval   │             │
+│                                              └─────────────┘             │
+│                                                    │                     │
+│                                                    ▼                     │
+│                                              ┌─────────────┐             │
+│                                              │  Deployed   │             │
+│                                              │   Config    │             │
+│                                              └─────────────┘             │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Phase 1: Deterministic Execution Tracing
+
+**Status**: Implemented
+
+Captures full execution traces for debugging and replay.
+
+| Component            | Module                              | Purpose                                    |
+|---------------------|-------------------------------------|-------------------------------------------|
+| TraceCapture        | `framework.tracing.capture`         | Middleware to capture LLM/tool I/O        |
+| ExecutionTrace      | `framework.tracing.schemas`         | Complete trace model with all interactions |
+| TraceStore          | `framework.tracing.store`           | Persistent storage for traces             |
+| ReplayEngine        | `framework.tracing.replay`          | Re-run past executions with stubs         |
+
+**Key features**:
+- Captures LLM request/response pairs for deterministic replay
+- Records tool call inputs/outputs
+- Node boundary snapshots for debugging
+- DeterministicStub provider for consistent replay
+
+### Phase 2: Episodic Memory with Vector Retrieval
+
+**Status**: Implemented
+
+Indexes execution episodes for context-aware retrieval.
+
+| Component            | Module                              | Purpose                                    |
+|---------------------|-------------------------------------|-------------------------------------------|
+| Episode             | `framework.memory.episode`          | Context + action + outcome tuple          |
+| EpisodeWriter       | `framework.memory.writer`           | Captures episodes from execution          |
+| EpisodeRetriever    | `framework.memory.retriever`        | Retrieves relevant past experiences       |
+| EpisodicMemoryStore | `framework.memory.store`            | Persistent storage with vector indexing   |
+| VectorBackend       | `framework.memory.backend`          | Pluggable backend (ChromaDB, FAISS, etc.) |
+
+**Key features**:
+- Vector similarity search for relevant episodes
+- Pluggable backends: ChromaDB (default), FAISS, InMemory
+- Episode injection into LLM context
+- Precedent-based evaluation for Judge
+
+### Phase 3: Self-Evolving Optimization
+
+**Status**: Implemented
+
+Automatically evolves agent configurations based on fitness.
+
+| Component            | Module                              | Purpose                                    |
+|---------------------|-------------------------------------|-------------------------------------------|
+| AgentConfiguration  | `framework.evolution.config`        | Configurable agent aspects (prompts, etc.) |
+| FitnessFunction     | `framework.evolution.fitness`       | Evaluates configuration fitness           |
+| PopulationManager   | `framework.evolution.population`    | Manages configuration variants            |
+| MutationOperator    | `framework.evolution.mutation`      | LLM-guided configuration mutations        |
+| EvolutionShadowRunner| `framework.evolution.shadow`       | Shadow testing against historical traces  |
+| EvolutionPipeline   | `framework.evolution.pipeline`      | Orchestrates full evolution cycle         |
+
+**Key features**:
+- Multi-signal fitness evaluation (success rate, judge agreement, shadow tests)
+- LLM-guided mutations that preserve semantic validity
+- Shadow deployment validation against historical traces
+- HITL approval gates before deployment
+- Automatic threshold tuning and prompt optimization
+
+### Usage Example
+
+```python
+from framework.tracing import TraceCapture, TraceStore
+from framework.memory import EpisodicMemoryStore, EpisodeWriter
+from framework.evolution import EvolutionPipeline, EvolutionConfig
+
+# Initialize components
+trace_store = TraceStore(base_path=Path("traces"))
+memory_store = EpisodicMemoryStore(base_path=Path("episodes"))
+
+# Run evolution pipeline
+pipeline = EvolutionPipeline(
+    agent_id="my_agent",
+    trace_store=trace_store,
+    memory_store=memory_store,
+    llm_provider=llm,
+    config=EvolutionConfig(
+        population_size=10,
+        max_generations=50,
+        require_hitl_approval=True,
+    ),
+)
+
+result = await pipeline.run()
+
+if result.deployed:
+    print(f"Deployed config {result.deployed_config_id}")
+    print(f"Fitness: {result.best_fitness:.3f}")
+```
+
+### Integration Points
+
+The closed-loop evolution system integrates with existing Hive components:
+
+| Integration Point     | Description                                           |
+|----------------------|-------------------------------------------------------|
+| RuntimeLogger        | TraceCapture hooks into log_step/log_node_complete    |
+| GraphExecutor        | TraceCapture captures node boundaries                 |
+| EventLoopNode        | EpisodeWriter captures judge verdicts                 |
+| HybridJudge          | EpisodeRetriever provides precedents for evaluation   |
+| HITL Protocol        | EvolutionPipeline requires approval before deployment |
+
+---
+
 ## Research Contribution vs. Engineering Foundation
 
 | Layer                         | Type                   | Contribution                                                                 |
