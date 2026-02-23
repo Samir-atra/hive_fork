@@ -135,6 +135,7 @@ class GraphExecutor:
         storage_path: str | Path | None = None,
         loop_config: dict[str, Any] | None = None,
         accounts_prompt: str = "",
+        trace_recorder: Any = None,
     ):
         """
         Initialize the executor.
@@ -155,6 +156,7 @@ class GraphExecutor:
             storage_path: Optional base path for conversation persistence
             loop_config: Optional EventLoopNode configuration (max_iterations, etc.)
             accounts_prompt: Connected accounts block for system prompt injection
+            trace_recorder: Optional ExecutionTraceRecorder for structured execution tracing
         """
         self.runtime = runtime
         self.llm = llm
@@ -170,6 +172,7 @@ class GraphExecutor:
         self._storage_path = Path(storage_path) if storage_path else None
         self._loop_config = loop_config or {}
         self.accounts_prompt = accounts_prompt
+        self._trace_recorder = trace_recorder
 
         # Initialize output cleaner
         self.cleansing_config = cleansing_config or CleansingConfig()
@@ -545,6 +548,24 @@ class GraphExecutor:
                 session_id = self._storage_path.name
             self.runtime_logger.start_run(goal_id=goal.id, session_id=session_id)
 
+        # Start execution trace recording
+        if self._trace_recorder and self._trace_recorder.enabled:
+            ctx = {}
+            try:
+                from framework.observability import get_trace_context
+
+                ctx = get_trace_context()
+            except Exception:
+                pass
+            self._trace_recorder.start_run(
+                run_id=_run_id,
+                agent_id=graph.id,
+                goal_id=goal.id,
+                goal_description=goal.description,
+                trace_id=ctx.get("trace_id", ""),
+                execution_id=ctx.get("execution_id", ""),
+            )
+
         self.logger.info(f"🚀 Starting execution: {goal.name}")
         self.logger.info(f"   Goal: {goal.description}")
         self.logger.info(f"   Entry node: {graph.entry_node}")
@@ -746,9 +767,36 @@ class GraphExecutor:
                         stream_id=self._stream_id, node_id=current_node_id
                     )
 
+                # Record node start for execution trace
+                if self._trace_recorder and self._trace_recorder.enabled:
+                    input_values = {}
+                    if node_spec.input_keys:
+                        for key in node_spec.input_keys:
+                            input_values[key] = memory.read(key)
+                    self._trace_recorder.start_node(
+                        node_id=current_node_id,
+                        node_name=node_spec.name,
+                        node_type=node_spec.node_type,
+                        inputs=input_values if input_values else None,
+                    )
+
                 # Execute node
                 self.logger.info("   Executing...")
                 result = await node_impl.execute(ctx)
+
+                # Record node completion for execution trace
+                if self._trace_recorder and self._trace_recorder.enabled:
+                    self._trace_recorder.complete_node(
+                        node_id=current_node_id,
+                        success=result.success,
+                        outputs=result.output if result.output else None,
+                        error_message=result.error or "",
+                        tokens_used=result.tokens_used,
+                        latency_ms=result.latency_ms,
+                        exit_status=getattr(result, "exit_status", ""),
+                        verdict=getattr(result, "verdict", ""),
+                        verdict_feedback=getattr(result, "verdict_feedback", ""),
+                    )
 
                 # Emit node-completed event (skip event_loop nodes)
                 if self._event_bus and node_spec.node_type != "event_loop":
@@ -875,6 +923,15 @@ class GraphExecutor:
                                 error=result.error or "",
                             )
 
+                        # Record retry for execution trace
+                        if self._trace_recorder and self._trace_recorder.enabled:
+                            self._trace_recorder.record_retry(
+                                node_id=current_node_id,
+                                attempt_number=retry_count,
+                                error_message=result.error or "",
+                                backoff_seconds=delay,
+                            )
+
                         _is_retry = True
                         continue
                     else:
@@ -925,6 +982,15 @@ class GraphExecutor:
                                     status="failure",
                                     duration_ms=total_latency,
                                     node_path=path,
+                                    execution_quality="failed",
+                                )
+
+                            # End execution trace recording (node failure)
+                            if self._trace_recorder and self._trace_recorder.enabled:
+                                self._trace_recorder.end_run(
+                                    status="failure",
+                                    node_path=path,
+                                    total_tokens=total_tokens,
                                     execution_quality="failed",
                                 )
 
@@ -999,6 +1065,15 @@ class GraphExecutor:
                             execution_quality=exec_quality,
                         )
 
+                    # End execution trace recording (HITL pause)
+                    if self._trace_recorder and self._trace_recorder.enabled:
+                        self._trace_recorder.end_run(
+                            status="paused",
+                            node_path=path,
+                            total_tokens=total_tokens,
+                            execution_quality=exec_quality,
+                        )
+
                     return ExecutionResult(
                         success=True,
                         output=saved_memory,
@@ -1035,6 +1110,15 @@ class GraphExecutor:
                             edge_condition="router",
                         )
 
+                    # Record edge traversal for execution trace
+                    if self._trace_recorder and self._trace_recorder.enabled:
+                        self._trace_recorder.record_edge_traversal(
+                            source_node_id=current_node_id,
+                            target_node_id=result.next_node,
+                            edge_condition="router",
+                            edge_type="router_directed",
+                        )
+
                     current_node_id = result.next_node
                     self._write_progress(current_node_id, path, memory, node_visit_counts)
                 else:
@@ -1068,6 +1152,20 @@ class GraphExecutor:
                                     edge_condition=edge.condition.value
                                     if hasattr(edge.condition, "value")
                                     else str(edge.condition),
+                                )
+
+                        # Record edge traversals for execution trace (fan-out)
+                        if self._trace_recorder and self._trace_recorder.enabled:
+                            for i, edge in enumerate(traversable_edges):
+                                self._trace_recorder.record_edge_traversal(
+                                    source_node_id=current_node_id,
+                                    target_node_id=edge.target,
+                                    edge_condition=edge.condition.value
+                                    if hasattr(edge.condition, "value")
+                                    else str(edge.condition),
+                                    edge_type="fan_out",
+                                    is_parallel_branch=True,
+                                    branch_id=f"branch_{i}",
                                 )
 
                         # Execute branches in parallel
@@ -1119,6 +1217,14 @@ class GraphExecutor:
                                 stream_id=self._stream_id,
                                 source_node=current_node_id,
                                 target_node=next_node,
+                            )
+
+                        # Record edge traversal for execution trace (sequential)
+                        if self._trace_recorder and self._trace_recorder.enabled:
+                            self._trace_recorder.record_edge_traversal(
+                                source_node_id=current_node_id,
+                                target_node_id=next_node,
+                                edge_type="sequential",
                             )
 
                         # CHECKPOINT: node_complete (after determining next node)
@@ -1292,6 +1398,15 @@ class GraphExecutor:
                     execution_quality=exec_quality,
                 )
 
+            # End execution trace recording (success)
+            if self._trace_recorder and self._trace_recorder.enabled:
+                self._trace_recorder.end_run(
+                    status="success" if exec_quality != "failed" else "failure",
+                    node_path=path,
+                    total_tokens=total_tokens,
+                    execution_quality=exec_quality,
+                )
+
             return ExecutionResult(
                 success=True,
                 output=output,
@@ -1364,6 +1479,15 @@ class GraphExecutor:
                     status="paused",
                     duration_ms=total_latency,
                     node_path=path,
+                    execution_quality=exec_quality,
+                )
+
+            # End execution trace recording (paused/cancelled)
+            if self._trace_recorder and self._trace_recorder.enabled:
+                self._trace_recorder.end_run(
+                    status="paused",
+                    node_path=path,
+                    total_tokens=total_tokens,
                     execution_quality=exec_quality,
                 )
 
@@ -1472,6 +1596,15 @@ class GraphExecutor:
                                 )
                 except Exception as checkpoint_err:
                     self.logger.warning(f"Failed to mark checkpoint for resume: {checkpoint_err}")
+
+            # End execution trace recording (failure)
+            if self._trace_recorder and self._trace_recorder.enabled:
+                self._trace_recorder.end_run(
+                    status="failure",
+                    node_path=path,
+                    total_tokens=total_tokens,
+                    execution_quality="failed",
+                )
 
             return ExecutionResult(
                 success=False,
