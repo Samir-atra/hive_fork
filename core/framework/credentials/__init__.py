@@ -6,7 +6,7 @@ This module provides secure credential storage with:
 - Template-based usage: {{cred.key}} patterns for injection
 - Bipartisan model: Store stores values, tools define usage
 - Provider system: Extensible lifecycle management (refresh, validate)
-- Multiple backends: Encrypted files, env vars, HashiCorp Vault
+- Multiple backends: Encrypted files, env vars, HashiCorp Vault, Azure Key Vault
 
 Quick Start:
     from core.framework.credentials import CredentialStore, CredentialObject
@@ -38,8 +38,11 @@ For Aden server sync:
         AdenSyncProvider,
     )
 
-For Vault integration:
+For HashiCorp Vault integration:
     from core.framework.credentials.vault import HashiCorpVaultStorage
+
+For Azure Key Vault integration:
+    from core.framework.credentials.vault import AzureKeyVaultStorage
 """
 
 from .models import (
@@ -92,6 +95,16 @@ try:
 except ImportError:
     _ADEN_AVAILABLE = False
 
+# Azure Key Vault components (lazy import to avoid azure-identity dependency when not needed)
+# Usage: from core.framework.credentials.vault import AzureKeyVaultStorage
+try:
+    from .vault import AzureKeyVaultStorage
+
+    _AZURE_KEYVAULT_AVAILABLE = True
+except ImportError:
+    _AZURE_KEYVAULT_AVAILABLE = False
+    AzureKeyVaultStorage = None  # type: ignore[misc,assignment]
+
 __all__ = [
     # Main store
     "CredentialStore",
@@ -133,7 +146,10 @@ __all__ = [
     "AdenCredentialClient",
     "AdenClientConfig",
     "AdenCachedStorage",
+    # Azure Key Vault (optional - requires azure-identity, azure-keyvault-secrets)
+    "AzureKeyVaultStorage",
 ]
 
 # Track Aden availability for runtime checks
 ADEN_AVAILABLE = _ADEN_AVAILABLE
+AZURE_KEYVAULT_AVAILABLE = _AZURE_KEYVAULT_AVAILABLE
