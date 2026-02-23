@@ -240,18 +240,49 @@ class TestWriteToFileTool:
         assert result["mode"] == "appended"
         assert test_file.read_text() == "Line 1\nLine 2\n"
 
-    def test_write_overwrite_existing(
+    def test_write_overwrite_existing_with_force(
         self, write_to_file_fn, mock_workspace, mock_secure_path, tmp_path
     ):
-        """Writing to existing file overwrites it by default."""
+        """Writing to existing file with force_overwrite=True replaces it."""
         test_file = tmp_path / "overwrite.txt"
         test_file.write_text("Original content")
 
-        result = write_to_file_fn(path="overwrite.txt", content="New content", **mock_workspace)
+        result = write_to_file_fn(
+            path="overwrite.txt", content="New content", force_overwrite=True, **mock_workspace
+        )
 
         assert result["success"] is True
         assert result["mode"] == "written"
         assert test_file.read_text() == "New content"
+
+    def test_write_existing_file_without_force_returns_error(
+        self, write_to_file_fn, mock_workspace, mock_secure_path, tmp_path
+    ):
+        """Writing to existing file without force_overwrite returns error."""
+        test_file = tmp_path / "existing.txt"
+        test_file.write_text("Original content")
+
+        result = write_to_file_fn(path="existing.txt", content="New content", **mock_workspace)
+
+        assert "error" in result
+        assert "already exists" in result["error"]
+        assert "force_overwrite=True" in result["error"]
+        assert test_file.read_text() == "Original content"
+
+    def test_write_existing_file_append_mode_succeeds(
+        self, write_to_file_fn, mock_workspace, mock_secure_path, tmp_path
+    ):
+        """Append mode always succeeds regardless of force_overwrite."""
+        test_file = tmp_path / "append.txt"
+        test_file.write_text("Original")
+
+        result = write_to_file_fn(
+            path="append.txt", content=" appended", append=True, **mock_workspace
+        )
+
+        assert result["success"] is True
+        assert result["mode"] == "appended"
+        assert test_file.read_text() == "Original appended"
 
     def test_write_creates_parent_directories(
         self, write_to_file_fn, mock_workspace, mock_secure_path, tmp_path
