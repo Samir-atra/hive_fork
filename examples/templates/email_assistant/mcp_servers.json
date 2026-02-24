@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "hive-tools": {
+      "command": "uv",
+      "args": ["run", "python", "mcp_server.py", "--stdio"],
+      "env": {
+        "PYTHONPATH": "${PWD}/../"
+      },
+      "cwd": "tools"
+    }
+  }
+}
