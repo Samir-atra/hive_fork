@@ -124,7 +124,18 @@ hive tui
 # Or run directly
 hive run exports/your_agent_name --input '{"key": "value"}'
 ```
-##  Coding Agent Support
+
+### Validate Your Setup
+
+After completing Quickstart, run through the [First Evaluation Walkthrough](docs/first-evaluation-walkthrough.md) to:
+
+- Verify your setup is working correctly
+- Learn what to observe during agent execution
+- Understand what success looks like
+- Explore agent behavior with guided experiments
+
+## Coding Agent Support
+
 ### Codex CLI
 Hive includes native support for [OpenAI Codex CLI](https://github.com/openai/codex) (v0.101.0+).
 
@@ -263,6 +274,7 @@ See [environment-setup.md](docs/environment-setup.md) for complete setup instruc
 ## Documentation
 
 - **[Developer Guide](docs/developer-guide.md)** - Comprehensive guide for developers
+- **[First Evaluation Walkthrough](docs/first-evaluation-walkthrough.md)** - Validate your setup and understand agent behavior
 - [Getting Started](docs/getting-started.md) - Quick setup instructions
 - [TUI Guide](docs/tui-selection-guide.md) - Interactive dashboard usage
 - [Configuration Guide](docs/configuration.md) - All configuration options
