@@ -53,8 +53,8 @@ To add a new credential:
 3. If new category, import and merge it in this __init__.py
 """
 
-from .apollo import APOLLO_CREDENTIALS
 from .base import CredentialError, CredentialSpec
+from .apollo import APOLLO_CREDENTIALS
 from .bigquery import BIGQUERY_CREDENTIALS
 from .brevo import BREVO_CREDENTIALS
 from .browser import get_aden_auth_url, get_aden_setup_url, open_browser
@@ -63,6 +63,7 @@ from .discord import DISCORD_CREDENTIALS
 from .email import EMAIL_CREDENTIALS
 from .gcp_vision import GCP_VISION_CREDENTIALS
 from .github import GITHUB_CREDENTIALS
+from .gitlab import GITLAB_CREDENTIALS
 from .google_calendar import GOOGLE_CALENDAR_CREDENTIALS
 from .google_docs import GOOGLE_DOCS_CREDENTIALS
 from .google_maps import GOOGLE_MAPS_CREDENTIALS
@@ -100,6 +101,7 @@ CREDENTIAL_SPECS = {
     **APOLLO_CREDENTIALS,
     **DISCORD_CREDENTIALS,
     **GITHUB_CREDENTIALS,
+    **GITLAB_CREDENTIALS,
     **GOOGLE_DOCS_CREDENTIALS,
     **GOOGLE_MAPS_CREDENTIALS,
     **HUBSPOT_CREDENTIALS,
@@ -145,6 +147,7 @@ __all__ = [
     "EMAIL_CREDENTIALS",
     "GCP_VISION_CREDENTIALS",
     "GITHUB_CREDENTIALS",
+    "GITLAB_CREDENTIALS",
     "GOOGLE_DOCS_CREDENTIALS",
     "GOOGLE_MAPS_CREDENTIALS",
     "HUBSPOT_CREDENTIALS",

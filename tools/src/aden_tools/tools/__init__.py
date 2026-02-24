@@ -53,6 +53,7 @@ from .file_system_toolkits.replace_file_content import (
 from .file_system_toolkits.view_file import register_tools as register_view_file
 from .file_system_toolkits.write_to_file import register_tools as register_write_to_file
 from .github_tool import register_tools as register_github
+from .gitlab_tool import register_tools as register_gitlab
 from .gmail_tool import register_tools as register_gmail
 from .google_docs_tool import register_tools as register_google_docs
 from .google_maps_tool import register_tools as register_google_maps
@@ -156,6 +157,9 @@ def register_all_tools(
 
     # Postgres tool
     register_postgres(mcp, credentials=credentials)
+
+    # Register GitLab tools
+    register_gitlab(mcp, credentials=credentials)
 
     # Return the list of all registered tool names
     return list(mcp._tool_manager._tools.keys())
