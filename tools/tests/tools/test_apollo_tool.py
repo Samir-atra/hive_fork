@@ -36,11 +36,13 @@ class TestApolloClient:
         # API key is passed in X-Api-Key header
         assert headers["X-Api-Key"] == "test-api-key"
 
-    def test_handle_response_success(self):
-        response = MagicMock()
-        response.status_code = 200
-        response.json.return_value = {"person": {"id": "123"}}
-        assert self.client._handle_response(response) == {"person": {"id": "123"}}
+    @patch("aden_tools.tools.apollo_tool.apollo_tool.httpx.post")
+    def test_post_success(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"person": {"id": "123"}}
+        mock_post.return_value = mock_response
+        assert self.client._post("/test", {}) == {"person": {"id": "123"}}
 
     @pytest.mark.parametrize(
         "status_code,expected_substring",
@@ -52,22 +54,34 @@ class TestApolloClient:
             (429, "rate limit"),
         ],
     )
-    def test_handle_response_errors(self, status_code, expected_substring):
-        response = MagicMock()
-        response.status_code = status_code
-        response.json.return_value = {"error": "Test error"}
-        response.text = "Test error"
-        result = self.client._handle_response(response)
+    @patch("aden_tools.tools.apollo_tool.apollo_tool.httpx.post")
+    def test_post_errors(self, mock_post, status_code, expected_substring):
+        mock_response = MagicMock()
+        mock_response.status_code = status_code
+        mock_response.json.return_value = {"error": "Test error"}
+        mock_response.text = "Test error"
+        mock_post.return_value = mock_response
+        result = self.client._post("/test", {})
         assert "error" in result
         assert expected_substring in result["error"]
 
-    def test_handle_response_generic_error(self):
-        response = MagicMock()
-        response.status_code = 500
-        response.json.return_value = {"error": "Internal Server Error"}
-        result = self.client._handle_response(response)
+    @patch("aden_tools.tools.apollo_tool.apollo_tool.httpx.post")
+    def test_post_generic_error(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.json.return_value = {"error": "Internal Server Error"}
+        mock_post.return_value = mock_response
+        result = self.client._post("/test", {})
         assert "error" in result
         assert "500" in result["error"]
+
+    @patch("aden_tools.tools.apollo_tool.apollo_tool.httpx.post")
+    def test_post_retry_on_timeout(self, mock_post):
+        mock_post.side_effect = httpx.TimeoutException("timed out")
+        result = self.client._post("/test", {})
+        assert "error" in result
+        assert "timed out" in result["error"]
+        assert mock_post.call_count == 3
 
     @patch("aden_tools.tools.apollo_tool.apollo_tool.httpx.post")
     def test_enrich_person_by_email(self, mock_post):
@@ -104,7 +118,6 @@ class TestApolloClient:
         mock_post.assert_called_once_with(
             f"{APOLLO_API_BASE}/people/match",
             headers=self.client._headers,
-            params=None,
             json={
                 "email": "john@acme.com",
                 "reveal_personal_emails": False,
@@ -498,15 +511,17 @@ class TestEnrichPersonTool:
         assert result["match_found"] is True
         assert result["person"]["title"] == "CEO"
 
+    @patch("aden_tools.tools.apollo_tool.apollo_tool.time.sleep")
     @patch("aden_tools.tools.apollo_tool.apollo_tool.httpx.post")
-    def test_enrich_person_timeout(self, mock_post):
+    def test_enrich_person_timeout(self, mock_post, mock_sleep):
         mock_post.side_effect = httpx.TimeoutException("timed out")
         result = self._fn("apollo_enrich_person")(email="test@test.com")
         assert "error" in result
         assert "timed out" in result["error"]
 
+    @patch("aden_tools.tools.apollo_tool.apollo_tool.time.sleep")
     @patch("aden_tools.tools.apollo_tool.apollo_tool.httpx.post")
-    def test_enrich_person_network_error(self, mock_post):
+    def test_enrich_person_network_error(self, mock_post, mock_sleep):
         mock_post.side_effect = httpx.RequestError("connection failed")
         result = self._fn("apollo_enrich_person")(email="test@test.com")
         assert "error" in result

@@ -16,6 +16,7 @@ API Reference: https://apolloio.github.io/apollo-api-docs/
 from __future__ import annotations
 
 import os
+import time
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -42,32 +43,51 @@ class _ApolloClient:
             "X-Api-Key": self._api_key,
         }
 
-    def _handle_response(self, response: httpx.Response) -> dict[str, Any]:
-        """Handle common HTTP error codes."""
-        if response.status_code == 401:
-            return {"error": "Invalid Apollo API key"}
-        if response.status_code == 403:
-            return {
-                "error": "Insufficient credits or permissions. Check your Apollo plan.",
-                "help": "Apollo uses export credits for enrichment. Visit https://app.apollo.io/#/settings/plans",
-            }
-        if response.status_code == 404:
-            return {"error": "Resource not found"}
-        if response.status_code == 422:
+    def _post(self, endpoint: str, json_payload: dict[str, Any]) -> dict[str, Any]:
+        """Make a POST request with lightweight retries."""
+        max_retries = 2
+        for attempt in range(max_retries + 1):
             try:
-                detail = response.json().get("error", response.text)
-            except Exception:
-                detail = response.text
-            return {"error": f"Invalid parameters: {detail}"}
-        if response.status_code == 429:
-            return {"error": "Apollo rate limit exceeded. Try again later."}
-        if response.status_code >= 400:
-            try:
-                detail = response.json().get("error", response.text)
-            except Exception:
-                detail = response.text
-            return {"error": f"Apollo API error (HTTP {response.status_code}): {detail}"}
-        return response.json()
+                response = httpx.post(
+                    f"{APOLLO_API_BASE}{endpoint}",
+                    headers=self._headers,
+                    json=json_payload,
+                    timeout=30.0,
+                )
+            except (httpx.TimeoutException, httpx.RequestError) as e:
+                if attempt < max_retries:
+                    time.sleep(1)
+                    continue
+                return {"error": f"Network error: {e}"}
+
+            if response.status_code == 401:
+                return {"error": "Invalid Apollo API key"}
+            if response.status_code == 403:
+                return {
+                    "error": "Insufficient credits or permissions. Check your Apollo plan.",
+                    "help": "Apollo uses export credits for enrichment. Visit https://app.apollo.io/#/settings/plans",
+                }
+            if response.status_code == 404:
+                return {"error": "Resource not found"}
+            if response.status_code == 422:
+                try:
+                    detail = response.json().get("error", response.text)
+                except Exception:
+                    detail = response.text
+                return {"error": f"Invalid parameters: {detail}"}
+            if response.status_code == 429:
+                if attempt < max_retries:
+                    time.sleep(2)
+                    continue
+                return {"error": "Apollo rate limit exceeded. Try again later."}
+            if response.status_code >= 400:
+                try:
+                    detail = response.json().get("error", response.text)
+                except Exception:
+                    detail = response.text
+                return {"error": f"Apollo API error (HTTP {response.status_code}): {detail}"}
+            return response.json()
+        return {"error": "Max retries exceeded"}
 
     def enrich_person(
         self,
@@ -99,14 +119,7 @@ class _ApolloClient:
         if domain:
             body["domain"] = domain
 
-        response = httpx.post(
-            f"{APOLLO_API_BASE}/people/match",
-            headers=self._headers,
-            params=body if not email and not linkedin_url else None,
-            json=body,
-            timeout=30.0,
-        )
-        result = self._handle_response(response)
+        result = self._post("/people/match", body)
 
         # Handle "not found" gracefully
         if "error" not in result and result.get("person") is None:
@@ -149,13 +162,7 @@ class _ApolloClient:
             "domain": domain,
         }
 
-        response = httpx.post(
-            f"{APOLLO_API_BASE}/organizations/enrich",
-            headers=self._headers,
-            json=body,
-            timeout=30.0,
-        )
-        result = self._handle_response(response)
+        result = self._post("/organizations/enrich", body)
 
         # Handle "not found" gracefully
         if "error" not in result and result.get("organization") is None:
@@ -224,13 +231,7 @@ class _ApolloClient:
         if technologies:
             body["currently_using_any_of_technology_uids"] = technologies
 
-        response = httpx.post(
-            f"{APOLLO_API_BASE}/mixed_people/search",
-            headers=self._headers,
-            json=body,
-            timeout=30.0,
-        )
-        result = self._handle_response(response)
+        result = self._post("/mixed_people/search", body)
 
         if "error" not in result:
             people = result.get("people", [])
@@ -292,13 +293,7 @@ class _ApolloClient:
         if technologies:
             body["currently_using_any_of_technology_uids"] = technologies
 
-        response = httpx.post(
-            f"{APOLLO_API_BASE}/mixed_companies/search",
-            headers=self._headers,
-            json=body,
-            timeout=30.0,
-        )
-        result = self._handle_response(response)
+        result = self._post("/mixed_companies/search", body)
 
         if "error" not in result:
             orgs = result.get("organizations", [])
@@ -415,21 +410,16 @@ def register_tools(
                     "or (name/first_name+last_name AND domain)."
                 )
             }
-        try:
-            return client.enrich_person(
-                email=email,
-                linkedin_url=linkedin_url,
-                first_name=first_name,
-                last_name=last_name,
-                name=name,
-                domain=domain,
-                reveal_personal_emails=reveal_personal_emails,
-                reveal_phone_number=reveal_phone_number,
-            )
-        except httpx.TimeoutException:
-            return {"error": "Request timed out"}
-        except httpx.RequestError as e:
-            return {"error": f"Network error: {e}"}
+        return client.enrich_person(
+            email=email,
+            linkedin_url=linkedin_url,
+            first_name=first_name,
+            last_name=last_name,
+            name=name,
+            domain=domain,
+            reveal_personal_emails=reveal_personal_emails,
+            reveal_phone_number=reveal_phone_number,
+        )
 
     # --- Company Enrichment ---
 
@@ -457,12 +447,7 @@ def register_tools(
         client = _get_client()
         if isinstance(client, dict):
             return client
-        try:
-            return client.enrich_company(domain)
-        except httpx.TimeoutException:
-            return {"error": "Request timed out"}
-        except httpx.RequestError as e:
-            return {"error": f"Network error: {e}"}
+        return client.enrich_company(domain)
 
     # --- People Search ---
 
@@ -511,20 +496,15 @@ def register_tools(
         client = _get_client()
         if isinstance(client, dict):
             return client
-        try:
-            return client.search_people(
-                titles=titles,
-                seniorities=seniorities,
-                locations=locations,
-                company_sizes=company_sizes,
-                industries=industries,
-                technologies=technologies,
-                limit=limit,
-            )
-        except httpx.TimeoutException:
-            return {"error": "Request timed out"}
-        except httpx.RequestError as e:
-            return {"error": f"Network error: {e}"}
+        return client.search_people(
+            titles=titles,
+            seniorities=seniorities,
+            locations=locations,
+            company_sizes=company_sizes,
+            industries=industries,
+            technologies=technologies,
+            limit=limit,
+        )
 
     # --- Company Search ---
 
@@ -567,15 +547,10 @@ def register_tools(
         client = _get_client()
         if isinstance(client, dict):
             return client
-        try:
-            return client.search_companies(
-                industries=industries,
-                employee_counts=employee_counts,
-                locations=locations,
-                technologies=technologies,
-                limit=limit,
-            )
-        except httpx.TimeoutException:
-            return {"error": "Request timed out"}
-        except httpx.RequestError as e:
-            return {"error": f"Network error: {e}"}
+        return client.search_companies(
+            industries=industries,
+            employee_counts=employee_counts,
+            locations=locations,
+            technologies=technologies,
+            limit=limit,
+        )
