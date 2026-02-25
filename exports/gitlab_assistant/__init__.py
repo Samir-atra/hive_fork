@@ -1,3 +1,5 @@
+from .agent import GitLabAssistantAgent, default_agent, goal
+from .config import metadata, default_config
 from .nodes import (
     intake_node,
     list_projects_node,
@@ -13,6 +15,11 @@ except Exception:
     gitlab_graph = None  # type: ignore
 
 __all__ = [
+    "GitLabAssistantAgent",
+    "default_agent",
+    "goal",
+    "metadata",
+    "default_config",
     "intake_node",
     "list_projects_node",
     "manage_issues_node",
