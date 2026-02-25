@@ -1,0 +1,168 @@
+{
+  "id": "run_20260206_162129_400ec302",
+  "goal_id": "v",
+  "started_at": "2026-02-06T16:21:29.499906",
+  "status": "completed",
+  "completed_at": "2026-02-06T16:21:34.581164",
+  "decisions": [
+    {
+      "id": "dec_0",
+      "timestamp": "2026-02-06T16:21:29.499992",
+      "node_id": "n1",
+      "intent": "Execute function analyze",
+      "decision_type": "custom",
+      "options": [
+        {
+          "id": "execute",
+          "description": "Run function with inputs: ['user_prompt']",
+          "action_type": "unknown",
+          "action_params": {},
+          "pros": [],
+          "cons": [],
+          "confidence": 0.5
+        }
+      ],
+      "chosen_option_id": "execute",
+      "reasoning": "Deterministic function execution",
+      "active_constraints": [],
+      "input_context": {},
+      "outcome": {
+        "success": true,
+        "result": "Analyze BTC and ETH performance and suggest a strategy.",
+        "error": null,
+        "state_changes": {},
+        "tokens_used": 0,
+        "latency_ms": 0,
+        "summary": "",
+        "timestamp": "2026-02-06T16:21:29.500040"
+      },
+      "evaluation": null,
+      "chosen_option": {
+        "id": "execute",
+        "description": "Run function with inputs: ['user_prompt']",
+        "action_type": "unknown",
+        "action_params": {},
+        "pros": [],
+        "cons": [],
+        "confidence": 0.5
+      },
+      "was_successful": true,
+      "was_good_decision": true
+    },
+    {
+      "id": "dec_1",
+      "timestamp": "2026-02-06T16:21:31.672486",
+      "node_id": "n2",
+      "intent": "Execute function research",
+      "decision_type": "custom",
+      "options": [
+        {
+          "id": "execute",
+          "description": "Run function with inputs: ['query']",
+          "action_type": "unknown",
+          "action_params": {},
+          "pros": [],
+          "cons": [],
+          "confidence": 0.5
+        }
+      ],
+      "chosen_option_id": "execute",
+      "reasoning": "Deterministic function execution",
+      "active_constraints": [],
+      "input_context": {},
+      "outcome": {
+        "success": true,
+        "result": "Found simulated insights for: Analyze BTC and ETH performance and suggest a strategy.",
+        "error": null,
+        "state_changes": {},
+        "tokens_used": 0,
+        "latency_ms": 0,
+        "summary": "",
+        "timestamp": "2026-02-06T16:21:31.672516"
+      },
+      "evaluation": null,
+      "chosen_option": {
+        "id": "execute",
+        "description": "Run function with inputs: ['query']",
+        "action_type": "unknown",
+        "action_params": {},
+        "pros": [],
+        "cons": [],
+        "confidence": 0.5
+      },
+      "was_successful": true,
+      "was_good_decision": true
+    },
+    {
+      "id": "dec_2",
+      "timestamp": "2026-02-06T16:21:32.996804",
+      "node_id": "n3",
+      "intent": "Execute function summarize",
+      "decision_type": "custom",
+      "options": [
+        {
+          "id": "execute",
+          "description": "Run function with inputs: ['raw_data']",
+          "action_type": "unknown",
+          "action_params": {},
+          "pros": [],
+          "cons": [],
+          "confidence": 0.5
+        }
+      ],
+      "chosen_option_id": "execute",
+      "reasoning": "Deterministic function execution",
+      "active_constraints": [],
+      "input_context": {},
+      "outcome": {
+        "success": true,
+        "result": "Executive Summary: Found simulated insights for: Analyze BTC and ETH performance and suggest a strategy.",
+        "error": null,
+        "state_changes": {},
+        "tokens_used": 0,
+        "latency_ms": 0,
+        "summary": "",
+        "timestamp": "2026-02-06T16:21:32.996826"
+      },
+      "evaluation": null,
+      "chosen_option": {
+        "id": "execute",
+        "description": "Run function with inputs: ['raw_data']",
+        "action_type": "unknown",
+        "action_params": {},
+        "pros": [],
+        "cons": [],
+        "confidence": 0.5
+      },
+      "was_successful": true,
+      "was_good_decision": true
+    }
+  ],
+  "problems": [],
+  "metrics": {
+    "total_decisions": 3,
+    "successful_decisions": 3,
+    "failed_decisions": 0,
+    "total_tokens": 0,
+    "total_latency_ms": 0,
+    "nodes_executed": [
+      "n1",
+      "n2",
+      "n3"
+    ],
+    "edges_traversed": [],
+    "success_rate": 1.0
+  },
+  "narrative": "Executed 3 steps through path: n1 -> n2 -> n3",
+  "goal_description": "V",
+  "input_data": {
+    "user_prompt": "Analyze BTC and ETH performance and suggest a strategy."
+  },
+  "output_data": {
+    "user_prompt": "Analyze BTC and ETH performance and suggest a strategy.",
+    "query": "Analyze BTC and ETH performance and suggest a strategy.",
+    "raw_data": "Found simulated insights for: Analyze BTC and ETH performance and suggest a strategy.",
+    "report": "Executive Summary: Found simulated insights for: Analyze BTC and ETH performance and suggest a strategy."
+  },
+  "duration_ms": 5081
+}

@@ -1,0 +1,39 @@
+INFO:     Started server process [77180]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:52854 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52426 - "GET /contacts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52438 - "GET /config HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52438 - "GET /contacts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52426 - "GET /config HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52426 - "GET /manager/contacts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52426 - "GET /manager/contacts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52426 - "GET /config HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52426 - "GET /config HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52426 - "GET /contacts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:46654 - "GET /config HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52426 - "GET /config HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:46654 - "GET /contacts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49178 - "GET /contacts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49184 - "GET /config HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49184 - "GET /contacts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49178 - "GET /config HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49178 - "GET /manager/contacts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49178 - "GET /manager/contacts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49178 - "GET /config HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49178 - "GET /config HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:40266 - "GET /contacts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:40268 - "GET /config HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:40268 - "GET /contacts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:40266 - "GET /config HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:40266 - "GET /manager/contacts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:40266 - "GET /manager/contacts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:34170 - "GET /contacts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:34178 - "GET /config HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:34178 - "GET /contacts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:34170 - "GET /config HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:40470 - "GET /contacts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:40478 - "GET /config HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:40478 - "GET /contacts HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:40470 - "GET /config HTTP/1.1" 404 Not Found

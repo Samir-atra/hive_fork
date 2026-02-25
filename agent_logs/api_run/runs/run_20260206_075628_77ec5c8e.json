@@ -1,0 +1,182 @@
+{
+  "id": "run_20260206_075628_77ec5c8e",
+  "goal_id": "v",
+  "started_at": "2026-02-06T07:56:28.323572",
+  "status": "completed",
+  "completed_at": "2026-02-06T07:56:32.445217",
+  "decisions": [
+    {
+      "id": "dec_0",
+      "timestamp": "2026-02-06T07:56:28.323646",
+      "node_id": "n1",
+      "intent": "Execute function analyze",
+      "decision_type": "custom",
+      "options": [
+        {
+          "id": "execute",
+          "description": "Run function with inputs: ['user_prompt']",
+          "action_type": "unknown",
+          "action_params": {},
+          "pros": [],
+          "cons": [],
+          "confidence": 0.5
+        }
+      ],
+      "chosen_option_id": "execute",
+      "reasoning": "Deterministic function execution",
+      "active_constraints": [],
+      "input_context": {},
+      "outcome": {
+        "success": true,
+        "result": {
+          "query": "what can you help me with?\n",
+          "focus": "quality"
+        },
+        "error": null,
+        "state_changes": {},
+        "tokens_used": 0,
+        "latency_ms": 0,
+        "summary": "",
+        "timestamp": "2026-02-06T07:56:28.323683"
+      },
+      "evaluation": null,
+      "chosen_option": {
+        "id": "execute",
+        "description": "Run function with inputs: ['user_prompt']",
+        "action_type": "unknown",
+        "action_params": {},
+        "pros": [],
+        "cons": [],
+        "confidence": 0.5
+      },
+      "was_successful": true,
+      "was_good_decision": true
+    },
+    {
+      "id": "dec_1",
+      "timestamp": "2026-02-06T07:56:30.104641",
+      "node_id": "n2",
+      "intent": "Execute function research",
+      "decision_type": "custom",
+      "options": [
+        {
+          "id": "execute",
+          "description": "Run function with inputs: ['query']",
+          "action_type": "unknown",
+          "action_params": {},
+          "pros": [],
+          "cons": [],
+          "confidence": 0.5
+        }
+      ],
+      "chosen_option_id": "execute",
+      "reasoning": "Deterministic function execution",
+      "active_constraints": [],
+      "input_context": {},
+      "outcome": {
+        "success": true,
+        "result": {
+          "raw_data": "Found simulated insights for: {'query': 'what can you help me with?\\n', 'focus': 'quality'}"
+        },
+        "error": null,
+        "state_changes": {},
+        "tokens_used": 0,
+        "latency_ms": 0,
+        "summary": "",
+        "timestamp": "2026-02-06T07:56:30.104667"
+      },
+      "evaluation": null,
+      "chosen_option": {
+        "id": "execute",
+        "description": "Run function with inputs: ['query']",
+        "action_type": "unknown",
+        "action_params": {},
+        "pros": [],
+        "cons": [],
+        "confidence": 0.5
+      },
+      "was_successful": true,
+      "was_good_decision": true
+    },
+    {
+      "id": "dec_2",
+      "timestamp": "2026-02-06T07:56:31.056277",
+      "node_id": "n3",
+      "intent": "Execute function summarize",
+      "decision_type": "custom",
+      "options": [
+        {
+          "id": "execute",
+          "description": "Run function with inputs: ['raw_data']",
+          "action_type": "unknown",
+          "action_params": {},
+          "pros": [],
+          "cons": [],
+          "confidence": 0.5
+        }
+      ],
+      "chosen_option_id": "execute",
+      "reasoning": "Deterministic function execution",
+      "active_constraints": [],
+      "input_context": {},
+      "outcome": {
+        "success": true,
+        "result": {
+          "report": "Executive Summary: {'raw_data': \"Found simulated insights for: {'query': 'what can you help me with?\\\\n', 'focus': 'quality'}\"}"
+        },
+        "error": null,
+        "state_changes": {},
+        "tokens_used": 0,
+        "latency_ms": 0,
+        "summary": "",
+        "timestamp": "2026-02-06T07:56:31.056301"
+      },
+      "evaluation": null,
+      "chosen_option": {
+        "id": "execute",
+        "description": "Run function with inputs: ['raw_data']",
+        "action_type": "unknown",
+        "action_params": {},
+        "pros": [],
+        "cons": [],
+        "confidence": 0.5
+      },
+      "was_successful": true,
+      "was_good_decision": true
+    }
+  ],
+  "problems": [],
+  "metrics": {
+    "total_decisions": 3,
+    "successful_decisions": 3,
+    "failed_decisions": 0,
+    "total_tokens": 0,
+    "total_latency_ms": 0,
+    "nodes_executed": [
+      "n1",
+      "n2",
+      "n3"
+    ],
+    "edges_traversed": [],
+    "success_rate": 1.0
+  },
+  "narrative": "Executed 3 steps through path: n1 -> n2 -> n3",
+  "goal_description": "V",
+  "input_data": {
+    "user_prompt": "what can you help me with?\n"
+  },
+  "output_data": {
+    "user_prompt": "what can you help me with?\n",
+    "query": {
+      "query": "what can you help me with?\n",
+      "focus": "quality"
+    },
+    "raw_data": {
+      "raw_data": "Found simulated insights for: {'query': 'what can you help me with?\\n', 'focus': 'quality'}"
+    },
+    "report": {
+      "report": "Executive Summary: {'raw_data': \"Found simulated insights for: {'query': 'what can you help me with?\\\\n', 'focus': 'quality'}\"}"
+    }
+  },
+  "duration_ms": 4121
+}

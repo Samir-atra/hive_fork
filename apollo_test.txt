@@ -1,0 +1,47 @@
+[1m============================= test session starts ==============================[0m
+platform linux -- Python 3.14.0, pytest-9.0.2, pluggy-1.6.0 -- /home/samer/anaconda3/envs/agents/bin/python
+cachedir: .pytest_cache
+rootdir: /home/samer/Documents/jobs/Aden/hive_fork/tools
+configfile: pyproject.toml
+plugins: langsmith-0.7.3, anyio-4.11.0, asyncio-1.3.0, xdist-3.8.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+[1mcollecting ... [0mcollected 36 items
+
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_headers [32mPASSED[0m[32m [  2%][0m
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_handle_response_success [32mPASSED[0m[32m [  5%][0m
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_handle_response_errors[401-Invalid Apollo API key] [32mPASSED[0m[32m [  8%][0m
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_handle_response_errors[403-Insufficient credits] [32mPASSED[0m[32m [ 11%][0m
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_handle_response_errors[404-not found] [32mPASSED[0m[32m [ 13%][0m
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_handle_response_errors[422-Invalid parameters] [32mPASSED[0m[32m [ 16%][0m
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_handle_response_errors[429-rate limit] [32mPASSED[0m[32m [ 19%][0m
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_handle_response_generic_error [32mPASSED[0m[32m [ 22%][0m
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_enrich_person_by_email [32mPASSED[0m[32m [ 25%][0m
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_enrich_person_by_linkedin [32mPASSED[0m[32m [ 27%][0m
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_enrich_person_by_name_and_domain [32mPASSED[0m[32m [ 30%][0m
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_enrich_person_with_reveal_flags [32mPASSED[0m[32m [ 33%][0m
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_enrich_person_with_optional_params [32mPASSED[0m[32m [ 36%][0m
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_enrich_person_not_found [32mPASSED[0m[32m [ 38%][0m
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_enrich_company [32mPASSED[0m[32m [ 41%][0m
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_enrich_company_not_found [32mPASSED[0m[32m [ 44%][0m
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_search_people [32mPASSED[0m[32m [ 47%][0m
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_search_people_limit_capped [32mPASSED[0m[32m [ 50%][0m
+tools/tests/tools/test_apollo_tool.py::TestApolloClient::test_search_companies [32mPASSED[0m[32m [ 52%][0m
+tools/tests/tools/test_apollo_tool.py::TestToolRegistration::test_register_tools_registers_all_tools [32mPASSED[0m[32m [ 55%][0m
+tools/tests/tools/test_apollo_tool.py::TestToolRegistration::test_no_credentials_returns_error [32mPASSED[0m[32m [ 58%][0m
+tools/tests/tools/test_apollo_tool.py::TestToolRegistration::test_credentials_from_credential_manager [32mPASSED[0m[32m [ 61%][0m
+tools/tests/tools/test_apollo_tool.py::TestToolRegistration::test_credentials_from_env_var [32mPASSED[0m[32m [ 63%][0m
+tools/tests/tools/test_apollo_tool.py::TestEnrichPersonTool::test_enrich_person_requires_email_or_linkedin [32mPASSED[0m[32m [ 66%][0m
+tools/tests/tools/test_apollo_tool.py::TestEnrichPersonTool::test_enrich_person_success [32mPASSED[0m[32m [ 69%][0m
+tools/tests/tools/test_apollo_tool.py::TestEnrichPersonTool::test_enrich_person_timeout [32mPASSED[0m[32m [ 72%][0m
+tools/tests/tools/test_apollo_tool.py::TestEnrichPersonTool::test_enrich_person_network_error [32mPASSED[0m[32m [ 75%][0m
+tools/tests/tools/test_apollo_tool.py::TestEnrichCompanyTool::test_enrich_company_success [32mPASSED[0m[32m [ 77%][0m
+tools/tests/tools/test_apollo_tool.py::TestEnrichCompanyTool::test_enrich_company_not_found [32mPASSED[0m[32m [ 80%][0m
+tools/tests/tools/test_apollo_tool.py::TestSearchPeopleTool::test_search_people_success [32mPASSED[0m[32m [ 83%][0m
+tools/tests/tools/test_apollo_tool.py::TestSearchPeopleTool::test_search_people_with_all_filters [32mPASSED[0m[32m [ 86%][0m
+tools/tests/tools/test_apollo_tool.py::TestSearchCompaniesTool::test_search_companies_success [32mPASSED[0m[32m [ 88%][0m
+tools/tests/tools/test_apollo_tool.py::TestSearchCompaniesTool::test_search_companies_with_all_filters [32mPASSED[0m[32m [ 91%][0m
+tools/tests/tools/test_apollo_tool.py::TestCredentialSpec::test_apollo_credential_spec_exists [32mPASSED[0m[32m [ 94%][0m
+tools/tests/tools/test_apollo_tool.py::TestCredentialSpec::test_apollo_spec_env_var [32mPASSED[0m[32m [ 97%][0m
+tools/tests/tools/test_apollo_tool.py::TestCredentialSpec::test_apollo_spec_tools [32mPASSED[0m[32m [100%][0m
+
+[32m============================== [32m[1m36 passed[0m[32m in 0.48s[0m[32m ==============================[0m

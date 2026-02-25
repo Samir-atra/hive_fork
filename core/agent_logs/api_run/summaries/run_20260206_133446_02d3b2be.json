@@ -1,0 +1,20 @@
+{
+  "run_id": "run_20260206_133446_02d3b2be",
+  "goal_id": "v",
+  "status": "failed",
+  "duration_ms": 3003,
+  "decision_count": 3,
+  "success_rate": 0.0,
+  "problem_count": 1,
+  "narrative": "Failed at Analyzer after 3 retries: run_discovery_agent.<locals>.analyze() missing 1 required positional argument: 'query'",
+  "key_decisions": [
+    "✗ [n1] Execute function analyze → Run function with inputs: ['user_prompt']",
+    "✗ [n1] Execute function analyze → Run function with inputs: ['user_prompt']",
+    "✗ [n1] Execute function analyze → Run function with inputs: ['user_prompt']"
+  ],
+  "critical_problems": [
+    "Node n1 failed after 3 attempts: run_discovery_agent.<locals>.analyze() missing 1 required positional argument: 'query'"
+  ],
+  "warnings": [],
+  "successes": []
+}

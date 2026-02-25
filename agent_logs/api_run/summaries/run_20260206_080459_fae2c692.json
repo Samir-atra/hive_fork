@@ -1,0 +1,14 @@
+{
+  "run_id": "run_20260206_080459_fae2c692",
+  "goal_id": "v",
+  "status": "completed",
+  "duration_ms": 3495,
+  "decision_count": 3,
+  "success_rate": 1.0,
+  "problem_count": 0,
+  "narrative": "Executed 3 steps through path: n1 -> n2 -> n3",
+  "key_decisions": [],
+  "critical_problems": [],
+  "warnings": [],
+  "successes": []
+}

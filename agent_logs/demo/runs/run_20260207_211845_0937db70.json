@@ -1,0 +1,122 @@
+{
+  "id": "run_20260207_211845_0937db70",
+  "goal_id": "mood-check",
+  "started_at": "2026-02-07T21:18:45.447063",
+  "status": "completed",
+  "completed_at": "2026-02-07T21:18:45.447317",
+  "decisions": [
+    {
+      "id": "dec_0",
+      "timestamp": "2026-02-07T21:18:45.447119",
+      "node_id": "getter",
+      "intent": "Execute function get_mood",
+      "decision_type": "custom",
+      "options": [
+        {
+          "id": "execute",
+          "description": "Run function with inputs: ['name']",
+          "action_type": "unknown",
+          "action_params": {},
+          "pros": [],
+          "cons": [],
+          "confidence": 0.5
+        }
+      ],
+      "chosen_option_id": "execute",
+      "reasoning": "Deterministic function execution",
+      "active_constraints": [],
+      "input_context": {},
+      "outcome": {
+        "success": true,
+        "result": "Mellow",
+        "error": null,
+        "state_changes": {},
+        "tokens_used": 0,
+        "latency_ms": 0,
+        "summary": "",
+        "timestamp": "2026-02-07T21:18:45.447163"
+      },
+      "evaluation": null,
+      "chosen_option": {
+        "id": "execute",
+        "description": "Run function with inputs: ['name']",
+        "action_type": "unknown",
+        "action_params": {},
+        "pros": [],
+        "cons": [],
+        "confidence": 0.5
+      },
+      "was_successful": true,
+      "was_good_decision": true
+    },
+    {
+      "id": "dec_1",
+      "timestamp": "2026-02-07T21:18:45.447268",
+      "node_id": "display",
+      "intent": "Execute function display_mood",
+      "decision_type": "custom",
+      "options": [
+        {
+          "id": "execute",
+          "description": "Run function with inputs: ['mood']",
+          "action_type": "unknown",
+          "action_params": {},
+          "pros": [],
+          "cons": [],
+          "confidence": 0.5
+        }
+      ],
+      "chosen_option_id": "execute",
+      "reasoning": "Deterministic function execution",
+      "active_constraints": [],
+      "input_context": {},
+      "outcome": {
+        "success": true,
+        "result": "Today, Samir feels: Mellow! ✨",
+        "error": null,
+        "state_changes": {},
+        "tokens_used": 0,
+        "latency_ms": 0,
+        "summary": "",
+        "timestamp": "2026-02-07T21:18:45.447278"
+      },
+      "evaluation": null,
+      "chosen_option": {
+        "id": "execute",
+        "description": "Run function with inputs: ['mood']",
+        "action_type": "unknown",
+        "action_params": {},
+        "pros": [],
+        "cons": [],
+        "confidence": 0.5
+      },
+      "was_successful": true,
+      "was_good_decision": true
+    }
+  ],
+  "problems": [],
+  "metrics": {
+    "total_decisions": 2,
+    "successful_decisions": 2,
+    "failed_decisions": 0,
+    "total_tokens": 0,
+    "total_latency_ms": 0,
+    "nodes_executed": [
+      "getter",
+      "display"
+    ],
+    "edges_traversed": [],
+    "success_rate": 1.0
+  },
+  "narrative": "Executed 2 steps through path: getter -> display",
+  "goal_description": "Check and display user mood",
+  "input_data": {
+    "name": "Samir"
+  },
+  "output_data": {
+    "name": "Samir",
+    "mood": "Mellow",
+    "message": "Today, Samir feels: Mellow! ✨"
+  },
+  "duration_ms": 0
+}

@@ -1,0 +1,173 @@
+{
+  "id": "run_20260206_133446_02d3b2be",
+  "goal_id": "v",
+  "started_at": "2026-02-06T13:34:46.605954",
+  "status": "failed",
+  "completed_at": "2026-02-06T13:34:49.609119",
+  "decisions": [
+    {
+      "id": "dec_0",
+      "timestamp": "2026-02-06T13:34:46.606033",
+      "node_id": "n1",
+      "intent": "Execute function analyze",
+      "decision_type": "custom",
+      "options": [
+        {
+          "id": "execute",
+          "description": "Run function with inputs: ['user_prompt']",
+          "action_type": "unknown",
+          "action_params": {},
+          "pros": [],
+          "cons": [],
+          "confidence": 0.5
+        }
+      ],
+      "chosen_option_id": "execute",
+      "reasoning": "Deterministic function execution",
+      "active_constraints": [],
+      "input_context": {},
+      "outcome": {
+        "success": false,
+        "result": null,
+        "error": "run_discovery_agent.<locals>.analyze() missing 1 required positional argument: 'query'",
+        "state_changes": {},
+        "tokens_used": 0,
+        "latency_ms": 0,
+        "summary": "",
+        "timestamp": "2026-02-06T13:34:46.606078"
+      },
+      "evaluation": null,
+      "chosen_option": {
+        "id": "execute",
+        "description": "Run function with inputs: ['user_prompt']",
+        "action_type": "unknown",
+        "action_params": {},
+        "pros": [],
+        "cons": [],
+        "confidence": 0.5
+      },
+      "was_successful": false,
+      "was_good_decision": false
+    },
+    {
+      "id": "dec_1",
+      "timestamp": "2026-02-06T13:34:47.607314",
+      "node_id": "n1",
+      "intent": "Execute function analyze",
+      "decision_type": "custom",
+      "options": [
+        {
+          "id": "execute",
+          "description": "Run function with inputs: ['user_prompt']",
+          "action_type": "unknown",
+          "action_params": {},
+          "pros": [],
+          "cons": [],
+          "confidence": 0.5
+        }
+      ],
+      "chosen_option_id": "execute",
+      "reasoning": "Deterministic function execution",
+      "active_constraints": [],
+      "input_context": {},
+      "outcome": {
+        "success": false,
+        "result": null,
+        "error": "run_discovery_agent.<locals>.analyze() missing 1 required positional argument: 'query'",
+        "state_changes": {},
+        "tokens_used": 0,
+        "latency_ms": 0,
+        "summary": "",
+        "timestamp": "2026-02-06T13:34:47.607360"
+      },
+      "evaluation": null,
+      "chosen_option": {
+        "id": "execute",
+        "description": "Run function with inputs: ['user_prompt']",
+        "action_type": "unknown",
+        "action_params": {},
+        "pros": [],
+        "cons": [],
+        "confidence": 0.5
+      },
+      "was_successful": false,
+      "was_good_decision": false
+    },
+    {
+      "id": "dec_2",
+      "timestamp": "2026-02-06T13:34:49.608756",
+      "node_id": "n1",
+      "intent": "Execute function analyze",
+      "decision_type": "custom",
+      "options": [
+        {
+          "id": "execute",
+          "description": "Run function with inputs: ['user_prompt']",
+          "action_type": "unknown",
+          "action_params": {},
+          "pros": [],
+          "cons": [],
+          "confidence": 0.5
+        }
+      ],
+      "chosen_option_id": "execute",
+      "reasoning": "Deterministic function execution",
+      "active_constraints": [],
+      "input_context": {},
+      "outcome": {
+        "success": false,
+        "result": null,
+        "error": "run_discovery_agent.<locals>.analyze() missing 1 required positional argument: 'query'",
+        "state_changes": {},
+        "tokens_used": 0,
+        "latency_ms": 0,
+        "summary": "",
+        "timestamp": "2026-02-06T13:34:49.608813"
+      },
+      "evaluation": null,
+      "chosen_option": {
+        "id": "execute",
+        "description": "Run function with inputs: ['user_prompt']",
+        "action_type": "unknown",
+        "action_params": {},
+        "pros": [],
+        "cons": [],
+        "confidence": 0.5
+      },
+      "was_successful": false,
+      "was_good_decision": false
+    }
+  ],
+  "problems": [
+    {
+      "id": "prob_0",
+      "severity": "critical",
+      "description": "Node n1 failed after 3 attempts: run_discovery_agent.<locals>.analyze() missing 1 required positional argument: 'query'",
+      "root_cause": null,
+      "decision_id": null,
+      "timestamp": "2026-02-06T13:34:49.609047",
+      "suggested_fix": null
+    }
+  ],
+  "metrics": {
+    "total_decisions": 3,
+    "successful_decisions": 0,
+    "failed_decisions": 3,
+    "total_tokens": 0,
+    "total_latency_ms": 0,
+    "nodes_executed": [
+      "n1"
+    ],
+    "edges_traversed": [],
+    "success_rate": 0.0
+  },
+  "narrative": "Failed at Analyzer after 3 retries: run_discovery_agent.<locals>.analyze() missing 1 required positional argument: 'query'",
+  "goal_description": "V",
+  "input_data": {
+    "user_prompt": "Clean Test"
+  },
+  "output_data": {
+    "user_prompt": "Clean Test"
+  },
+  "duration_ms": 3003
+}

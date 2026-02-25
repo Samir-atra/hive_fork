@@ -1,0 +1,173 @@
+{
+  "id": "run_20260206_070307_510851f5",
+  "goal_id": "v",
+  "started_at": "2026-02-06T07:03:07.189136",
+  "status": "failed",
+  "completed_at": "2026-02-06T07:03:10.191795",
+  "decisions": [
+    {
+      "id": "dec_0",
+      "timestamp": "2026-02-06T07:03:07.189325",
+      "node_id": "n1",
+      "intent": "Execute function analyze",
+      "decision_type": "custom",
+      "options": [
+        {
+          "id": "execute",
+          "description": "Run function with inputs: ['user_prompt']",
+          "action_type": "unknown",
+          "action_params": {},
+          "pros": [],
+          "cons": [],
+          "confidence": 0.5
+        }
+      ],
+      "chosen_option_id": "execute",
+      "reasoning": "Deterministic function execution",
+      "active_constraints": [],
+      "input_context": {},
+      "outcome": {
+        "success": false,
+        "result": null,
+        "error": "run_discovery_agent.<locals>.analyze() got an unexpected keyword argument 'user_prompt'",
+        "state_changes": {},
+        "tokens_used": 0,
+        "latency_ms": 0,
+        "summary": "",
+        "timestamp": "2026-02-06T07:03:07.189460"
+      },
+      "evaluation": null,
+      "chosen_option": {
+        "id": "execute",
+        "description": "Run function with inputs: ['user_prompt']",
+        "action_type": "unknown",
+        "action_params": {},
+        "pros": [],
+        "cons": [],
+        "confidence": 0.5
+      },
+      "was_successful": false,
+      "was_good_decision": false
+    },
+    {
+      "id": "dec_1",
+      "timestamp": "2026-02-06T07:03:08.190332",
+      "node_id": "n1",
+      "intent": "Execute function analyze",
+      "decision_type": "custom",
+      "options": [
+        {
+          "id": "execute",
+          "description": "Run function with inputs: ['user_prompt']",
+          "action_type": "unknown",
+          "action_params": {},
+          "pros": [],
+          "cons": [],
+          "confidence": 0.5
+        }
+      ],
+      "chosen_option_id": "execute",
+      "reasoning": "Deterministic function execution",
+      "active_constraints": [],
+      "input_context": {},
+      "outcome": {
+        "success": false,
+        "result": null,
+        "error": "run_discovery_agent.<locals>.analyze() got an unexpected keyword argument 'user_prompt'",
+        "state_changes": {},
+        "tokens_used": 0,
+        "latency_ms": 0,
+        "summary": "",
+        "timestamp": "2026-02-06T07:03:08.190428"
+      },
+      "evaluation": null,
+      "chosen_option": {
+        "id": "execute",
+        "description": "Run function with inputs: ['user_prompt']",
+        "action_type": "unknown",
+        "action_params": {},
+        "pros": [],
+        "cons": [],
+        "confidence": 0.5
+      },
+      "was_successful": false,
+      "was_good_decision": false
+    },
+    {
+      "id": "dec_2",
+      "timestamp": "2026-02-06T07:03:10.191623",
+      "node_id": "n1",
+      "intent": "Execute function analyze",
+      "decision_type": "custom",
+      "options": [
+        {
+          "id": "execute",
+          "description": "Run function with inputs: ['user_prompt']",
+          "action_type": "unknown",
+          "action_params": {},
+          "pros": [],
+          "cons": [],
+          "confidence": 0.5
+        }
+      ],
+      "chosen_option_id": "execute",
+      "reasoning": "Deterministic function execution",
+      "active_constraints": [],
+      "input_context": {},
+      "outcome": {
+        "success": false,
+        "result": null,
+        "error": "run_discovery_agent.<locals>.analyze() got an unexpected keyword argument 'user_prompt'",
+        "state_changes": {},
+        "tokens_used": 0,
+        "latency_ms": 0,
+        "summary": "",
+        "timestamp": "2026-02-06T07:03:10.191651"
+      },
+      "evaluation": null,
+      "chosen_option": {
+        "id": "execute",
+        "description": "Run function with inputs: ['user_prompt']",
+        "action_type": "unknown",
+        "action_params": {},
+        "pros": [],
+        "cons": [],
+        "confidence": 0.5
+      },
+      "was_successful": false,
+      "was_good_decision": false
+    }
+  ],
+  "problems": [
+    {
+      "id": "prob_0",
+      "severity": "critical",
+      "description": "Node n1 failed after 3 attempts: run_discovery_agent.<locals>.analyze() got an unexpected keyword argument 'user_prompt'",
+      "root_cause": null,
+      "decision_id": null,
+      "timestamp": "2026-02-06T07:03:10.191766",
+      "suggested_fix": null
+    }
+  ],
+  "metrics": {
+    "total_decisions": 3,
+    "successful_decisions": 0,
+    "failed_decisions": 3,
+    "total_tokens": 0,
+    "total_latency_ms": 0,
+    "nodes_executed": [
+      "n1"
+    ],
+    "edges_traversed": [],
+    "success_rate": 0.0
+  },
+  "narrative": "Failed at Analyzer after 3 retries: run_discovery_agent.<locals>.analyze() got an unexpected keyword argument 'user_prompt'",
+  "goal_description": "V",
+  "input_data": {
+    "user_prompt": "Check order status #9012"
+  },
+  "output_data": {
+    "user_prompt": "Check order status #9012"
+  },
+  "duration_ms": 3002
+}

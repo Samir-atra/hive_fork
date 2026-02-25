@@ -1,0 +1,36 @@
+{
+  "id": "run_20260206_065852_826da13e",
+  "goal_id": "v",
+  "started_at": "2026-02-06T06:58:52.945873",
+  "status": "failed",
+  "completed_at": "2026-02-06T06:58:52.945953",
+  "decisions": [],
+  "problems": [
+    {
+      "id": "prob_0",
+      "severity": "critical",
+      "description": "Function node 'n1' not registered. Register with node_registry.",
+      "root_cause": null,
+      "decision_id": null,
+      "timestamp": "2026-02-06T06:58:52.945939",
+      "suggested_fix": null
+    }
+  ],
+  "metrics": {
+    "total_decisions": 0,
+    "successful_decisions": 0,
+    "failed_decisions": 0,
+    "total_tokens": 0,
+    "total_latency_ms": 0,
+    "nodes_executed": [],
+    "edges_traversed": [],
+    "success_rate": 0.0
+  },
+  "narrative": "Failed at step 1: Function node 'n1' not registered. Register with node_registry.",
+  "goal_description": "V",
+  "input_data": {
+    "user_prompt": "Check order status #5678"
+  },
+  "output_data": {},
+  "duration_ms": 0
+}

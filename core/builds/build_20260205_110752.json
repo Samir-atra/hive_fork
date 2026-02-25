@@ -1,0 +1,49 @@
+{
+  "id": "build_20260205_110752",
+  "name": "TestGreetingAgent",
+  "phase": "goal_draft",
+  "created_at": "2026-02-05T11:07:52.309290",
+  "updated_at": "2026-02-05T11:07:52.309326",
+  "goal": {
+    "id": "test-greet-001",
+    "name": "Greeting Agent",
+    "description": "A simple agent that greets the user and asks how it can help.",
+    "status": "draft",
+    "success_criteria": [
+      {
+        "id": "friendly-greeting",
+        "description": "Agent provides a friendly greeting",
+        "metric": "llm_judge",
+        "target": "The response should be polite and welcoming.",
+        "weight": 1.0,
+        "met": false
+      }
+    ],
+    "constraints": [
+      {
+        "id": "be-concise",
+        "description": "Keep the greeting under 2 sentences.",
+        "constraint_type": "soft",
+        "category": "general",
+        "check": ""
+      }
+    ],
+    "context": {},
+    "required_capabilities": [
+      "llm"
+    ],
+    "input_schema": {},
+    "output_schema": {},
+    "version": "1.0.0",
+    "parent_version": null,
+    "evolution_reason": null,
+    "created_at": "2026-02-05T11:07:52.309229",
+    "updated_at": "2026-02-05T11:07:52.309231"
+  },
+  "nodes": [],
+  "edges": [],
+  "test_cases": [],
+  "test_results": [],
+  "approvals": [],
+  "tools": []
+}

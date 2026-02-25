@@ -1,0 +1,48 @@
+{
+  "run_id": "unknown",
+  "timestamp": "2026-02-10T16:44:30.099194",
+  "trace": {
+    "steps": [
+      {
+        "node_id": "analyze",
+        "node_name": "Market Analyzer",
+        "success": true,
+        "output": {
+          "result": "{\n  \"research_query\": \"mock_research_query_value\",\n  \"focus_area\": \"mock_focus_area_value\"\n}",
+          "research_query": "mock_research_query_value",
+          "focus_area": "mock_focus_area_value"
+        },
+        "next_node": "auto"
+      },
+      {
+        "node_id": "search",
+        "node_name": "Web Searcher",
+        "success": true,
+        "output": {
+          "result": "Mock response based on tool results: [{\"title\": \"Cloud Computing Trends 2026\", \"url\": \"https://example.com/trends\", \"snippet\": \"The cloud computing market is expected to grow by 20% in 2026, driven by edge computing and AI integration.\"}",
+          "search_results": "Mock response based on tool results: [{\"title\": \"Cloud Computing Trends 2026\", \"url\": \"https://example.com/trends\", \"snippet\": \"The cloud computing market is expected to grow by 20% in 2026, driven by edge computing and AI integration.\"}"
+        },
+        "next_node": "auto"
+      },
+      {
+        "node_id": "report",
+        "node_name": "Report Generator",
+        "success": true,
+        "output": {
+          "result": "{\n  \"final_report\": \"mock_final_report_value\"\n}",
+          "final_report": "mock_final_report_value"
+        },
+        "next_node": "auto"
+      }
+    ],
+    "path": [
+      "analyze",
+      "search",
+      "report"
+    ],
+    "metrics": {
+      "tokens": 0,
+      "latency": 0
+    }
+  }
+}

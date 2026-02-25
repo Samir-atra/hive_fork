@@ -1,0 +1,46 @@
+[1m============================= test session starts ==============================[0m
+platform linux -- Python 3.14.0, pytest-9.0.2, pluggy-1.6.0 -- /home/samer/anaconda3/envs/agents/bin/python
+cachedir: .pytest_cache
+rootdir: /home/samer/Documents/jobs/Aden/hive_fork/tools
+configfile: pyproject.toml
+plugins: langsmith-0.7.3, anyio-4.11.0, asyncio-1.3.0, xdist-3.8.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+[1mcollecting ... [0mcollected 35 items
+
+tests/test_health_checks.py::TestHealthCheckerRegistry::test_google_search_registered [32mPASSED[0m[32m [  2%][0m
+tests/test_health_checks.py::TestHealthCheckerRegistry::test_anthropic_registered [32mPASSED[0m[32m [  5%][0m
+tests/test_health_checks.py::TestHealthCheckerRegistry::test_github_registered [32mPASSED[0m[32m [  8%][0m
+tests/test_health_checks.py::TestHealthCheckerRegistry::test_resend_registered [32mPASSED[0m[32m [ 11%][0m
+tests/test_health_checks.py::TestHealthCheckerRegistry::test_google_maps_registered [32mPASSED[0m[32m [ 14%][0m
+tests/test_health_checks.py::TestHealthCheckerRegistry::test_google_calendar_oauth_registered [32mPASSED[0m[32m [ 17%][0m
+tests/test_health_checks.py::TestHealthCheckerRegistry::test_discord_registered [32mPASSED[0m[32m [ 20%][0m
+tests/test_health_checks.py::TestHealthCheckerRegistry::test_all_expected_checkers_registered [32mPASSED[0m[32m [ 22%][0m
+tests/test_health_checks.py::TestAnthropicHealthChecker::test_valid_key_200 [32mPASSED[0m[32m [ 25%][0m
+tests/test_health_checks.py::TestAnthropicHealthChecker::test_invalid_key_401 [32mPASSED[0m[32m [ 28%][0m
+tests/test_health_checks.py::TestAnthropicHealthChecker::test_rate_limited_429 [32mPASSED[0m[32m [ 31%][0m
+tests/test_health_checks.py::TestAnthropicHealthChecker::test_bad_request_400_still_valid [32mPASSED[0m[32m [ 34%][0m
+tests/test_health_checks.py::TestAnthropicHealthChecker::test_timeout [32mPASSED[0m[32m [ 37%][0m
+tests/test_health_checks.py::TestGitHubHealthChecker::test_valid_token_200 [32mPASSED[0m[32m [ 40%][0m
+tests/test_health_checks.py::TestGitHubHealthChecker::test_invalid_token_401 [32mPASSED[0m[32m [ 42%][0m
+tests/test_health_checks.py::TestGitHubHealthChecker::test_forbidden_403 [32mPASSED[0m[32m [ 45%][0m
+tests/test_health_checks.py::TestGitHubHealthChecker::test_timeout [32mPASSED[0m[32m [ 48%][0m
+tests/test_health_checks.py::TestGitHubHealthChecker::test_request_error [32mPASSED[0m[32m [ 51%][0m
+tests/test_health_checks.py::TestResendHealthChecker::test_valid_key_200 [32mPASSED[0m[32m [ 54%][0m
+tests/test_health_checks.py::TestResendHealthChecker::test_invalid_key_401 [32mPASSED[0m[32m [ 57%][0m
+tests/test_health_checks.py::TestResendHealthChecker::test_forbidden_403 [32mPASSED[0m[32m [ 60%][0m
+tests/test_health_checks.py::TestResendHealthChecker::test_timeout [32mPASSED[0m[32m [ 62%][0m
+tests/test_health_checks.py::TestGoogleMapsHealthChecker::test_valid_key_ok_status [32mPASSED[0m[32m [ 65%][0m
+tests/test_health_checks.py::TestGoogleMapsHealthChecker::test_invalid_key_request_denied [32mPASSED[0m[32m [ 68%][0m
+tests/test_health_checks.py::TestGoogleMapsHealthChecker::test_quota_exceeded_still_valid [32mPASSED[0m[32m [ 71%][0m
+tests/test_health_checks.py::TestGoogleMapsHealthChecker::test_http_error [32mPASSED[0m[32m [ 74%][0m
+tests/test_health_checks.py::TestGoogleMapsHealthChecker::test_timeout [32mPASSED[0m[32m [ 77%][0m
+tests/test_health_checks.py::TestGoogleMapsHealthChecker::test_request_error [32mPASSED[0m[32m [ 80%][0m
+tests/test_health_checks.py::TestCheckCredentialHealthDispatcher::test_unknown_credential_returns_valid [32mPASSED[0m[32m [ 82%][0m
+tests/test_health_checks.py::TestCheckCredentialHealthDispatcher::test_dispatches_to_registered_checker [32mPASSED[0m[32m [ 85%][0m
+tests/test_health_checks.py::TestCheckCredentialHealthDispatcher::test_google_search_with_cse_id [32mPASSED[0m[32m [ 88%][0m
+tests/test_health_checks.py::TestCheckCredentialHealthDispatcher::test_google_search_without_cse_id [32mPASSED[0m[32m [ 91%][0m
+tests/test_health_checks.py::TestGoogleCalendarHealthCheckerTokenSanitization::test_request_error_with_bearer_token_sanitized [32mPASSED[0m[32m [ 94%][0m
+tests/test_health_checks.py::TestGoogleCalendarHealthCheckerTokenSanitization::test_request_error_with_authorization_header_sanitized [32mPASSED[0m[32m [ 97%][0m
+tests/test_health_checks.py::TestGoogleCalendarHealthCheckerTokenSanitization::test_request_error_without_sensitive_data_passes_through [32mPASSED[0m[32m [100%][0m
+
+[32m============================== [32m[1m35 passed[0m[32m in 0.06s[0m[32m ==============================[0m

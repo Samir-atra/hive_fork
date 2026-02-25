@@ -1,0 +1,168 @@
+{
+  "id": "run_20260206_134134_c212e6c6",
+  "goal_id": "v",
+  "started_at": "2026-02-06T13:41:34.775509",
+  "status": "completed",
+  "completed_at": "2026-02-06T13:41:39.810226",
+  "decisions": [
+    {
+      "id": "dec_0",
+      "timestamp": "2026-02-06T13:41:34.775630",
+      "node_id": "n1",
+      "intent": "Execute function analyze",
+      "decision_type": "custom",
+      "options": [
+        {
+          "id": "execute",
+          "description": "Run function with inputs: ['user_prompt']",
+          "action_type": "unknown",
+          "action_params": {},
+          "pros": [],
+          "cons": [],
+          "confidence": 0.5
+        }
+      ],
+      "chosen_option_id": "execute",
+      "reasoning": "Deterministic function execution",
+      "active_constraints": [],
+      "input_context": {},
+      "outcome": {
+        "success": true,
+        "result": "Final Verification Test",
+        "error": null,
+        "state_changes": {},
+        "tokens_used": 0,
+        "latency_ms": 0,
+        "summary": "",
+        "timestamp": "2026-02-06T13:41:34.775686"
+      },
+      "evaluation": null,
+      "chosen_option": {
+        "id": "execute",
+        "description": "Run function with inputs: ['user_prompt']",
+        "action_type": "unknown",
+        "action_params": {},
+        "pros": [],
+        "cons": [],
+        "confidence": 0.5
+      },
+      "was_successful": true,
+      "was_good_decision": true
+    },
+    {
+      "id": "dec_1",
+      "timestamp": "2026-02-06T13:41:36.320238",
+      "node_id": "n2",
+      "intent": "Execute function research",
+      "decision_type": "custom",
+      "options": [
+        {
+          "id": "execute",
+          "description": "Run function with inputs: ['query']",
+          "action_type": "unknown",
+          "action_params": {},
+          "pros": [],
+          "cons": [],
+          "confidence": 0.5
+        }
+      ],
+      "chosen_option_id": "execute",
+      "reasoning": "Deterministic function execution",
+      "active_constraints": [],
+      "input_context": {},
+      "outcome": {
+        "success": true,
+        "result": "Found simulated insights for: Final Verification Test",
+        "error": null,
+        "state_changes": {},
+        "tokens_used": 0,
+        "latency_ms": 0,
+        "summary": "",
+        "timestamp": "2026-02-06T13:41:36.320263"
+      },
+      "evaluation": null,
+      "chosen_option": {
+        "id": "execute",
+        "description": "Run function with inputs: ['query']",
+        "action_type": "unknown",
+        "action_params": {},
+        "pros": [],
+        "cons": [],
+        "confidence": 0.5
+      },
+      "was_successful": true,
+      "was_good_decision": true
+    },
+    {
+      "id": "dec_2",
+      "timestamp": "2026-02-06T13:41:38.886018",
+      "node_id": "n3",
+      "intent": "Execute function summarize",
+      "decision_type": "custom",
+      "options": [
+        {
+          "id": "execute",
+          "description": "Run function with inputs: ['raw_data']",
+          "action_type": "unknown",
+          "action_params": {},
+          "pros": [],
+          "cons": [],
+          "confidence": 0.5
+        }
+      ],
+      "chosen_option_id": "execute",
+      "reasoning": "Deterministic function execution",
+      "active_constraints": [],
+      "input_context": {},
+      "outcome": {
+        "success": true,
+        "result": "Executive Summary: Found simulated insights for: Final Verification Test",
+        "error": null,
+        "state_changes": {},
+        "tokens_used": 0,
+        "latency_ms": 0,
+        "summary": "",
+        "timestamp": "2026-02-06T13:41:38.886044"
+      },
+      "evaluation": null,
+      "chosen_option": {
+        "id": "execute",
+        "description": "Run function with inputs: ['raw_data']",
+        "action_type": "unknown",
+        "action_params": {},
+        "pros": [],
+        "cons": [],
+        "confidence": 0.5
+      },
+      "was_successful": true,
+      "was_good_decision": true
+    }
+  ],
+  "problems": [],
+  "metrics": {
+    "total_decisions": 3,
+    "successful_decisions": 3,
+    "failed_decisions": 0,
+    "total_tokens": 0,
+    "total_latency_ms": 0,
+    "nodes_executed": [
+      "n1",
+      "n2",
+      "n3"
+    ],
+    "edges_traversed": [],
+    "success_rate": 1.0
+  },
+  "narrative": "Executed 3 steps through path: n1 -> n2 -> n3",
+  "goal_description": "V",
+  "input_data": {
+    "user_prompt": "Final Verification Test"
+  },
+  "output_data": {
+    "user_prompt": "Final Verification Test",
+    "query": "Final Verification Test",
+    "raw_data": "Found simulated insights for: Final Verification Test",
+    "report": "Executive Summary: Found simulated insights for: Final Verification Test"
+  },
+  "duration_ms": 5034
+}

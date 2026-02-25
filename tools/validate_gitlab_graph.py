@@ -6,7 +6,7 @@ Validate the GitLab assistant GraphSpec wiring embedded in exports/gitlab_assist
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # adjust to repo root
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # adjust to repo root (hive_fork)
 
 try:
     from exports.gitlab_assistant.graph import gitlab_graph
