@@ -1,4 +1,4 @@
-from .agent import GitLabAssistantAgent, default_agent, goal
+from .agent import GitLabAssistantAgent, default_agent, goal, nodes, edges
 from .config import metadata, default_config
 from .nodes import (
     intake_node,
@@ -18,6 +18,8 @@ __all__ = [
     "GitLabAssistantAgent",
     "default_agent",
     "goal",
+    "nodes",
+    "edges",
     "metadata",
     "default_config",
     "intake_node",
