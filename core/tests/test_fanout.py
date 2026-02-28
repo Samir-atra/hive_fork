@@ -492,3 +492,192 @@ async def test_parallel_disabled_uses_sequential(runtime, goal):
     # Only one branch should have executed (sequential follows first edge)
     executed_count = sum([b1_impl.executed, b2_impl.executed])
     assert executed_count == 1
+
+
+# === 12. Memory isolation - branches don't corrupt each other ===
+
+
+class MemoryWriterNode(NodeProtocol):
+    """Writes a value to a shared key and a unique key."""
+
+    def __init__(self, shared_key: str, shared_value: str, unique_key: str, unique_value: str):
+        self.shared_key = shared_key
+        self.shared_value = shared_value
+        self.unique_key = unique_key
+        self.unique_value = unique_value
+        self.executed = False
+
+    async def execute(self, ctx: NodeContext) -> NodeResult:
+        self.executed = True
+        ctx.memory.write(self.shared_key, self.shared_value, validate=False)
+        ctx.memory.write(self.unique_key, self.unique_value, validate=False)
+        return NodeResult(
+            success=True,
+            output={self.shared_key: self.shared_value, self.unique_key: self.unique_value},
+            tokens_used=10,
+            latency_ms=5,
+        )
+
+
+@pytest.mark.asyncio
+async def test_memory_isolation_between_branches(runtime, goal):
+    """Parallel branches should not corrupt each other's memory writes."""
+    b1 = NodeSpec(
+        id="b1",
+        name="B1",
+        description="branch 1",
+        node_type="event_loop",
+        output_keys=["shared", "b1_unique"],
+    )
+    b2 = NodeSpec(
+        id="b2",
+        name="B2",
+        description="branch 2",
+        node_type="event_loop",
+        output_keys=["shared", "b2_unique"],
+    )
+
+    graph = _make_fanout_graph([b1, b2])
+
+    executor = GraphExecutor(runtime=runtime, enable_parallel_execution=True)
+    executor.register_node("source", SuccessNode({"data": "x"}))
+    b1_impl = MemoryWriterNode("shared", "from_b1", "b1_unique", "value1")
+    b2_impl = MemoryWriterNode("shared", "from_b2", "b2_unique", "value2")
+    executor.register_node("b1", b1_impl)
+    executor.register_node("b2", b2_impl)
+
+    result = await executor.execute(graph, goal, {})
+
+    assert result.success
+    assert b1_impl.executed
+    assert b2_impl.executed
+
+    assert "b1_unique" in result.output
+    assert "b2_unique" in result.output
+    assert result.output["b1_unique"] == "value1"
+    assert result.output["b2_unique"] == "value2"
+
+
+@pytest.mark.asyncio
+async def test_memory_conflict_last_wins_strategy(runtime, goal):
+    """With last_wins strategy, later branch (alphabetically) should win conflicts."""
+    b1 = NodeSpec(
+        id="b1",
+        name="B1",
+        description="branch 1",
+        node_type="event_loop",
+        output_keys=["conflict_key"],
+    )
+    b2 = NodeSpec(
+        id="b2",
+        name="B2",
+        description="branch 2",
+        node_type="event_loop",
+        output_keys=["conflict_key"],
+    )
+
+    graph = _make_fanout_graph([b1, b2])
+
+    config = ParallelExecutionConfig(memory_conflict_strategy="last_wins")
+    executor = GraphExecutor(
+        runtime=runtime, enable_parallel_execution=True, parallel_config=config
+    )
+    executor.register_node("source", SuccessNode({"data": "x"}))
+    b1_impl = MemoryWriterNode("conflict_key", "from_b1", "b1_out", "v1")
+    b2_impl = MemoryWriterNode("conflict_key", "from_b2", "b2_out", "v2")
+    executor.register_node("b1", b1_impl)
+    executor.register_node("b2", b2_impl)
+
+    result = await executor.execute(graph, goal, {})
+
+    assert result.success
+    assert "conflict_key" in result.output
+
+
+@pytest.mark.asyncio
+async def test_memory_conflict_error_strategy_raises(runtime, goal):
+    """With 'error' strategy, conflicting writes should raise RuntimeError."""
+    b1 = NodeSpec(
+        id="b1",
+        name="B1",
+        description="branch 1",
+        node_type="event_loop",
+        output_keys=["conflict_key"],
+    )
+    b2 = NodeSpec(
+        id="b2",
+        name="B2",
+        description="branch 2",
+        node_type="event_loop",
+        output_keys=["conflict_key"],
+    )
+
+    graph = _make_fanout_graph([b1, b2])
+
+    config = ParallelExecutionConfig(
+        memory_conflict_strategy="error",
+        on_branch_failure="fail_all",
+    )
+    executor = GraphExecutor(
+        runtime=runtime, enable_parallel_execution=True, parallel_config=config
+    )
+    executor.register_node("source", SuccessNode({"data": "x"}))
+    b1_impl = MemoryWriterNode("conflict_key", "from_b1", "b1_out", "v1")
+    b2_impl = MemoryWriterNode("conflict_key", "from_b2", "b2_out", "v2")
+    executor.register_node("b1", b1_impl)
+    executor.register_node("b2", b2_impl)
+
+    result = await executor.execute(graph, goal, {})
+
+    assert not result.success
+    assert "conflict" in result.error.lower()
+
+
+@pytest.mark.asyncio
+async def test_branches_dont_see_each_others_writes(runtime, goal):
+    """Each branch should only see its own writes during execution, not other branches'."""
+    b1 = NodeSpec(
+        id="b1", name="B1", description="branch 1", node_type="event_loop", output_keys=["b1_out"]
+    )
+    b2 = NodeSpec(
+        id="b2", name="B2", description="branch 2", node_type="event_loop", output_keys=["b2_out"]
+    )
+
+    graph = _make_fanout_graph([b1, b2])
+
+    executor = GraphExecutor(runtime=runtime, enable_parallel_execution=True)
+    executor.register_node("source", SuccessNode({"data": "x"}))
+
+    b1_values_seen = []
+    b2_values_seen = []
+
+    class ObservingNode(NodeProtocol):
+        def __init__(self, node_id: str, observer_list: list):
+            self.node_id = node_id
+            self.observer_list = observer_list
+
+        async def execute(self, ctx: NodeContext) -> NodeResult:
+            all_keys = list(ctx.memory.read_all().keys())
+            self.observer_list.append(set(all_keys))
+            ctx.memory.write(f"{self.node_id}_out", "done", validate=False)
+            return NodeResult(
+                success=True,
+                output={f"{self.node_id}_out": "done"},
+                tokens_used=10,
+                latency_ms=5,
+            )
+
+    executor.register_node("b1", ObservingNode("b1", b1_values_seen))
+    executor.register_node("b2", ObservingNode("b2", b2_values_seen))
+
+    result = await executor.execute(graph, goal, {})
+
+    assert result.success
+    assert len(b1_values_seen) == 1
+    assert len(b2_values_seen) == 1
+
+    b2_out_in_b1_view = "b2_out" in b1_values_seen[0]
+    b1_out_in_b2_view = "b1_out" in b2_values_seen[0]
+
+    assert not b2_out_in_b1_view, "b1 should not see b2_out during execution"
+    assert not b1_out_in_b2_view, "b2 should not see b1_out during execution"

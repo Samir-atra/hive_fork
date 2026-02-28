@@ -447,9 +447,45 @@ class SharedMemory:
             _data=self._data,
             _allowed_read=set(read_keys) if read_keys else set(),
             _allowed_write=set(write_keys) if write_keys else set(),
-            _lock=self._lock,  # Share lock for thread safety
-            _key_locks=self._key_locks,  # Share key locks
+            _lock=self._lock,
+            _key_locks=self._key_locks,
         )
+
+    def create_isolated_copy(self) -> "SharedMemory":
+        """Create an isolated copy of this memory for parallel branch execution.
+
+        The copy has its own data dictionary but starts with a shallow copy
+        of the current state. This allows parallel branches to write without
+        corrupting each other's state. After parallel execution completes,
+        the results are merged back using a defined strategy.
+
+        Returns:
+            A new SharedMemory instance with isolated storage.
+        """
+        import copy
+
+        return SharedMemory(
+            _data=copy.copy(self._data),
+            _allowed_read=set(self._allowed_read),
+            _allowed_write=set(self._allowed_write),
+            _lock=None,
+            _key_locks={},
+        )
+
+    def get_changes_since(self, baseline: dict[str, Any]) -> dict[str, Any]:
+        """Get all key-value pairs that changed or were added compared to baseline.
+
+        Args:
+            baseline: The baseline state to compare against.
+
+        Returns:
+            Dictionary of changed/new key-value pairs.
+        """
+        changes = {}
+        for key, value in self._data.items():
+            if key not in baseline or baseline[key] != value:
+                changes[key] = value
+        return changes
 
 
 @dataclass
