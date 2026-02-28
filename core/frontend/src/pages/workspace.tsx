@@ -1,10 +1,14 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import ReactDOM from "react-dom";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Plus, KeyRound, Sparkles, Layers, ChevronLeft, Bot, Loader2, WifiOff, X } from "lucide-react";
+import { Plus, KeyRound, Sparkles, Layers, ChevronLeft, Bot, Loader2, WifiOff, X, PanelRightClose, PanelRight } from "lucide-react";
 import AgentGraph, { type GraphNode, type NodeStatus } from "@/components/AgentGraph";
 import ChatPanel, { type ChatMessage } from "@/components/ChatPanel";
 import TopBar from "@/components/TopBar";
+import ModeSelector from "@/components/ModeSelector";
+import TestPanel from "@/components/TestPanel";
+import DebugPanel from "@/components/DebugPanel";
+import InfoPanel from "@/components/InfoPanel";
 import { TAB_STORAGE_KEY, loadPersistedTabs, savePersistedTabs, type PersistedTabState } from "@/lib/tab-persistence";
 import NodeDetailPanel from "@/components/NodeDetailPanel";
 import CredentialsModal, { type Credential, createFreshCredentials, cloneCredentials, allRequiredCredentialsMet, clearCredentialCache } from "@/components/CredentialsModal";
@@ -13,7 +17,7 @@ import { executionApi } from "@/api/execution";
 import { graphsApi } from "@/api/graphs";
 import { sessionsApi } from "@/api/sessions";
 import { useMultiSSE } from "@/hooks/use-sse";
-import type { LiveSession, AgentEvent, DiscoverEntry, Message, NodeSpec } from "@/api/types";
+import type { LiveSession, AgentEvent, DiscoverEntry, Message, NodeSpec, HiveMode } from "@/api/types";
 import { backendMessageToChatMessage, sseEventToChatMessage, formatAgentDisplayName } from "@/lib/chat-helpers";
 import { topologyToGraphNodes } from "@/lib/graph-converter";
 import { ApiError } from "@/api/client";
@@ -318,13 +322,13 @@ export default function Workspace() {
   }, []);
 
   const [credentialsOpen, setCredentialsOpen] = useState(false);
-  // Explicit agent path for the credentials modal — set from 424 responses
-  // when activeWorker doesn't match the actual agent (e.g. "new-agent" tab).
   const [credentialAgentPath, setCredentialAgentPath] = useState<string | null>(null);
   const [dismissedBanner, setDismissedBanner] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [newTabOpen, setNewTabOpen] = useState(false);
   const newTabBtnRef = useRef<HTMLButtonElement>(null);
+  const [activeMode, setActiveMode] = useState<HiveMode>("build");
+  const [modePanelOpen, setModePanelOpen] = useState(false);
 
   // Ref mirror of sessionsByAgent so SSE callback can read current graph
   // state without adding sessionsByAgent to its dependency array.
@@ -1479,13 +1483,26 @@ export default function Workspace() {
           </>
         }
       >
-        <button
-          onClick={() => setCredentialsOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors flex-shrink-0"
-        >
-          <KeyRound className="w-3.5 h-3.5" />
-          Credentials
-        </button>
+        <div className="flex items-center gap-2">
+          <ModeSelector
+            activeMode={activeMode}
+            onModeChange={(mode) => {
+              setActiveMode(mode);
+              if (mode !== "build" && mode !== "run") {
+                setModePanelOpen(true);
+              }
+            }}
+            disabled={activeAgentState?.loading ?? true}
+            compact
+          />
+          <button
+            onClick={() => setCredentialsOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors flex-shrink-0"
+          >
+            <KeyRound className="w-3.5 h-3.5" />
+            Credentials
+          </button>
+        </div>
       </TopBar>
 
       {/* Main content area */}
@@ -1633,6 +1650,49 @@ export default function Workspace() {
                 />
               )}
             </div>
+          )}
+          {modePanelOpen && activeMode !== "build" && activeMode !== "run" && (
+            <div className="w-[380px] min-w-[320px] flex-shrink-0 border-l border-border/40 bg-card/20">
+              <div className="flex items-center justify-between border-b border-border/40 px-4 py-2">
+                <button
+                  onClick={() => setModePanelOpen(false)}
+                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                  title="Close panel"
+                >
+                  <PanelRightClose className="w-4 h-4" />
+                </button>
+              </div>
+              {activeMode === "test" && (
+                <TestPanel
+                  sessionId={activeAgentState?.sessionId || null}
+                  disabled={activeAgentState?.loading ?? true}
+                />
+              )}
+              {activeMode === "debug" && (
+                <DebugPanel
+                  sessionId={activeAgentState?.sessionId || null}
+                  nodeSpecs={activeAgentState?.nodeSpecs || []}
+                  disabled={activeAgentState?.loading ?? true}
+                />
+              )}
+              {activeMode === "info" && (
+                <InfoPanel
+                  sessionId={activeAgentState?.sessionId || null}
+                  agentPath={activeWorker !== "new-agent" ? activeWorker : null}
+                  nodeSpecs={activeAgentState?.nodeSpecs || []}
+                  disabled={activeAgentState?.loading ?? true}
+                />
+              )}
+            </div>
+          )}
+          {!modePanelOpen && activeMode !== "build" && activeMode !== "run" && (
+            <button
+              onClick={() => setModePanelOpen(true)}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 p-2 rounded-l-md bg-muted/80 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-r-0 border-border/40"
+              title="Open mode panel"
+            >
+              <PanelRight className="w-4 h-4" />
+            </button>
           )}
         </div>
       </div>

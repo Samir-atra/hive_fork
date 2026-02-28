@@ -277,3 +277,86 @@ export interface AgentEvent {
   correlation_id: string | null;
   graph_id: string | null;
 }
+
+// --- Hive Mode types ---
+
+export type HiveMode = "build" | "test" | "debug" | "run" | "info";
+
+export interface HiveModeInfo {
+  id: HiveMode;
+  label: string;
+  description: string;
+  icon: string;
+}
+
+export const HIVE_MODES: HiveModeInfo[] = [
+  { id: "build", label: "Build", description: "Create and configure agents", icon: "Sparkles" },
+  { id: "run", label: "Run", description: "Execute agents with real-time output", icon: "Play" },
+  { id: "test", label: "Test", description: "Run tests and view results", icon: "TestTube" },
+  { id: "debug", label: "Debug", description: "Inspect checkpoints and step-through", icon: "Bug" },
+  { id: "info", label: "Info", description: "View agent metadata and config", icon: "Info" },
+];
+
+// --- Test Framework types ---
+
+export interface TestCase {
+  name: string;
+  description: string;
+  category: string;
+  input_data: Record<string, unknown>;
+  expected_output?: Record<string, unknown>;
+  timeout_seconds: number;
+}
+
+export interface TestResult {
+  test_name: string;
+  passed: boolean;
+  duration_ms: number;
+  error?: string;
+  output?: Record<string, unknown>;
+  timestamp: string;
+}
+
+export interface TestRunSummary {
+  total: number;
+  passed: number;
+  failed: number;
+  skipped: number;
+  duration_ms: number;
+  results: TestResult[];
+}
+
+// --- Debug types ---
+
+export interface DebugCheckpoint {
+  checkpoint_id: string;
+  node_id: string;
+  timestamp: string;
+  state: Record<string, unknown>;
+  conversation_snapshot?: string;
+}
+
+export interface DebugSession {
+  session_id: string;
+  current_node: string | null;
+  checkpoints: DebugCheckpoint[];
+  memory: Record<string, unknown>;
+  is_paused: boolean;
+}
+
+// --- Agent Info types ---
+
+export interface AgentInfo {
+  path: string;
+  name: string;
+  description: string;
+  version: string;
+  author?: string;
+  tags: string[];
+  node_count: number;
+  tool_count: number;
+  credentials_required: string[];
+  config: Record<string, unknown>;
+  goals?: string[];
+  constraints?: string[];
+}

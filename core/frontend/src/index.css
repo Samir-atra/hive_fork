@@ -167,3 +167,71 @@
 .animate-in.slide-in-from-right {
   animation: slide-in-from-right 0.2s ease-out;
 }
+
+/* Responsive panel utilities */
+@media (max-width: 639px) {
+  .responsive-panel {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .responsive-panel-left {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 40;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease-out;
+  }
+  
+  .responsive-panel-left.open {
+    transform: translateX(0);
+  }
+  
+  .responsive-panel-right {
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 40;
+    transform: translateX(100%);
+    transition: transform 0.2s ease-out;
+  }
+  
+  .responsive-panel-right.open {
+    transform: translateX(0);
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .responsive-panel {
+    width: 280px !important;
+    min-width: 240px !important;
+  }
+}
+
+/* Touch-friendly button sizes */
+@media (pointer: coarse) {
+  button, 
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .touch-target {
+    padding: 0.5rem;
+  }
+}
+
+/* Prevent horizontal scroll on mobile */
+@media (max-width: 639px) {
+  html, body {
+    overflow-x: hidden;
+  }
+  
+  .no-mobile-scroll {
+    overflow: hidden;
+  }
+}
