@@ -610,8 +610,22 @@ class GraphSpec(BaseModel):
         # Default to main entry
         return self.entry_node
 
-    def validate(self) -> list[str]:
-        """Validate the graph structure."""
+    def validate(
+        self,
+        cycle_detection_mode: str = "warn",
+        cycle_detection_enabled: bool = True,
+    ) -> list[str]:
+        """
+        Validate the graph structure.
+
+        Args:
+            cycle_detection_mode: "strict" (fail on cycles), "warn" (warn only),
+                                  "track" (runtime only), or "disabled"
+            cycle_detection_enabled: Whether to perform cycle detection
+
+        Returns:
+            List of error messages (empty if valid)
+        """
         errors = []
 
         # Check entry node exists
@@ -734,4 +748,85 @@ class GraphSpec(BaseModel):
                         else:
                             seen_keys[key] = node_id
 
+        if cycle_detection_enabled and cycle_detection_mode != "disabled":
+            cycle_errors = self._validate_cycles(mode=cycle_detection_mode)
+            errors.extend(cycle_errors)
+
         return errors
+
+    def _validate_cycles(self, mode: str = "warn") -> list[str]:
+        """
+        Validate graph for cycles.
+
+        Args:
+            mode: "strict" (fail on cycles), "warn" (warn only), or "track"
+
+        Returns:
+            List of error/warning messages about cycles
+        """
+        from framework.graph.cycle_detection import (
+            CycleDetectionMode,
+            GraphCycleDetector,
+        )
+
+        errors = []
+
+        try:
+            detector = GraphCycleDetector(self)
+            result = detector.detect_cycles()
+
+            all_cycles = result.critical_cycles + result.warning_cycles + result.info_cycles
+
+            for cycle in all_cycles:
+                if detector.is_cycle_allowed(cycle):
+                    continue
+
+                severity_prefix = f"[{cycle.severity.upper()}]"
+
+                if cycle.severity == "critical":
+                    msg = (
+                        f"{severity_prefix} Critical cycle detected: {' -> '.join(cycle.path)}. "
+                        f"This may cause infinite execution. "
+                        f"Set max_node_visits > 0 on nodes in the cycle, or use allow_cycles=true."
+                    )
+                else:
+                    msg = (
+                        f"{severity_prefix} Cycle detected: {' -> '.join(cycle.path)}. "
+                        f"Ensure proper exit conditions exist."
+                    )
+
+                if mode == CycleDetectionMode.STRICT:
+                    errors.append(msg)
+                else:
+                    logger.warning(f"⚠ {msg}")
+
+        except Exception as e:
+            logger.warning(f"Cycle detection failed: {e}")
+
+        return errors
+
+    def detect_cycles(self) -> list[dict]:
+        """
+        Detect all cycles in the graph.
+
+        Returns:
+            List of cycle information dicts with 'path', 'length', 'severity' keys
+        """
+        from framework.graph.cycle_detection import GraphCycleDetector
+
+        try:
+            detector = GraphCycleDetector(self)
+            result = detector.detect_cycles()
+            return [
+                {
+                    "path": cycle.path,
+                    "length": cycle.length,
+                    "severity": cycle.severity,
+                    "conditional": cycle.conditional,
+                    "entry_point": cycle.entry_point,
+                }
+                for cycle in result.cycles
+            ]
+        except Exception as e:
+            logger.warning(f"Cycle detection failed: {e}")
+            return []

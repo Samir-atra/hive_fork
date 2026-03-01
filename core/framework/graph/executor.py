@@ -138,6 +138,7 @@ class GraphExecutor:
         accounts_prompt: str = "",
         accounts_data: list[dict] | None = None,
         tool_provider_map: dict[str, str] | None = None,
+        cycle_detection_config: dict[str, Any] | None = None,
     ):
         """
         Initialize the executor.
@@ -160,6 +161,11 @@ class GraphExecutor:
             accounts_prompt: Connected accounts block for system prompt injection
             accounts_data: Raw account data for per-node prompt generation
             tool_provider_map: Tool name to provider name mapping for account routing
+            cycle_detection_config: Optional cycle detection configuration with keys:
+                - enabled: bool (default True)
+                - mode: "strict", "warn", "track", or "disabled"
+                - max_iterations: int (default 100)
+                - action_on_cycle: "terminate", "break", or "continue"
         """
         self.runtime = runtime
         self.llm = llm
@@ -179,19 +185,20 @@ class GraphExecutor:
         self.accounts_data = accounts_data
         self.tool_provider_map = tool_provider_map
 
-        # Initialize output cleaner
         self.cleansing_config = cleansing_config or CleansingConfig()
         self.output_cleaner = OutputCleaner(
             config=self.cleansing_config,
             llm_provider=llm,
         )
 
-        # Parallel execution settings
         self.enable_parallel_execution = enable_parallel_execution
         self._parallel_config = parallel_config or ParallelExecutionConfig()
 
-        # Pause/resume control
         self._pause_requested = asyncio.Event()
+
+        from framework.graph.cycle_detection import CycleDetectionConfig
+
+        self._cycle_detection_config = CycleDetectionConfig(**(cycle_detection_config or {}))
 
     def _write_progress(
         self,
@@ -306,8 +313,21 @@ class GraphExecutor:
         # Add agent_id to trace context for correlation
         set_trace_context(agent_id=graph.id)
 
-        # Validate graph
-        errors = graph.validate()
+        from framework.graph.cycle_detection import CycleTracker
+
+        cycle_tracker = CycleTracker(self._cycle_detection_config)
+
+        cycle_mode = (
+            self._cycle_detection_config.mode
+            if self._cycle_detection_config.enabled
+            else "disabled"
+        )
+
+        errors = graph.validate(
+            cycle_detection_mode=cycle_mode,
+            cycle_detection_enabled=self._cycle_detection_config.enabled
+            and self._cycle_detection_config.mode == "strict",
+        )
         if errors:
             return ExecutionResult(
                 success=False,
@@ -381,9 +401,9 @@ class GraphExecutor:
         node_visit_counts: dict[str, int] = {}  # Track visits for feedback loops
         _is_retry = False  # True when looping back for a retry (not a new visit)
 
-        # Restore node_visit_counts from session state if available
         if session_state and "node_visit_counts" in session_state:
             node_visit_counts = dict(session_state["node_visit_counts"])
+            cycle_tracker.node_visit_counts = dict(node_visit_counts)
             if node_visit_counts:
                 self.logger.info(f"📥 Restored node visit counts: {node_visit_counts}")
 
@@ -648,7 +668,53 @@ class GraphExecutor:
                 if not _is_retry:
                     cnt = node_visit_counts.get(current_node_id, 0) + 1
                     node_visit_counts[current_node_id] = cnt
+                    cycle_tracker.record_visit(current_node_id)
                 _is_retry = False
+
+                if (
+                    self._cycle_detection_config.enabled
+                    and self._cycle_detection_config.mode == "track"
+                    and cycle_tracker.should_break(current_node_id)
+                ):
+                    cycle_path = cycle_tracker.extract_cycle_path(current_node_id)
+                    visit_count = cycle_tracker.get_visit_count(current_node_id)
+
+                    if self._cycle_detection_config.action_on_cycle == "terminate":
+                        self.logger.error(
+                            f"   ✗ Cycle detected: Node '{node_spec.name}' visited "
+                            f"{visit_count} times. Cycle path: {' -> '.join(cycle_path)}"
+                        )
+                        from framework.graph.cycle_detection import CycleDetectedError
+
+                        raise CycleDetectedError(
+                            message=(
+                                f"Node '{node_spec.name}' exceeded max iterations "
+                                f"({self._cycle_detection_config.max_iterations}). "
+                                f"Cycle detected: {' -> '.join(cycle_path)}"
+                            ),
+                            cycle_path=cycle_path,
+                            node_id=current_node_id,
+                            iteration_count=visit_count,
+                        )
+                    elif self._cycle_detection_config.action_on_cycle == "break":
+                        self.logger.warning(
+                            f"   ⚠ Breaking cycle at node '{node_spec.name}' "
+                            f"after {visit_count} iterations"
+                        )
+                        next_node = await self._follow_edges(
+                            graph=graph,
+                            goal=goal,
+                            current_node_id=current_node_id,
+                            current_node_spec=node_spec,
+                            result=NodeResult(success=True, output={"_cycle_break": True}),
+                            memory=memory,
+                        )
+                        if next_node is None:
+                            self.logger.info("   → No more edges after cycle break, ending")
+                            break
+                        current_node_id = next_node
+                        continue
+
                 max_visits = getattr(node_spec, "max_node_visits", 0)
                 if max_visits > 0 and node_visit_counts[current_node_id] > max_visits:
                     self.logger.warning(
