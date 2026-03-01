@@ -2151,7 +2151,12 @@ class EventLoopNode(NodeProtocol):
         return False, ""
 
     async def _execute_tool(self, tc: ToolCallEvent) -> ToolResult:
-        """Execute a tool call, handling both sync and async executors."""
+        """Execute a tool call, handling both sync and async executors.
+
+        Uses run_in_executor to run synchronous tool executors in a thread pool,
+        enabling true parallel execution when asyncio.gather calls this method
+        multiple times concurrently.
+        """
         if self._tool_executor is None:
             return ToolResult(
                 tool_use_id=tc.tool_use_id,
@@ -2159,7 +2164,8 @@ class EventLoopNode(NodeProtocol):
                 is_error=True,
             )
         tool_use = ToolUse(id=tc.tool_use_id, name=tc.tool_name, input=tc.tool_input)
-        result = self._tool_executor(tool_use)
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, self._tool_executor, tool_use)
         if asyncio.iscoroutine(result) or asyncio.isfuture(result):
             result = await result
         return result

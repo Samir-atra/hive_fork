@@ -999,6 +999,78 @@ class TestToolExecution:
         assert llm._call_index >= 2
 
 
+class TestParallelToolExecution:
+    """Tests for parallel execution of multiple tool calls."""
+
+    @pytest.mark.asyncio
+    async def test_multiple_tools_execute_in_parallel(self, runtime, node_spec, memory):
+        """Multiple tool calls should execute concurrently, not sequentially.
+
+        Uses blocking tool executors with sleep to verify parallelism:
+        - Sequential execution: 3 tools * 0.1s = 0.3s minimum
+        - Parallel execution: max(0.1s, 0.1s, 0.1s) = 0.1s
+        """
+        import time
+
+        node_spec.output_keys = []
+
+        execution_times: list[float] = []
+        start_time = time.monotonic()
+
+        def slow_tool_executor(tool_use: ToolUse) -> ToolResult:
+            thread_start = time.monotonic()
+            time.sleep(0.1)  # Simulate blocking I/O
+            execution_times.append(time.monotonic() - thread_start)
+            return ToolResult(
+                tool_use_id=tool_use.id,
+                content=f"Result for {tool_use.name}",
+                is_error=False,
+            )
+
+        llm = MockStreamingLLM(
+            scenarios=[
+                [
+                    ToolCallEvent(tool_use_id="call_1", tool_name="tool_a", tool_input={"x": 1}),
+                    ToolCallEvent(tool_use_id="call_2", tool_name="tool_b", tool_input={"x": 2}),
+                    ToolCallEvent(tool_use_id="call_3", tool_name="tool_c", tool_input={"x": 3}),
+                    FinishEvent(
+                        stop_reason="tool_calls",
+                        input_tokens=10,
+                        output_tokens=5,
+                        model="mock",
+                    ),
+                ],
+                text_scenario("All tools completed"),
+            ]
+        )
+
+        ctx = build_ctx(
+            runtime,
+            node_spec,
+            memory,
+            llm,
+            tools=[
+                Tool(name="tool_a", description="Tool A", parameters={}),
+                Tool(name="tool_b", description="Tool B", parameters={}),
+                Tool(name="tool_c", description="Tool C", parameters={}),
+            ],
+        )
+        node = EventLoopNode(
+            tool_executor=slow_tool_executor,
+            config=LoopConfig(max_iterations=5),
+        )
+        result = await node.execute(ctx)
+
+        total_time = time.monotonic() - start_time
+
+        assert result.success is True
+        assert len(execution_times) == 3
+
+        assert total_time < 0.35, (
+            f"Parallel execution should complete in ~0.1s, took {total_time:.2f}s"
+        )
+
+
 # ===========================================================================
 # Write-through persistence with real FileConversationStore
 # ===========================================================================
