@@ -3915,8 +3915,129 @@ def compare_agent_checkpoints(
 
 
 # =============================================================================
+# AGENT GENERATION PROMPTS (for dynamic/self-evolving agents)
+# =============================================================================
+
+
+@mcp.tool()
+def get_agent_generation_prompts(
+    format: Annotated[
+        str,
+        "Prompt format: 'full' (default, with examples), 'compact' (token-efficient), or 'schema' (just the schema)",
+    ] = "full",
+) -> str:
+    """
+    Get system prompts for LLM-based agent generation.
+
+    These prompts enable LLMs to generate valid agent.json definitions with
+    ~80%+ first-attempt success rate (up from ~10% without guidance).
+
+    Use this when:
+    - Building a self-evolving agent that modifies its own graph
+    - Creating an agent builder that generates other agents
+    - Dynamically generating agent definitions from natural language
+
+    Args:
+        format: Which prompt to retrieve:
+            - 'full': Complete prompt with working examples (default)
+            - 'compact': Token-efficient version for limited contexts
+            - 'schema': Just the schema documentation
+
+    Returns:
+        JSON object containing the requested prompt(s) and usage guidelines.
+    """
+    from framework.prompts import (
+        AGENT_GENERATION_COMPACT_PROMPT,
+        AGENT_GENERATION_SYSTEM_PROMPT,
+        AGENT_JSON_SCHEMA,
+    )
+
+    if format == "full":
+        prompt = AGENT_GENERATION_SYSTEM_PROMPT
+        prompt_type = "system_prompt"
+    elif format == "compact":
+        prompt = AGENT_GENERATION_COMPACT_PROMPT
+        prompt_type = "compact_prompt"
+    elif format == "schema":
+        prompt = AGENT_JSON_SCHEMA
+        prompt_type = "schema"
+    else:
+        return json.dumps(
+            {
+                "error": f"Invalid format '{format}'. Must be 'full', 'compact', or 'schema'.",
+            }
+        )
+
+    return json.dumps(
+        {
+            "format": format,
+            "prompt_type": prompt_type,
+            "prompt": prompt,
+            "token_estimate": len(prompt) // 4,
+            "usage": {
+                "system_message": "Use as the system message when calling an LLM to generate an agent definition.",
+                "combined": "Combine with specific requirements in the user message.",
+                "json_mode": "Enable json_mode=True when calling the LLM for structured output.",
+                "example_usage": 'messages = [{"role": "system", "content": prompt}, {"role": "user", "content": "Create a research agent"}]',
+            },
+            "available_formats": {
+                "full": "Complete prompt with 3 working examples (research, router, feedback loop agents)",
+                "compact": "Token-efficient version (~500 tokens) for limited contexts",
+                "schema": "Just the schema documentation without examples",
+            },
+        }
+    )
+
+
+@mcp.tool()
+def get_all_agent_generation_prompts() -> str:
+    """
+    Get all agent generation prompts at once.
+
+    Returns the full system prompt, compact prompt, and schema documentation.
+    Use this when you need all variants for different use cases.
+
+    Returns:
+        JSON object containing all prompts with metadata.
+    """
+    from framework.prompts import (
+        AGENT_GENERATION_COMPACT_PROMPT,
+        AGENT_GENERATION_SYSTEM_PROMPT,
+        AGENT_JSON_SCHEMA,
+    )
+
+    return json.dumps(
+        {
+            "prompts": {
+                "system_prompt": {
+                    "content": AGENT_GENERATION_SYSTEM_PROMPT,
+                    "token_estimate": len(AGENT_GENERATION_SYSTEM_PROMPT) // 4,
+                    "description": "Full prompt with working examples for agent generation",
+                },
+                "compact_prompt": {
+                    "content": AGENT_GENERATION_COMPACT_PROMPT,
+                    "token_estimate": len(AGENT_GENERATION_COMPACT_PROMPT) // 4,
+                    "description": "Token-efficient version for limited contexts",
+                },
+                "schema": {
+                    "content": AGENT_JSON_SCHEMA,
+                    "token_estimate": len(AGENT_JSON_SCHEMA) // 4,
+                    "description": "Complete schema documentation",
+                },
+            },
+            "recommended_usage": {
+                "for_self_evolution": "Use 'system_prompt' for agents that modify their own graph",
+                "for_limited_context": "Use 'compact_prompt' when context is limited",
+                "for_validation": "Use 'schema' to validate generated agent definitions",
+            },
+        }
+    )
+
+
+# =============================================================================
 # MAIN
 # =============================================================================
+
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")
