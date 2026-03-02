@@ -7,6 +7,7 @@ to clean malformed outputs before they flow to the next node.
 This prevents cascading failures and dramatically improves execution success rates.
 """
 
+import asyncio
 import json
 import logging
 import re
@@ -70,6 +71,7 @@ class CleansingConfig:
     cache_successful_patterns: bool = True
     fallback_to_raw: bool = True  # If cleaning fails, pass raw output
     log_cleanings: bool = True  # Log when cleansing happens
+    timeout: float = 30.0  # Timeout in seconds for LLM cleaning calls
 
 
 @dataclass
@@ -288,12 +290,16 @@ Return ONLY valid JSON matching the expected schema. No explanations, no markdow
                     f"🧹 Cleaning output from '{source_node_id}' using {self.config.fast_model}"
                 )
 
-            response = await self.llm.acomplete(
-                messages=[{"role": "user", "content": prompt}],
-                system=(
-                    "You clean malformed agent outputs. Return only valid JSON matching the schema."
+            response = await asyncio.wait_for(
+                self.llm.acomplete(
+                    messages=[{"role": "user", "content": prompt}],
+                    system=(
+                        "You clean malformed agent outputs. "
+                        "Return only valid JSON matching the schema."
+                    ),
+                    max_tokens=2048,  # Sufficient for cleaning most outputs
                 ),
-                max_tokens=2048,  # Sufficient for cleaning most outputs
+                timeout=self.config.timeout,
             )
 
             # Parse cleaned output
@@ -324,6 +330,16 @@ Return ONLY valid JSON matching the expected schema. No explanations, no markdow
             logger.error(f"✗ Failed to parse cleaned JSON: {e}")
             if self.config.fallback_to_raw:
                 logger.info("↩ Falling back to raw output")
+                return output
+            else:
+                raise
+
+        except TimeoutError:
+            logger.error(
+                f"✗ Cleaning LLM timed out after {self.config.timeout}s for '{source_node_id}'"
+            )
+            if self.config.fallback_to_raw:
+                logger.info("↩ Falling back to raw output due to timeout")
                 return output
             else:
                 raise
