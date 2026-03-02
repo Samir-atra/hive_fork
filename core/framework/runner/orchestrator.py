@@ -1,9 +1,13 @@
-"""Agent Orchestrator - routes requests and relays messages between agents."""
+"""Agent Orchestrator - routes requests and relays messages between agents.
+
+Supports both local (in-process) and remote (distributed) agent execution.
+"""
 
 from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -18,6 +22,18 @@ from framework.runner.protocol import (
     RegisteredAgent,
 )
 from framework.runner.runner import AgentRunner
+from framework.runner.transport import (
+    InProcessTransport,
+    NodeAddress,
+    NodeInfo,
+    NodeRegistry,
+    NodeStatus,
+    Transport,
+    TransportConfig,
+    WebSocketTransport,
+)
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -40,8 +56,9 @@ class AgentOrchestrator:
     2. Routes incoming requests to appropriate agent(s) using LLM
     3. Relays messages between agents
     4. Logs all communications for traceability
+    5. Supports distributed execution across remote nodes
 
-    Usage:
+    Usage (local agents):
         orchestrator = AgentOrchestrator()
         orchestrator.register("sales", "exports/outbound-sales")
         orchestrator.register("support", "exports/customer-support")
@@ -50,12 +67,22 @@ class AgentOrchestrator:
             "intent": "help customer with billing issue",
             "customer_id": "123",
         })
+
+    Usage (with remote nodes):
+        orchestrator = AgentOrchestrator()
+        orchestrator.register("local-agent", "exports/local-agent")
+        await orchestrator.connect_node("ws://gpu-server:8080")
+
+        result = await orchestrator.dispatch({
+            "intent": "process image",
+        })
     """
 
     def __init__(
         self,
         llm: LLMProvider | None = None,
         model: str = "claude-haiku-4-5-20251001",
+        transport_config: TransportConfig | None = None,
     ):
         """
         Initialize the orchestrator.
@@ -63,13 +90,18 @@ class AgentOrchestrator:
         Args:
             llm: LLM provider for routing decisions (auto-creates if None)
             model: Model to use for routing
+            transport_config: Configuration for remote transport
         """
         self._agents: dict[str, RegisteredAgent] = {}
         self._llm = llm
         self._model = model
         self._message_log: list[AgentMessage] = []
 
-        # Auto-create LLM - LiteLLM auto-detects provider and API key from model name
+        self._transport_config = transport_config or TransportConfig()
+        self._node_registry = NodeRegistry(config=self._transport_config)
+        self._transports: dict[str, Any] = {}
+        self._local_transport = InProcessTransport(self._transport_config)
+
         if self._llm is None:
             from framework.config import get_api_base, get_api_key, get_llm_extra_kwargs
             from framework.llm.litellm import LiteLLMProvider
@@ -351,7 +383,10 @@ class AgentOrchestrator:
         self,
         request: dict,
     ) -> dict[str, CapabilityResponse]:
-        """Check all agents' capabilities in parallel."""
+        """Check all agents' capabilities in parallel.
+
+        Includes both local agents and remote nodes.
+        """
         tasks = []
         agent_names = []
 
@@ -372,6 +407,13 @@ class AgentOrchestrator:
                 )
             else:
                 capabilities[name] = result
+
+        remote_nodes = await self._node_registry.get_healthy_nodes()
+        for node in remote_nodes:
+            if node.node_id not in capabilities:
+                node_cap = await self._node_registry.get_capability_response(node.node_id)
+                if node_cap:
+                    capabilities[node.node_id] = node_cap
 
         return capabilities
 
@@ -498,9 +540,192 @@ Respond with JSON only:
         agent_name: str,
         message: AgentMessage,
     ) -> AgentMessage:
-        """Send a message to an agent and get response."""
-        agent = self._agents[agent_name]
-        return await agent.runner.receive_message(message)
+        """Send a message to an agent and get response.
+
+        Handles both local agents and remote nodes transparently.
+        """
+        if agent_name in self._agents:
+            agent = self._agents[agent_name]
+            return await agent.runner.receive_message(message)
+
+        node_info = await self._node_registry.get_node(agent_name)
+        if node_info:
+            return await self._send_to_remote_node(agent_name, message)
+
+        raise ValueError(f"Unknown agent or node: {agent_name}")
+
+    async def _send_to_remote_node(
+        self,
+        node_id: str,
+        message: AgentMessage,
+    ) -> AgentMessage:
+        """Send a message to a remote node via transport.
+
+        Args:
+            node_id: The node ID to send to
+            message: The message to send
+
+        Returns:
+            Response from the remote node
+        """
+        transport = self._transports.get(node_id)
+        if not transport:
+            transport = self._node_registry.get_node_transport(node_id)
+
+        if not transport:
+            node_info = await self._node_registry.get_node(node_id)
+            if not node_info:
+                raise ValueError(f"Unknown node: {node_id}")
+
+            transport = await self._create_transport_for_node(node_info)
+            self._transports[node_id] = transport
+
+        try:
+            response = await transport.send_and_wait(
+                message,
+                timeout=self._transport_config.timeout,
+            )
+            await self._node_registry.record_heartbeat(node_id)
+            return response
+        except Exception as e:
+            logger.error(f"Failed to send to remote node {node_id}: {e}")
+            raise
+
+    async def _create_transport_for_node(self, node_info: NodeInfo) -> Transport:
+        """Create and connect a transport for a remote node.
+
+        Args:
+            node_info: Information about the node
+
+        Returns:
+            Connected transport
+        """
+        protocol = node_info.address.protocol.lower()
+
+        if protocol in ("ws", "wss"):
+            transport = WebSocketTransport(self._transport_config)
+        else:
+            transport = InProcessTransport(self._transport_config)
+
+        await transport.connect(node_info.address)
+        return transport
+
+    async def connect_node(
+        self,
+        url: str,
+        name: str | None = None,
+        capabilities: list[str] | None = None,
+    ) -> str:
+        """Connect to a remote node.
+
+        Args:
+            url: WebSocket URL of the remote node (e.g., "ws://gpu-server:8080")
+            name: Optional name for the node (defaults to URL host)
+            capabilities: Optional list of capabilities this node provides
+
+        Returns:
+            Node ID
+
+        Example:
+            await orchestrator.connect_node(
+                "ws://gpu-server:8080",
+                name="gpu-server",
+                capabilities=["image_processing", "ml_inference"],
+            )
+        """
+        address = NodeAddress(url=url)
+        node_id = name or address.host
+
+        transport = WebSocketTransport(self._transport_config)
+        await transport.connect(address)
+
+        self._transports[node_id] = transport
+
+        node_info = NodeInfo(
+            node_id=node_id,
+            address=address,
+            name=name or address.host,
+            capabilities=capabilities or [],
+            status=NodeStatus.HEALTHY,
+        )
+        await self._node_registry.register_node(node_info, transport)
+
+        logger.info(f"Connected to remote node: {node_id} at {url}")
+        return node_id
+
+    async def disconnect_node(self, node_id: str) -> bool:
+        """Disconnect from a remote node.
+
+        Args:
+            node_id: ID of the node to disconnect
+
+        Returns:
+            True if disconnected, False if not found
+        """
+        transport = self._transports.pop(node_id, None)
+        if transport:
+            await transport.disconnect()
+
+        return await self._node_registry.unregister_node(node_id)
+
+    async def list_nodes(self) -> list[dict]:
+        """List all connected remote nodes.
+
+        Returns:
+            List of node information dictionaries
+        """
+        nodes = await self._node_registry.get_all_nodes()
+        return [
+            {
+                "node_id": node.node_id,
+                "name": node.name,
+                "address": str(node.address),
+                "capabilities": node.capabilities,
+                "status": node.status,
+            }
+            for node in nodes
+        ]
+
+    async def start_node_server(
+        self,
+        port: int = 8080,
+        host: str = "0.0.0.0",
+        capabilities: list[str] | None = None,
+    ) -> None:
+        """Start a WebSocket server to accept remote connections.
+
+        This allows other orchestrators to connect to this node and
+        dispatch requests to local agents.
+
+        Args:
+            port: Port to listen on
+            host: Host to bind to
+            capabilities: Capabilities this node advertises
+        """
+        transport = WebSocketTransport(self._transport_config)
+        address = NodeAddress(host=host, port=port, protocol="ws")
+        await transport.start_server(address)
+
+        self._local_transport = transport
+
+        node_info = NodeInfo(
+            node_id="local",
+            address=address,
+            name="local-server",
+            capabilities=capabilities or [],
+            status=NodeStatus.HEALTHY,
+        )
+        self._node_registry.local_node_id = "local"
+        await self._node_registry.register_node(node_info, transport)
+
+        logger.info(f"Started node server at ws://{host}:{port}")
+
+    async def stop_node_server(self) -> None:
+        """Stop the WebSocket server."""
+        if isinstance(self._local_transport, WebSocketTransport):
+            await self._local_transport.stop_server()
+        await self._node_registry.stop()
+        logger.info("Stopped node server")
 
     def get_message_log(self) -> list[AgentMessage]:
         """Get full message log for debugging/tracing."""
@@ -510,8 +735,14 @@ Respond with JSON only:
         """Clear the message log."""
         self._message_log.clear()
 
-    def cleanup(self) -> None:
-        """Clean up all agent resources."""
+    async def cleanup(self) -> None:
+        """Clean up all agent resources and disconnect remote nodes."""
         for agent in self._agents.values():
             agent.runner.cleanup()
         self._agents.clear()
+
+        for transport in self._transports.values():
+            await transport.disconnect()
+        self._transports.clear()
+
+        await self._node_registry.stop()
