@@ -35,6 +35,10 @@ class MCPServerConfig:
     # Optional metadata
     description: str = ""
 
+    # Configurable timeouts (in seconds)
+    event_loop_timeout: float = 5.0
+    connection_timeout: float = 10.0
+
 
 @dataclass
 class MCPTool:
@@ -133,6 +137,7 @@ class MCPClient:
             return
 
         if self.config.transport == "stdio":
+            self._validate_stdio_config()
             self._connect_stdio()
         elif self.config.transport == "http":
             self._connect_http()
@@ -143,11 +148,41 @@ class MCPClient:
         self._discover_tools()
         self._connected = True
 
+    def _validate_stdio_config(self) -> None:
+        """Validate STDIO transport configuration parameters."""
+        if not self.config.command:
+            raise ValueError(
+                f"command is required for STDIO transport. "
+                f"Server config: name='{self.config.name}', transport='{self.config.transport}'"
+            )
+
+        if not isinstance(self.config.args, list):
+            raise TypeError(
+                f"args must be a list, got {type(self.config.args).__name__}. "
+                f"Server config: name='{self.config.name}'"
+            )
+
+        for i, arg in enumerate(self.config.args):
+            if not isinstance(arg, str):
+                raise TypeError(
+                    f"args[{i}] must be a string, got {type(arg).__name__}. "
+                    f"Server config: name='{self.config.name}', args={self.config.args}"
+                )
+
+        if self.config.cwd is not None:
+            if not isinstance(self.config.cwd, str):
+                raise TypeError(
+                    f"cwd must be a string, got {type(self.config.cwd).__name__}. "
+                    f"Server config: name='{self.config.name}'"
+                )
+            if not os.path.isdir(self.config.cwd):
+                raise ValueError(
+                    f"cwd directory does not exist: '{self.config.cwd}'. "
+                    f"Server config: name='{self.config.name}'"
+                )
+
     def _connect_stdio(self) -> None:
         """Connect to MCP server via STDIO transport using MCP SDK with persistent connection."""
-        if not self.config.command:
-            raise ValueError("command is required for STDIO transport")
-
         try:
             import threading
 
@@ -215,18 +250,31 @@ class MCPClient:
             self._loop_thread.start()
 
             # Wait for loop to start
-            loop_started.wait(timeout=5)
+            loop_started.wait(timeout=self.config.event_loop_timeout)
             if not loop_started.is_set():
-                raise RuntimeError("Event loop failed to start")
+                raise RuntimeError(
+                    f"Event loop failed to start within {self.config.event_loop_timeout}s. "
+                    f"Server config: name='{self.config.name}', command='{self.config.command}'"
+                )
 
             # Wait for connection to be ready
-            connection_ready.wait(timeout=10)
+            connection_ready.wait(timeout=self.config.connection_timeout)
             if connection_error:
                 raise connection_error[0]
+            if not connection_ready.is_set():
+                raise RuntimeError(
+                    f"Connection timed out after {self.config.connection_timeout}s. "
+                    f"Server config: name='{self.config.name}', command='{self.config.command}', "
+                    f"args={self.config.args}, cwd='{self.config.cwd}'"
+                )
 
             logger.info(f"Connected to MCP server '{self.config.name}' via STDIO (persistent)")
         except Exception as e:
-            raise RuntimeError(f"Failed to connect to MCP server: {e}") from e
+            raise RuntimeError(
+                f"Failed to connect to MCP server '{self.config.name}': {e}. "
+                f"Server config: command='{self.config.command}', args={self.config.args}, "
+                f"cwd='{self.config.cwd}'"
+            ) from e
 
     def _connect_http(self) -> None:
         """Connect to MCP server via HTTP transport."""
