@@ -419,7 +419,6 @@ class LiteLLMProvider(LLMProvider):
 
                 return response
             except RateLimitError as e:
-                # Dump full request to file for debugging
                 messages = kwargs.get("messages", [])
                 token_count, token_method = _estimate_tokens(model, messages)
                 dump_path = _dump_failed_request(
@@ -445,7 +444,47 @@ class LiteLLMProvider(LLMProvider):
                     f"(attempt {attempt + 1}/{retries})"
                 )
                 time.sleep(wait)
-        # unreachable, but satisfies type checker
+            except Exception as e:
+                messages = kwargs.get("messages", [])
+                token_count, token_method = _estimate_tokens(model, messages)
+                if _is_stream_transient_error(e):
+                    if attempt == retries:
+                        dump_path = _dump_failed_request(
+                            model=model,
+                            kwargs=kwargs,
+                            error_type="transient_error",
+                            attempt=attempt,
+                        )
+                        logger.error(
+                            f"[retry] GAVE UP on {model} after {retries + 1} "
+                            f"attempts — transient error: {type(e).__name__}: {e!s}. "
+                            f"~{token_count} tokens ({token_method}). "
+                            f"Full request dumped to: {dump_path}"
+                        )
+                        raise
+                    wait = _compute_retry_delay(attempt, exception=e)
+                    logger.warning(
+                        f"[retry] {model} transient error "
+                        f"({type(e).__name__}): {e!s}. "
+                        f"~{token_count} tokens ({token_method}). "
+                        f"Retrying in {wait}s "
+                        f"(attempt {attempt + 1}/{retries})"
+                    )
+                    time.sleep(wait)
+                else:
+                    dump_path = _dump_failed_request(
+                        model=model,
+                        kwargs=kwargs,
+                        error_type="api_error",
+                        attempt=attempt,
+                    )
+                    logger.error(
+                        f"[retry] {model} API error ({type(e).__name__}): {e!s}. "
+                        f"~{token_count} tokens ({token_method}). "
+                        f"Full request dumped to: {dump_path}. "
+                        f"Not retrying — non-transient error."
+                    )
+                    raise
         raise RuntimeError("Exhausted rate limit retries")
 
     def complete(
@@ -645,6 +684,47 @@ class LiteLLMProvider(LLMProvider):
                     f"(attempt {attempt + 1}/{retries})"
                 )
                 await asyncio.sleep(wait)
+            except Exception as e:
+                messages = kwargs.get("messages", [])
+                token_count, token_method = _estimate_tokens(model, messages)
+                if _is_stream_transient_error(e):
+                    if attempt == retries:
+                        dump_path = _dump_failed_request(
+                            model=model,
+                            kwargs=kwargs,
+                            error_type="transient_error",
+                            attempt=attempt,
+                        )
+                        logger.error(
+                            f"[async-retry] GAVE UP on {model} after {retries + 1} "
+                            f"attempts — transient error: {type(e).__name__}: {e!s}. "
+                            f"~{token_count} tokens ({token_method}). "
+                            f"Full request dumped to: {dump_path}"
+                        )
+                        raise
+                    wait = _compute_retry_delay(attempt, exception=e)
+                    logger.warning(
+                        f"[async-retry] {model} transient error "
+                        f"({type(e).__name__}): {e!s}. "
+                        f"~{token_count} tokens ({token_method}). "
+                        f"Retrying in {wait}s "
+                        f"(attempt {attempt + 1}/{retries})"
+                    )
+                    await asyncio.sleep(wait)
+                else:
+                    dump_path = _dump_failed_request(
+                        model=model,
+                        kwargs=kwargs,
+                        error_type="api_error",
+                        attempt=attempt,
+                    )
+                    logger.error(
+                        f"[async-retry] {model} API error ({type(e).__name__}): {e!s}. "
+                        f"~{token_count} tokens ({token_method}). "
+                        f"Full request dumped to: {dump_path}. "
+                        f"Not retrying — non-transient error."
+                    )
+                    raise
         raise RuntimeError("Exhausted rate limit retries")
 
     async def acomplete(

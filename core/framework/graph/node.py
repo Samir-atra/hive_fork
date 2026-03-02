@@ -344,14 +344,14 @@ class SharedMemory:
         if self._allowed_write and key not in self._allowed_write:
             raise PermissionError(f"Node not allowed to write key: {key}")
 
-        # Ensure key has a lock (double-checked locking pattern)
-        if key not in self._key_locks:
-            async with self._lock:
-                if key not in self._key_locks:
-                    self._key_locks[key] = asyncio.Lock()
+        # Ensure key has a lock - always acquire main lock to prevent race condition
+        async with self._lock:
+            if key not in self._key_locks:
+                self._key_locks[key] = asyncio.Lock()
+            key_lock = self._key_locks[key]
 
         # Acquire per-key lock and write
-        async with self._key_locks[key]:
+        async with key_lock:
             if validate and isinstance(value, str):
                 if len(value) > 5000:
                     if self._contains_code_indicators(value):

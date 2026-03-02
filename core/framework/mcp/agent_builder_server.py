@@ -653,9 +653,6 @@ def add_node(
         max_node_visits=max_node_visits,
     )
 
-    session.nodes.append(node)
-
-    # Validate
     errors = []
     warnings = []
 
@@ -664,18 +661,15 @@ def add_node(
     if not name:
         errors.append("Node must have a name")
 
-    # Reject removed node types
     if node_type in ("function", "llm_tool_use", "llm_generate"):
         errors.append(f"Node type '{node_type}' is no longer supported. Use 'event_loop' instead.")
 
     if node_type == "router" and not routes_dict:
         errors.append(f"Router node '{node_id}' must specify routes")
 
-    # EventLoopNode validation
     if node_type == "event_loop" and not system_prompt:
         warnings.append(f"Event loop node '{node_id}' should have a system_prompt")
 
-    # Warn about client_facing on nodes with tools (likely autonomous work)
     if node_type == "event_loop" and client_facing and tools_list:
         warnings.append(
             f"Node '{node_id}' is client_facing=True but has tools {tools_list}. "
@@ -683,7 +677,6 @@ def add_node(
             "client_facing=False. Only set True if this node needs user approval."
         )
 
-    # nullable_output_keys must be a subset of output_keys
     if nullable_output_keys_list:
         invalid_nullable = [k for k in nullable_output_keys_list if k not in output_keys_list]
         if invalid_nullable:
@@ -692,12 +685,23 @@ def add_node(
                 f"output_keys {output_keys_list}"
             )
 
-    _save_session(session)  # Auto-save
+    if errors:
+        return json.dumps(
+            {
+                "valid": False,
+                "errors": errors,
+                "warnings": warnings,
+                "node": node.model_dump(),
+            }
+        )
+
+    session.nodes.append(node)
+    _save_session(session)
 
     return json.dumps(
         {
-            "valid": len(errors) == 0,
-            "errors": errors,
+            "valid": True,
+            "errors": [],
             "warnings": warnings,
             "node": node.model_dump(),
             "total_nodes": len(session.nodes),
@@ -764,9 +768,6 @@ def add_edge(
         priority=priority,
     )
 
-    session.edges.append(edge)
-
-    # Validate
     errors = []
     warnings = []
 
@@ -777,7 +778,6 @@ def add_edge(
     if edge_condition == EdgeCondition.CONDITIONAL and not condition_expr:
         errors.append(f"Conditional edge '{edge_id}' needs condition_expr")
 
-    # Feedback edge validation
     if priority < 0:
         target_node = next((n for n in session.nodes if n.id == target), None)
         if target_node and target_node.max_node_visits <= 1:
@@ -788,12 +788,23 @@ def add_edge(
                 "Consider increasing max_node_visits on the target node."
             )
 
-    _save_session(session)  # Auto-save
+    if errors:
+        return json.dumps(
+            {
+                "valid": False,
+                "errors": errors,
+                "warnings": warnings,
+                "edge": edge.model_dump(),
+            }
+        )
+
+    session.edges.append(edge)
+    _save_session(session)
 
     return json.dumps(
         {
-            "valid": len(errors) == 0,
-            "errors": errors,
+            "valid": True,
+            "errors": [],
             "warnings": warnings,
             "edge": edge.model_dump(),
             "total_edges": len(session.edges),
