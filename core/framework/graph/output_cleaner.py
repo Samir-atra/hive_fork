@@ -10,6 +10,7 @@ This prevents cascading failures and dramatically improves execution success rat
 import json
 import logging
 import re
+import threading
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -99,6 +100,7 @@ class OutputCleaner:
             llm_provider: Optional LLM provider.
         """
         self.config = config
+        self._lock = threading.Lock()
         self.success_cache: dict[str, Any] = {}  # Cache successful patterns
         self.failure_count: dict[str, int] = {}  # Track edge failures
         self.cleansing_count = 0  # Track total cleanings performed
@@ -307,11 +309,11 @@ Return ONLY valid JSON matching the expected schema. No explanations, no markdow
                 cleaned = json.loads(cleaned_text)
 
             if isinstance(cleaned, dict):
-                self.cleansing_count += 1
+                with self._lock:
+                    self.cleansing_count += 1
+                    count = self.cleansing_count
                 if self.config.log_cleanings:
-                    logger.info(
-                        f"✓ Output cleaned successfully (total cleanings: {self.cleansing_count})"
-                    )
+                    logger.info(f"✓ Output cleaned successfully (total cleanings: {count})")
                 return cleaned
             else:
                 logger.warning(f"⚠ Cleaned output is not a dict: {type(cleaned)}")
@@ -388,8 +390,9 @@ Return ONLY valid JSON matching the expected schema. No explanations, no markdow
 
     def get_stats(self) -> dict[str, Any]:
         """Get cleansing statistics."""
-        return {
-            "total_cleanings": self.cleansing_count,
-            "failure_count": dict(self.failure_count),
-            "cache_size": len(self.success_cache),
-        }
+        with self._lock:
+            return {
+                "total_cleanings": self.cleansing_count,
+                "failure_count": dict(self.failure_count),
+                "cache_size": len(self.success_cache),
+            }
