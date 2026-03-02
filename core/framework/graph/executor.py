@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from framework.graph.checkpoint_config import CheckpointConfig
+from framework.graph.durable_execution import DurableExecutionManager
 from framework.graph.edge import EdgeCondition, EdgeSpec, GraphSpec
 from framework.graph.goal import Goal
 from framework.graph.node import (
@@ -138,6 +139,8 @@ class GraphExecutor:
         accounts_prompt: str = "",
         accounts_data: list[dict] | None = None,
         tool_provider_map: dict[str, str] | None = None,
+        durable_execution_manager: DurableExecutionManager | None = None,
+        session_id: str = "",
     ):
         """
         Initialize the executor.
@@ -160,6 +163,8 @@ class GraphExecutor:
             accounts_prompt: Connected accounts block for system prompt injection
             accounts_data: Raw account data for per-node prompt generation
             tool_provider_map: Tool name to provider name mapping for account routing
+            durable_execution_manager: Optional manager for heartbeat monitoring and crash recovery
+            session_id: Session ID for heartbeat tracking
         """
         self.runtime = runtime
         self.llm = llm
@@ -178,6 +183,8 @@ class GraphExecutor:
         self.accounts_prompt = accounts_prompt
         self.accounts_data = accounts_data
         self.tool_provider_map = tool_provider_map
+        self._durable_execution_manager = durable_execution_manager
+        self._session_id = session_id
 
         # Initialize output cleaner
         self.cleansing_config = cleansing_config or CleansingConfig()
@@ -586,6 +593,14 @@ class GraphExecutor:
                 data_dir=str(self._storage_path / "data"),
             )
 
+        # Start heartbeat monitoring if durable execution is enabled
+        if self._durable_execution_manager and self._session_id:
+            await self._durable_execution_manager.start_heartbeat(
+                session_id=self._session_id,
+                execution_id=self._execution_id,
+                current_node=current_node_id,
+            )
+
         try:
             while steps < graph.max_steps:
                 steps += 1
@@ -642,6 +657,12 @@ class GraphExecutor:
                 node_spec = graph.get_node(current_node_id)
                 if node_spec is None:
                     raise RuntimeError(f"Node not found: {current_node_id}")
+
+                # Update heartbeat with current node
+                if self._durable_execution_manager and self._session_id:
+                    await self._durable_execution_manager.update_heartbeat(
+                        self._session_id, current_node=current_node_id
+                    )
 
                 # Enforce max_node_visits (feedback/callback edge support)
                 # Don't increment visit count on retries — retries are not new visits
@@ -1564,6 +1585,10 @@ class GraphExecutor:
             )
 
         finally:
+            # Stop heartbeat monitoring
+            if self._durable_execution_manager and self._session_id:
+                await self._durable_execution_manager.stop_heartbeat(self._session_id)
+
             if _ctx_token is not None:
                 from framework.runner.tool_registry import ToolRegistry
 
