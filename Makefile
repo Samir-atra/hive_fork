@@ -1,5 +1,7 @@
 .PHONY: lint format check test install-hooks help frontend-install frontend-dev frontend-build
 
+PYTHON ?= python3
+
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -21,7 +23,7 @@ check: ## Run all checks without modifying files (CI-safe)
 	cd tools && ruff format --check .
 
 test: ## Run all tests
-	cd core && uv run python -m pytest tests/ -v
+	cd core && uv run $(PYTHON) -m pytest tests/ -v
 
 install-hooks: ## Install pre-commit hooks
 	uv pip install pre-commit
