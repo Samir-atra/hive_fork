@@ -1068,6 +1068,16 @@ class IntercomHealthChecker(OAuthBearerHealthChecker):
         )
 
 
+class VercelHealthChecker(OAuthBearerHealthChecker):
+    """Health checker for Vercel auth tokens."""
+
+    def __init__(self):
+        super().__init__(
+            endpoint="https://api.vercel.com/v2/user",
+            service_name="Vercel",
+        )
+
+
 # Registry of health checkers
 HEALTH_CHECKERS: dict[str, CredentialHealthChecker] = {
     "discord": DiscordHealthChecker(),
@@ -1092,6 +1102,7 @@ HEALTH_CHECKERS: dict[str, CredentialHealthChecker] = {
     "newsdata": NewsdataHealthChecker(),
     "finlight": FinlightHealthChecker(),
     "brevo": BrevoHealthChecker(),
+    "vercel": VercelHealthChecker(),
 }
 
 

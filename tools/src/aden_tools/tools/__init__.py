@@ -78,6 +78,7 @@ from .time_tool import register_tools as register_time
 from .vision_tool import register_tools as register_vision
 from .web_scrape_tool import register_tools as register_web_scrape
 from .web_search_tool import register_tools as register_web_search
+from .vercel_tool import register_tools as register_vercel
 
 # Web and PDF tools
 from .wikipedia_tool import register_tools as register_wikipedia
@@ -133,6 +134,7 @@ def register_all_tools(
     register_google_docs(mcp, credentials=credentials)
     register_google_maps(mcp, credentials=credentials)
     register_account_info(mcp, credentials=credentials)
+    register_vercel(mcp, credentials=credentials)
 
     # Register file system toolkits
     register_view_file(mcp)
