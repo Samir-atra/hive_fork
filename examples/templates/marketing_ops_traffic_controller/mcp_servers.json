@@ -1,0 +1,9 @@
+{
+  "hive-tools": {
+    "transport": "stdio",
+    "command": "uv",
+    "args": ["run", "python", "mcp_server.py", "--stdio", "--include-unverified"],
+    "cwd": "../../../../tools",
+    "description": "Hive tools MCP server with Monday.com and Slack tools for marketing ops"
+  }
+}
