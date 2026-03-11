@@ -107,11 +107,29 @@ class EventType(StrEnum):
     # Judge decisions
     JUDGE_VERDICT = "judge_verdict"
 
+    # Granular node execution events for real-time monitoring
+    NODE_STARTED = "node_started"  # Normal node begins execution
+    NODE_COMPLETED = "node_completed"  # Normal node finished successfully
+    NODE_FAILED = "node_failed"  # Normal node failed
+
+    # LLM call events for real-time monitoring
+    LLM_CALL_STARTED = "llm_call_started"  # LLM API call begins
+    LLM_CALL_COMPLETED = "llm_call_completed"  # LLM API call finished
+    LLM_TOOL_USE = "llm_tool_use"  # LLM is using a tool
+
+    # Decision events for real-time monitoring
+    DECISION_MADE = "decision_made"  # A decision was recorded
+    DECISION_OUTCOME = "decision_outcome"  # Outcome of a decision
+
+    # Memory events for real-time monitoring
+    MEMORY_WRITE = "memory_write"  # Value written to shared memory
+    MEMORY_READ = "memory_read"  # Value read from shared memory (optional)
+
     # Output tracking
     OUTPUT_KEY_SET = "output_key_set"
 
     # Retry / edge tracking
-    NODE_RETRY = "node_retry"
+    NODE_RETRY = "node_retry"  # Node is retrying
     EDGE_TRAVERSED = "edge_traversed"
 
     # Context management
@@ -1053,6 +1071,208 @@ class EventBus:
                     "subagent_id": subagent_id,
                     "message": message,
                     "data": data,
+                },
+            )
+        )
+
+    # === GRANULAR EXECUTION EVENT PUBLISHERS ===
+
+    async def emit_node_started(
+        self,
+        stream_id: str,
+        node_id: str,
+        node_name: str | None = None,
+        execution_id: str | None = None,
+    ) -> None:
+        """Emit node started event for real-time monitoring."""
+        data = {}
+        if node_name:
+            data["node_name"] = node_name
+        await self.publish(
+            AgentEvent(
+                type=EventType.NODE_STARTED,
+                stream_id=stream_id,
+                node_id=node_id,
+                execution_id=execution_id,
+                data=data,
+            )
+        )
+
+    async def emit_node_completed(
+        self,
+        stream_id: str,
+        node_id: str,
+        duration_ms: float | None = None,
+        tokens_used: int | None = None,
+        success: bool = True,
+        execution_id: str | None = None,
+    ) -> None:
+        """Emit node completed event for real-time monitoring."""
+        data = {"success": success}
+        if duration_ms is not None:
+            data["duration_ms"] = duration_ms
+        if tokens_used is not None:
+            data["tokens_used"] = tokens_used
+        await self.publish(
+            AgentEvent(
+                type=EventType.NODE_COMPLETED,
+                stream_id=stream_id,
+                node_id=node_id,
+                execution_id=execution_id,
+                data=data,
+            )
+        )
+
+    async def emit_node_failed(
+        self,
+        stream_id: str,
+        node_id: str,
+        error: str,
+        execution_id: str | None = None,
+    ) -> None:
+        """Emit node failed event for real-time monitoring."""
+        await self.publish(
+            AgentEvent(
+                type=EventType.NODE_FAILED,
+                stream_id=stream_id,
+                node_id=node_id,
+                execution_id=execution_id,
+                data={"error": error},
+            )
+        )
+
+    async def emit_llm_call_started(
+        self,
+        stream_id: str,
+        node_id: str,
+        model: str,
+        execution_id: str | None = None,
+    ) -> None:
+        """Emit LLM call started event for real-time monitoring."""
+        await self.publish(
+            AgentEvent(
+                type=EventType.LLM_CALL_STARTED,
+                stream_id=stream_id,
+                node_id=node_id,
+                execution_id=execution_id,
+                data={"model": model},
+            )
+        )
+
+    async def emit_llm_call_completed(
+        self,
+        stream_id: str,
+        node_id: str,
+        input_tokens: int,
+        output_tokens: int,
+        stop_reason: str,
+        model: str,
+        execution_id: str | None = None,
+    ) -> None:
+        """Emit LLM call completed event for real-time monitoring."""
+        await self.publish(
+            AgentEvent(
+                type=EventType.LLM_CALL_COMPLETED,
+                stream_id=stream_id,
+                node_id=node_id,
+                execution_id=execution_id,
+                data={
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "stop_reason": stop_reason,
+                    "model": model,
+                },
+            )
+        )
+
+    async def emit_llm_tool_use(
+        self,
+        stream_id: str,
+        node_id: str,
+        tool_name: str,
+        tool_input: dict[str, Any],
+        execution_id: str | None = None,
+    ) -> None:
+        """Emit LLM tool use event for real-time monitoring."""
+        await self.publish(
+            AgentEvent(
+                type=EventType.LLM_TOOL_USE,
+                stream_id=stream_id,
+                node_id=node_id,
+                execution_id=execution_id,
+                data={
+                    "tool_name": tool_name,
+                    "tool_input": tool_input,
+                },
+            )
+        )
+
+    async def emit_decision_made(
+        self,
+        stream_id: str,
+        node_id: str,
+        decision: str,
+        options: list[str],
+        chosen_option: str,
+        reasoning: str,
+        execution_id: str | None = None,
+    ) -> None:
+        """Emit decision made event for real-time monitoring."""
+        await self.publish(
+            AgentEvent(
+                type=EventType.DECISION_MADE,
+                stream_id=stream_id,
+                node_id=node_id,
+                execution_id=execution_id,
+                data={
+                    "decision": decision,
+                    "options": options,
+                    "chosen_option": chosen_option,
+                    "reasoning": reasoning,
+                },
+            )
+        )
+
+    async def emit_memory_write(
+        self,
+        stream_id: str,
+        node_id: str,
+        key: str,
+        value: Any,
+        execution_id: str | None = None,
+    ) -> None:
+        """Emit memory write event for real-time monitoring."""
+        await self.publish(
+            AgentEvent(
+                type=EventType.MEMORY_WRITE,
+                stream_id=stream_id,
+                node_id=node_id,
+                execution_id=execution_id,
+                data={
+                    "key": key,
+                    "value": value,
+                },
+            )
+        )
+
+    async def emit_memory_read(
+        self,
+        stream_id: str,
+        node_id: str,
+        key: str,
+        value: Any | None,
+        execution_id: str | None = None,
+    ) -> None:
+        """Emit memory read event for real-time monitoring."""
+        await self.publish(
+            AgentEvent(
+                type=EventType.MEMORY_READ,
+                stream_id=stream_id,
+                node_id=node_id,
+                execution_id=execution_id,
+                data={
+                    "key": key,
+                    "value": value,
                 },
             )
         )

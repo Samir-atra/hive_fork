@@ -1086,6 +1086,16 @@ class GraphExecutor:
                                     f"{max_retries} attempts: {result.error}"
                                 ),
                             )
+
+                            # Emit NODE_FAILED event for real-time monitoring
+                            if self._event_bus:
+                                await self._event_bus.emit_node_failed(
+                                    stream_id=self._stream_id,
+                                    node_id=current_node_id,
+                                    error=result.error or "",
+                                    execution_id=self._execution_id,
+                                )
+
                             self.runtime.end_run(
                                 success=False,
                                 output_data=memory.read_all(),

@@ -523,7 +523,7 @@ class EventLoopNode(NodeProtocol):
                 start_iteration = 0
 
                 # Add initial user message from input data
-                initial_message = self._build_initial_message(ctx)
+                initial_message = await self._build_initial_message(ctx)
                 if initial_message:
                     await conversation.add_user_message(initial_message)
 
@@ -535,7 +535,7 @@ class EventLoopNode(NodeProtocol):
         # removes them all, or if a prior run stored metadata without messages
         # (e.g. subagent that failed before the first LLM call).
         if conversation.message_count == 0:
-            initial_message = self._build_initial_message(ctx)
+            initial_message = await self._build_initial_message(ctx)
             if initial_message:
                 await conversation.add_user_message(initial_message)
 
@@ -2941,7 +2941,7 @@ class EventLoopNode(NodeProtocol):
 
         return extract_tool_call_history(conversation.messages, max_entries=max_entries)
 
-    def _build_initial_message(self, ctx: NodeContext) -> str:
+    async def _build_initial_message(self, ctx: NodeContext) -> str:
         """Build the initial user message from input data and memory.
 
         Includes ALL input_data (not just declared input_keys) so that
@@ -2959,6 +2959,17 @@ class EventLoopNode(NodeProtocol):
         for key in ctx.node_spec.input_keys:
             if key not in seen:
                 value = ctx.memory.read(key)
+
+                # Emit MEMORY_READ event for real-time monitoring
+                if self._event_bus:
+                    await self._event_bus.emit_memory_read(
+                        stream_id=ctx.stream_id or ctx.node_id,
+                        node_id=ctx.node_id,
+                        key=key,
+                        value=value,
+                        execution_id=ctx.execution_id or "",
+                    )
+
                 if value is not None:
                     parts.append(f"{key}: {value}")
         if ctx.goal_context:

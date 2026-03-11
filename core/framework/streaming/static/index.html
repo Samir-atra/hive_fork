@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hive Agent Monitor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+            padding: 1rem;
+            height: calc(100vh - 70px);
+        }
+
+        .panel {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 1rem;
+            overflow-y: auto;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .panel h2 {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            color: #667eea;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .execution-tree {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .execution-node {
+            background: #0f3460;
+            border-radius: 4px;
+            padding: 0.75rem;
+            border-left: 3px solid #667eea;
+        }
+
+        .execution-node.running {
+            border-left-color: #4ade80;
+        }
+
+        .execution-node.completed {
+            border-left-color: #4ade80;
+        }
+
+        .execution-node.failed {
+            border-left-color: #ef4444;
+        }
+
+        .node-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .node-icon {
+            color: #667eea;
+            font-size: 0.75rem;
+        }
+
+        .execution-node.running .node-icon {
+            color: #4ade80;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .node-name {
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .execution-info {
+            font-size: 0.7rem;
+            color: #888;
+            margin-top: 0.25rem;
+        }
+
+        .memory-inspector {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .memory-entry {
+            background: #0f3460;
+            border-radius: 4px;
+            padding: 0.5rem;
+        }
+
+        .memory-key {
+            font-size: 0.75rem;
+            color: #667eea;
+            margin-bottom: 0.25rem;
+        }
+
+        .memory-value {
+            font-size: 0.7rem;
+            color: #888;
+            word-break: break-all;
+        }
+
+        .event-log {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .event-entry {
+            background: #0f3460;
+            border-radius: 4px;
+            padding: 0.5rem;
+            border-left: 3px solid #667eea;
+        }
+
+        .event-entry.execution_started {
+            border-left-color: #4ade80;
+        }
+
+        .event-entry.node_completed {
+            border-left-color: #4ade80;
+        }
+
+        .event-entry.node_failed {
+            border-left-color: #ef4444;
+        }
+
+        .event-time {
+            font-size: 0.7rem;
+            color: #888;
+            margin-bottom: 0.25rem;
+        }
+
+        .event-type {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #667eea;
+            margin-bottom: 0.25rem;
+        }
+
+        .event-details {
+            font-size: 0.7rem;
+            color: #aaa;
+            word-break: break-all;
+        }
+
+        .connection-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #16213e;
+            padding: 0.5rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+            font-size: 0.8rem;
+        }
+
+        .connect-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background 0.2s;
+        }
+
+        .connect-button:hover {
+            background: #5568d3;
+        }
+
+        .filter-input {
+            background: #0f3460;
+            border: 1px solid #667eea;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            width: 200px;
+        }
+
+        .filter-input:focus {
+            outline: none;
+        }
+
+        .execution-details {
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .loading-spinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="fas fa-bee"></i> HIVE DASHBOARD</h1>
+        <div class="status-indicator">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">Disconnected</span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="panel">
+            <h2><i class="fas fa-project-diagram"></i> Active Executions</h2>
+            <div class="execution-tree" id="executionTree">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #667eea;"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2><i class="fas fa-memory"></i> Memory Inspector</h2>
+            <div class="memory-inspector" id="memoryInspector">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #667eea;"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2><i class="fas fa-list"></i> Event Log</h2>
+            <div class="event-log" id="eventLog">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #667eea;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="connection-bar">
+        <div>
+            <span id="connectionInfo">ws://localhost:8765</span>
+        </div>
+        <div>
+            <input type="text" class="filter-input" placeholder="Filter by execution ID..." id="filterInput">
+            <button class="connect-button" id="connectButton">Connect</button>
+        </div>
+    </div>
+
+    <script>
+        class HiveDashboard {
+            constructor() {
+                this.ws = null;
+                this.connected = false;
+                this.activeExecutions = {};
+                this.eventLog = [];
+                this.filter = '';
+
+                this.initElements();
+                this.bindEvents();
+            }
+
+            initElements() {
+                this.elements = {
+                    statusDot: document.getElementById('statusDot'),
+                    statusText: document.getElementById('statusText'),
+                    executionTree: document.getElementById('executionTree'),
+                    memoryInspector: document.getElementById('memoryInspector'),
+                    eventLog: document.getElementById('eventLog'),
+                    connectButton: document.getElementById('connectButton'),
+                    filterInput: document.getElementById('filterInput'),
+                    connectionInfo: document.getElementById('connectionInfo'),
+                };
+            }
+
+            bindEvents() {
+                this.elements.connectButton.addEventListener('click', () => this.toggleConnection());
+                this.elements.filterInput.addEventListener('input', (e) => {
+                    this.filter = e.target.value;
+                });
+            }
+
+            async connect() {
+                const url = this.elements.connectionInfo.textContent;
+
+                try {
+                    this.ws = new WebSocket(url);
+
+                    this.ws.onopen = () => {
+                        this.connected = true;
+                        this.updateStatus(true);
+                        this.elements.connectButton.textContent = 'Disconnect';
+                        this.elements.connectButton.style.background = '#ef4444';
+                    };
+
+                    this.ws.onclose = () => {
+                        this.connected = false;
+                        this.updateStatus(false);
+                        this.elements.connectButton.textContent = 'Connect';
+                        this.elements.connectButton.style.background = '#667eea';
+                    };
+
+                    this.ws.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                    };
+
+                    this.ws.onmessage = (event) => {
+                        this.handleMessage(JSON.parse(event.data));
+                    };
+
+                } catch (error) {
+                    console.error('Failed to connect:', error);
+                    alert('Failed to connect to WebSocket server');
+                }
+            }
+
+            async disconnect() {
+                if (this.ws) {
+                    await this.ws.close();
+                }
+            }
+
+            async toggleConnection() {
+                if (this.connected) {
+                    await this.disconnect();
+                } else {
+                    await this.connect();
+                }
+            }
+
+            updateStatus(connected) {
+                if (connected) {
+                    this.elements.statusDot.style.background = '#4ade80';
+                    this.elements.statusText.textContent = 'Connected';
+                } else {
+                    this.elements.statusDot.style.background = '#ef4444';
+                    this.elements.statusText.textContent = 'Disconnected';
+                }
+            }
+
+            handleMessage(message) {
+                if (message.type === 'event') {
+                    this.handleEvent(message.event);
+                } else if (message.type === 'error') {
+                    console.error('Server error:', message);
+                    alert(`Error: ${message.message}\n${message.details ? JSON.stringify(message.details) : ''}`);
+                }
+            }
+
+            handleEvent(event) {
+                const eventType = event.type;
+                const executionId = event.execution_id;
+
+                if (!executionId) return;
+
+                // Initialize execution if not exists
+                if (!this.activeExecutions[executionId]) {
+                    this.activeExecutions[executionId] = {
+                        stream_id: event.stream_id,
+                        status: 'running',
+                        nodes: [],
+                        memory: {},
+                        completed_at: null,
+                    };
+                }
+
+                // Update execution state based on event type
+                switch (eventType) {
+                    case 'execution_started':
+                        this.activeExecutions[executionId].status = 'running';
+                        this.activeExecutions[executionId].completed_at = null;
+                        this.activeExecutions[executionId].nodes = [];
+                        this.activeExecutions[executionId].memory = {};
+                        break;
+
+                    case 'node_started':
+                        this.activeExecutions[executionId].nodes.push({
+                            id: event.node_id,
+                            name: event.data?.node_name || event.node_id,
+                            status: 'running',
+                            started_at: new Date(event.timestamp),
+                        });
+                        break;
+
+                    case 'node_completed':
+                        const runningNode = this.activeExecutions[executionId].nodes.find(
+                            n => n.id === event.node_id
+                        );
+                        if (runningNode) {
+                            runningNode.status = 'completed';
+                            runningNode.duration_ms = event.data?.duration_ms || 0;
+                            runningNode.tokens = event.data?.tokens_used || 0;
+                        }
+                        break;
+
+                    case 'node_failed':
+                        const failedNode = this.activeExecutions[executionId].nodes.find(
+                            n => n.id === event.node_id
+                        );
+                        if (failedNode) {
+                            failedNode.status = 'failed';
+                            failedNode.error = event.data?.error || 'Unknown error';
+                        }
+                        this.activeExecutions[executionId].status = 'failed';
+                        this.activeExecutions[executionId].completed_at = new Date();
+                        break;
+
+                    case 'memory_write':
+                        if (event.data?.key && event.data?.value !== undefined) {
+                            this.activeExecutions[executionId].memory[event.data.key] = event.data.value;
+                        }
+                        break;
+
+                    case 'decision_made':
+                        const runningNodeDec = this.activeExecutions[executionId].nodes.find(
+                            n => n.id === event.node_id
+                        );
+                        if (runningNodeDec) {
+                            runningNodeDec.decision = event.data;
+                        }
+                        break;
+
+                    case 'execution_completed':
+                        this.activeExecutions[executionId].status = 'completed';
+                        this.activeExecutions[executionId].completed_at = new Date();
+                        break;
+
+                    case 'execution_failed':
+                        this.activeExecutions[executionId].status = 'failed';
+                        this.activeExecutions[executionId].completed_at = new Date();
+                        this.activeExecutions[executionId].error = event.data?.error || 'Unknown error';
+                        break;
+                }
+
+                // Add to event log
+                this.eventLog.unshift({
+                    timestamp: new Date(event.timestamp),
+                    stream_id: event.stream_id,
+                    type: eventType,
+                    execution_id: executionId,
+                    data: event.data,
+                });
+
+                // Limit event log size
+                if (this.eventLog.length > 100) {
+                    this.eventLog = this.eventLog.slice(0, 100);
+                }
+
+                // Render updates if connected
+                if (this.connected) {
+                    this.render();
+                }
+            }
+
+            render() {
+                if (this.filter) {
+                    // Filter by execution ID
+                    Object.keys(this.activeExecutions).forEach(execId => {
+                        if (!execId.includes(this.filter)) {
+                            delete this.activeExecutions[execId];
+                        }
+                    });
+                }
+
+                this.renderExecutionTree();
+                this.renderMemoryInspector();
+                this.renderEventLog();
+            }
+
+            renderExecutionTree() {
+                const sortedExecutions = Object.entries(this.activeExecutions)
+                    .sort((a, b) => new Date(b[1].nodes[b[1].nodes.length - 1]?.started_at || 0) -
+                                   new Date(a[1].nodes[a[1].nodes.length - 1]?.started_at || 0));
+
+                if (sortedExecutions.length === 0) {
+                    this.elements.executionTree.innerHTML = '<div style="text-align: center; color: #888; padding: 2rem;">No active executions</div>';
+                    return;
+                }
+
+                this.elements.executionTree.innerHTML = sortedExecutions.map(([execId, exec]) => `
+                    <div class="execution-node ${exec.status}">
+                        <div class="node-row">
+                            <i class="fas fa-circle node-icon"></i>
+                            <span class="node-name">${execId}</span>
+                        </div>
+                        ${exec.nodes.map(node => `
+                            <div class="execution-info">
+                                <span style="margin-right: 0.5rem;">${node.status === 'running' ? '▶' : node.status === 'completed' ? '✓' : '✗'}</span>
+                                <strong>${node.name}</strong>
+                                ${node.duration_ms ? ` (${node.duration_ms}ms)` : ''}
+                                ${node.tokens ? ` (${node.tokens} tokens)` : ''}
+                                ${node.error ? `<br><span style="color: #ef4444;">${node.error}</span>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `).join('');
+            }
+
+            renderMemoryInspector() {
+                const executions = Object.values(this.activeExecutions);
+
+                if (executions.length === 0) {
+                    this.elements.memoryInspector.innerHTML = '<div style="text-align: center; color: #888; padding: 2rem;">No memory data</div>';
+                    return;
+                }
+
+                const activeExecution = executions[0];
+                const memoryEntries = Object.entries(activeExecution.memory);
+
+                if (memoryEntries.length === 0) {
+                    this.elements.memoryInspector.innerHTML = '<div style="text-align: center; color: #888; padding: 2rem;">No memory data</div>';
+                    return;
+                }
+
+                this.elements.memoryInspector.innerHTML = memoryEntries.map(([key, value]) => `
+                    <div class="memory-entry">
+                        <div class="memory-key">${key}</div>
+                        <div class="memory-value">${JSON.stringify(value)}</div>
+                    </div>
+                `).join('');
+            }
+
+            renderEventLog() {
+                const filteredLog = this.filter
+                    ? this.eventLog.filter(e => e.execution_id.includes(this.filter))
+                    : this.eventLog;
+
+                if (filteredLog.length === 0) {
+                    this.elements.eventLog.innerHTML = '<div style="text-align: center; color: #888; padding: 2rem;">No events yet</div>';
+                    return;
+                }
+
+                this.elements.eventLog.innerHTML = filteredLog.slice(0, 50).map(event => `
+                    <div class="event-entry ${event.type}">
+                        <div class="event-time">${event.timestamp.toLocaleTimeString()}</div>
+                        <div class="event-type">${event.type}</div>
+                        <div class="event-details">
+                            <div>Stream: ${event.stream_id}</div>
+                            <div>Execution: ${event.execution_id}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Initialize dashboard
+        const dashboard = new HiveDashboard();
+    </script>
+</body>
+</html>
