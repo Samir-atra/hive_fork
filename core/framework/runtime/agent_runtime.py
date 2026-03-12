@@ -47,6 +47,8 @@ class AgentRuntimeConfig:
     webhook_port: int = 8080
     webhook_routes: list[dict] = field(default_factory=list)
     # Each dict: {"source_id": str, "path": str, "methods": ["POST"], "secret": str|None}
+    # Shutdown timeout in seconds - if tasks don't complete within this time, they're logged as zombies
+    shutdown_timeout_seconds: float = 30.0
 
 
 @dataclass
@@ -708,15 +710,20 @@ class AgentRuntime:
             logger.info(f"AgentRuntime started with {len(self._streams)} streams")
 
     async def stop(self) -> None:
-        """Stop the agent runtime and all streams."""
+        """Stop the agent runtime and all streams.
+
+        Uses concurrent shutdown for all streams with a configurable timeout.
+        If streams don't stop within the timeout, they are logged as zombies
+        and the shutdown continues to ensure the process can exit cleanly.
+        """
         if not self._running:
             return
 
         async with self._lock:
-            # Stop secondary graphs first
+            # Stop secondary graphs first (concurrently)
             secondary_ids = [gid for gid in self._graphs if gid != self._graph_id]
-            for gid in secondary_ids:
-                await self._teardown_graph(gid)
+            if secondary_ids:
+                await self._stop_graphs_concurrently(secondary_ids)
 
             # Cancel primary timer tasks
             for task in self._timer_tasks:
@@ -733,9 +740,8 @@ class AgentRuntime:
                 await self._webhook_server.stop()
                 self._webhook_server = None
 
-            # Stop all primary streams
-            for stream in self._streams.values():
-                await stream.stop()
+            # Stop all primary streams concurrently with timeout protection
+            await self._stop_streams_concurrently(self._streams)
 
             self._streams.clear()
             self._graphs.clear()
@@ -745,6 +751,89 @@ class AgentRuntime:
 
             self._running = False
             logger.info("AgentRuntime stopped")
+
+    async def _stop_streams_concurrently(self, streams: dict[str, "ExecutionStream"]) -> None:
+        """Stop multiple streams concurrently with timeout protection.
+
+        Args:
+            streams: Dictionary of stream_id -> ExecutionStream to stop
+        """
+        if not streams:
+            return
+
+        timeout = self._config.shutdown_timeout_seconds
+        stream_ids = list(streams.keys())
+
+        async def _stop_with_id(
+            stream_id: str, stream: "ExecutionStream"
+        ) -> tuple[str, Exception | None]:
+            try:
+                await stream.stop()
+                return (stream_id, None)
+            except Exception as e:
+                return (stream_id, e)
+
+        try:
+            results = await asyncio.wait_for(
+                asyncio.gather(
+                    *[_stop_with_id(sid, s) for sid, s in streams.items()],
+                    return_exceptions=False,
+                ),
+                timeout=timeout,
+            )
+            for stream_id, error in results:
+                if error:
+                    logger.warning(
+                        "Stream '%s' raised exception during shutdown: %s",
+                        stream_id,
+                        error,
+                    )
+        except asyncio.TimeoutError:
+            logger.warning(
+                "Shutdown timed out after %.1fs - some streams may not have stopped cleanly: %s",
+                timeout,
+                stream_ids,
+            )
+
+    async def _stop_graphs_concurrently(self, graph_ids: list[str]) -> None:
+        """Stop multiple secondary graphs concurrently.
+
+        Args:
+            graph_ids: List of graph IDs to stop
+        """
+        if not graph_ids:
+            return
+
+        timeout = self._config.shutdown_timeout_seconds
+
+        async def _teardown_with_id(gid: str) -> tuple[str, Exception | None]:
+            try:
+                await self._teardown_graph(gid)
+                return (gid, None)
+            except Exception as e:
+                return (gid, e)
+
+        try:
+            results = await asyncio.wait_for(
+                asyncio.gather(
+                    *[_teardown_with_id(gid) for gid in graph_ids],
+                    return_exceptions=False,
+                ),
+                timeout=timeout,
+            )
+            for gid, error in results:
+                if error:
+                    logger.warning(
+                        "Graph '%s' raised exception during shutdown: %s",
+                        gid,
+                        error,
+                    )
+        except asyncio.TimeoutError:
+            logger.warning(
+                "Secondary graph shutdown timed out after %.1fs - graphs: %s",
+                timeout,
+                graph_ids,
+            )
 
     def pause_timers(self) -> None:
         """Pause all timer-driven entry points.
@@ -1185,7 +1274,10 @@ class AgentRuntime:
         logger.info("Removed graph '%s'", graph_id)
 
     async def _teardown_graph(self, graph_id: str) -> None:
-        """Internal: stop and clean up all resources for a graph."""
+        """Internal: stop and clean up all resources for a graph.
+
+        Uses concurrent shutdown for all streams within the graph.
+        """
         reg = self._graphs.pop(graph_id, None)
         if reg is None:
             return
@@ -1198,9 +1290,11 @@ class AgentRuntime:
         for sub_id in reg.event_subscriptions:
             self._event_bus.unsubscribe(sub_id)
 
-        # Stop streams
-        for stream in reg.streams.values():
-            await stream.stop()
+        # Stop streams concurrently (no additional timeout - caller handles that)
+        await asyncio.gather(
+            *[stream.stop() for stream in reg.streams.values()],
+            return_exceptions=True,
+        )
 
         # Reset active graph if it was the removed one
         if self._active_graph_id == graph_id:

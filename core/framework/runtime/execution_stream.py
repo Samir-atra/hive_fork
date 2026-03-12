@@ -365,27 +365,37 @@ class ExecutionStream:
                 self._execution_result_times.pop(old_exec_id, None)
 
     async def stop(self) -> None:
-        """Stop the execution stream and cancel active executions."""
+        """Stop the execution stream and cancel active executions.
+
+        Cancels all running execution tasks and waits up to 5 seconds for them
+        to complete. Tasks that don't finish within this window are logged as
+        potential zombies but the shutdown continues to ensure the process
+        can exit cleanly.
+        """
         if not self._running:
             return
 
         self._running = False
 
         # Cancel all active executions
-        tasks_to_wait = []
-        for _, task in self._execution_tasks.items():
+        tasks_to_wait: list[tuple[str, asyncio.Task]] = []
+        for exec_id, task in self._execution_tasks.items():
             if not task.done():
                 task.cancel()
-                tasks_to_wait.append(task)
+                tasks_to_wait.append((exec_id, task))
 
         if tasks_to_wait:
             # Wait briefly — don't block indefinitely if tasks are stuck
             # in long-running operations (LLM calls, tool executions).
-            _, pending = await asyncio.wait(tasks_to_wait, timeout=5.0)
+            task_set = {task for _, task in tasks_to_wait}
+            _, pending = await asyncio.wait(task_set, timeout=5.0)
             if pending:
+                zombie_ids = [exec_id for exec_id, task in tasks_to_wait if task in pending]
                 logger.warning(
-                    "%d execution task(s) did not finish within 5s after cancellation",
+                    "%d execution task(s) did not finish within 5s after cancellation "
+                    "(potential zombies): %s",
                     len(pending),
+                    zombie_ids,
                 )
 
         self._execution_tasks.clear()

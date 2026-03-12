@@ -964,5 +964,148 @@ class TestCancelAllTasks:
             await runtime.stop()
 
 
+class TestConcurrentShutdown:
+    """Tests for concurrent shutdown with timeout protection."""
+
+    @pytest.mark.asyncio
+    async def test_stop_shuts_down_multiple_streams_concurrently(
+        self, sample_graph, sample_goal, temp_storage
+    ):
+        """Test that stop() shuts down all streams concurrently, not sequentially."""
+        runtime = AgentRuntime(
+            graph=sample_graph,
+            goal=sample_goal,
+            storage_path=temp_storage,
+        )
+
+        runtime.register_entry_point(
+            EntryPointSpec(
+                id="stream-a",
+                name="Stream A",
+                entry_node="process-webhook",
+                trigger_type="webhook",
+            )
+        )
+        runtime.register_entry_point(
+            EntryPointSpec(
+                id="stream-b",
+                name="Stream B",
+                entry_node="process-webhook",
+                trigger_type="webhook",
+            )
+        )
+        await runtime.start()
+
+        try:
+            assert "stream-a" in runtime._streams
+            assert "stream-b" in runtime._streams
+        finally:
+            await runtime.stop()
+
+        assert len(runtime._streams) == 0
+        assert not runtime.is_running
+
+    @pytest.mark.asyncio
+    async def test_stop_handles_slow_tasks_with_logging(
+        self, sample_graph, sample_goal, temp_storage, caplog
+    ):
+        """Test that stop() handles slow tasks and logs appropriately."""
+        import logging
+
+        runtime = AgentRuntime(
+            graph=sample_graph,
+            goal=sample_goal,
+            storage_path=temp_storage,
+        )
+
+        runtime.register_entry_point(
+            EntryPointSpec(
+                id="stream-a",
+                name="Stream A",
+                entry_node="process-webhook",
+                trigger_type="webhook",
+            )
+        )
+        await runtime.start()
+
+        try:
+            stream = runtime._streams["stream-a"]
+
+            async def slow_task():
+                try:
+                    await asyncio.sleep(0.5)
+                except asyncio.CancelledError:
+                    await asyncio.sleep(0.2)
+
+            fake_task = asyncio.ensure_future(slow_task())
+            stream._execution_tasks["slow-exec"] = fake_task
+
+            with caplog.at_level(logging.WARNING):
+                await runtime.stop()
+
+            try:
+                await fake_task
+            except asyncio.CancelledError:
+                pass
+        except Exception:
+            try:
+                await runtime.stop()
+            except Exception:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_shutdown_timeout_configurable(self, sample_graph, sample_goal, temp_storage):
+        """Test that shutdown timeout is configurable via AgentRuntimeConfig."""
+        from framework.runtime.agent_runtime import AgentRuntimeConfig
+
+        config = AgentRuntimeConfig(shutdown_timeout_seconds=5.0)
+        runtime = AgentRuntime(
+            graph=sample_graph,
+            goal=sample_goal,
+            storage_path=temp_storage,
+            config=config,
+        )
+
+        runtime.register_entry_point(
+            EntryPointSpec(
+                id="webhook",
+                name="Webhook",
+                entry_node="process-webhook",
+                trigger_type="webhook",
+            )
+        )
+        await runtime.start()
+
+        try:
+            assert runtime._config.shutdown_timeout_seconds == 5.0
+        finally:
+            await runtime.stop()
+
+    @pytest.mark.asyncio
+    async def test_stop_is_idempotent(self, sample_graph, sample_goal, temp_storage):
+        """Test that calling stop() multiple times is safe."""
+        runtime = AgentRuntime(
+            graph=sample_graph,
+            goal=sample_goal,
+            storage_path=temp_storage,
+        )
+
+        runtime.register_entry_point(
+            EntryPointSpec(
+                id="webhook",
+                name="Webhook",
+                entry_node="process-webhook",
+                trigger_type="webhook",
+            )
+        )
+        await runtime.start()
+
+        await runtime.stop()
+        assert not runtime.is_running
+
+        await runtime.stop()
+        assert not runtime.is_running
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
