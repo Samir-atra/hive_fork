@@ -46,6 +46,8 @@ class ExecutionResult:
     total_latency_ms: int = 0
     path: list[str] = field(default_factory=list)  # Node IDs traversed
     paused_at: str | None = None  # Node ID where execution paused for HITL
+    waiting_for_approval_at: str | None = None  # Node ID where waiting for approval
+    breakpoint_id: str | None = None  # ID of the breakpoint request if waiting
     session_state: dict[str, Any] = field(default_factory=dict)  # State to resume from
 
     # Execution quality metrics
@@ -67,6 +69,11 @@ class ExecutionResult:
     def is_degraded_success(self) -> bool:
         """True if execution succeeded but had retries or partial failures."""
         return self.success and self.execution_quality == "degraded"
+
+    @property
+    def is_waiting_for_approval(self) -> bool:
+        """True if execution is paused waiting for approval."""
+        return self.waiting_for_approval_at is not None
 
 
 @dataclass
@@ -817,6 +824,67 @@ class GraphExecutor:
                             self.logger.info(
                                 f"   🧹 Cleared stale nullable output '{key}' from previous visit"
                             )
+
+                # Check if this is an approval breakpoint node (HITL)
+                # Unlike pause_nodes (which pause AFTER execution), approval_nodes pause BEFORE
+                is_breakpoint = getattr(node_spec, "is_breakpoint", False)
+                in_approval_list = current_node_id in graph.approval_nodes
+                if is_breakpoint or in_approval_list:
+                    self.logger.info(f"⏸ Breakpoint reached: {node_spec.name}")
+                    self.logger.info("   Waiting for human approval...")
+
+                    from framework.graph.breakpoint_types import BreakpointRequest
+                    import uuid
+
+                    breakpoint_id = f"bp_{current_node_id}_{uuid.uuid4().hex[:8]}"
+
+                    # Emit breakpoint event for external listeners
+                    if self._event_bus:
+                        await self._event_bus.emit_execution_waiting_for_approval(
+                            stream_id=self._stream_id,
+                            node_id=current_node_id,
+                            breakpoint_id=breakpoint_id,
+                            reason="Breakpoint node requires approval",
+                            execution_id=self._execution_id,
+                        )
+
+                    # Save session state for resume
+                    saved_memory = memory.read_all()
+                    approval_session_state: dict[str, Any] = {
+                        "waiting_for_approval_at": current_node_id,
+                        "breakpoint_id": breakpoint_id,
+                        "memory": saved_memory,
+                        "execution_path": list(path),
+                        "node_visit_counts": dict(node_visit_counts),
+                    }
+
+                    # Create approval checkpoint if checkpointing is enabled
+                    if checkpoint_store:
+                        approval_checkpoint = self._create_checkpoint(
+                            checkpoint_type="approval",
+                            current_node=current_node_id,
+                            execution_path=path,
+                            memory=memory,
+                            next_node=current_node_id,
+                            is_clean=True,
+                        )
+                        await checkpoint_store.save_checkpoint(approval_checkpoint)
+                        approval_session_state["latest_checkpoint_id"] = (
+                            approval_checkpoint.checkpoint_id
+                        )
+
+                    # Return with waiting_for_approval status
+                    return ExecutionResult(
+                        success=False,
+                        output=saved_memory,
+                        path=path,
+                        paused_at=current_node_id,
+                        waiting_for_approval_at=current_node_id,
+                        breakpoint_id=breakpoint_id,
+                        error="Execution paused for approval at breakpoint",
+                        session_state=approval_session_state,
+                        node_visit_counts=dict(node_visit_counts),
+                    )
 
                 # Check if pause (HITL) before execution
                 if current_node_id in graph.pause_nodes:

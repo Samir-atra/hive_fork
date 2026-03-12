@@ -65,6 +65,7 @@ class EventType(StrEnum):
     EXECUTION_FAILED = "execution_failed"
     EXECUTION_PAUSED = "execution_paused"
     EXECUTION_RESUMED = "execution_resumed"
+    EXECUTION_WAITING_FOR_APPROVAL = "execution_waiting_for_approval"
 
     # State changes
     STATE_CHANGED = "state_changed"
@@ -941,6 +942,28 @@ class EventBus:
                 node_id=node_id,
                 execution_id=execution_id,
                 data={},
+            )
+        )
+
+    async def emit_execution_waiting_for_approval(
+        self,
+        stream_id: str,
+        node_id: str,
+        breakpoint_id: str,
+        reason: str = "",
+        execution_id: str | None = None,
+    ) -> None:
+        """Emit execution waiting for approval event (breakpoint hit)."""
+        await self.publish(
+            AgentEvent(
+                type=EventType.EXECUTION_WAITING_FOR_APPROVAL,
+                stream_id=stream_id,
+                node_id=node_id,
+                execution_id=execution_id,
+                data={
+                    "breakpoint_id": breakpoint_id,
+                    "reason": reason,
+                },
             )
         )
 

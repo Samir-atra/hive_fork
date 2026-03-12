@@ -21,6 +21,7 @@ class SessionStatus(StrEnum):
 
     ACTIVE = "active"  # Currently executing
     PAUSED = "paused"  # Waiting for resume (client input, pause node)
+    WAITING_FOR_APPROVAL = "waiting_for_approval"  # Paused at breakpoint, awaiting human approval
     COMPLETED = "completed"  # Finished successfully
     FAILED = "failed"  # Finished with error
     CANCELLED = "cancelled"  # User/system cancelled
@@ -42,6 +43,7 @@ class SessionProgress(BaseModel):
 
     current_node: str | None = None
     paused_at: str | None = None  # Node ID where paused
+    waiting_for_approval_at: str | None = None  # Node ID where waiting for approval
     resume_from: str | None = None  # Entry point or node ID to resume from
     steps_executed: int = 0
     total_tokens: int = 0
@@ -143,6 +145,9 @@ class SessionState(BaseModel):
     # Checkpointing (for crash recovery and resume-from-failure)
     checkpoint_enabled: bool = False
     latest_checkpoint_id: str | None = None
+
+    # Breakpoint approval (for human-in-the-loop)
+    pending_breakpoint_id: str | None = None  # ID of current breakpoint request if waiting
 
     model_config = {"extra": "allow"}
 

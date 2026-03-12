@@ -272,6 +272,26 @@ class NodeSpec(BaseModel):
         ),
     )
 
+    # Human-in-the-loop approval breakpoint
+    is_breakpoint: bool = Field(
+        default=False,
+        description=(
+            "When True, execution pauses before this node for human approval. "
+            "The runtime emits a WAITING_FOR_APPROVAL signal and persists the session state. "
+            "Execution resumes only after receiving explicit approval (approve/reject/abort). "
+            "Intended for sensitive actions like file deletion, API calls, or system commands."
+        ),
+    )
+
+    # Description of what this node does (for approval prompts)
+    action_description: str | None = Field(
+        default=None,
+        description=(
+            "Human-readable description of what this node will do. "
+            "Used in approval prompts to help users understand the action being taken."
+        ),
+    )
+
     model_config = {"extra": "allow", "arbitrary_types_allowed": True}
 
 

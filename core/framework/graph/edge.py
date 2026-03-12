@@ -414,6 +414,14 @@ class GraphSpec(BaseModel):
     pause_nodes: list[str] = Field(
         default_factory=list, description="IDs of nodes that pause execution for HITL input"
     )
+    approval_nodes: list[str] = Field(
+        default_factory=list,
+        description=(
+            "IDs of nodes that require explicit human approval before execution. "
+            "Unlike pause_nodes (which pause AFTER execution), approval_nodes pause BEFORE "
+            "execution and require an explicit approve/reject/abort decision."
+        ),
+    )
 
     # Components
     nodes: list[Any] = Field(  # NodeSpec, but avoiding circular import

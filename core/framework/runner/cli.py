@@ -71,7 +71,21 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
         default=None,
         help="Resume from a specific checkpoint (requires --resume-session)",
     )
-    run_parser.set_defaults(func=cmd_run)
+    run_parser.add_argument(
+        "--approve-breakpoint",
+        action="store_true",
+        help="Automatically approve all breakpoints when resuming (non-interactive)",
+    )
+    run_parser.add_argument(
+        "--reject-breakpoint",
+        action="store_true",
+        help="automatically reject all breakpoints when resuming (non-interactive)",
+    )
+    run_parser.add_argument(
+        "--abort-breakpoint",
+        action="store_true",
+        help="Automatically abort execution when resuming (non-interactive)",
+    )
 
     # info command
     info_parser = subparsers.add_parser(
@@ -493,6 +507,18 @@ def cmd_run(args: argparse.Namespace) -> int:
         output["error"] = result.error
     if result.paused_at:
         output["paused_at"] = result.paused_at
+    if result.waiting_for_approval_at:
+        output["waiting_for_approval_at"] = result.waiting_for_approval_at
+    if result.breakpoint_id:
+        output["breakpoint_id"] = result.breakpoint_id
+
+    if result.is_waiting_for_approval:
+        output["status"] = "waiting_for_approval"
+
+    elif result.success:
+        output["status"] = "success"
+    else:
+        output["status"] = "failed"
 
     # Output results
     if args.output:
@@ -821,7 +847,11 @@ def cmd_dispatch(args: argparse.Namespace) -> int:
 
 def _interactive_approval(request):
     """Interactive approval callback for HITL mode."""
-    from framework.graph import ApprovalDecision, ApprovalResult
+    from framework.graph.breakpoint_types import (
+        ApprovalDecision,
+        ApprovalResult as BreakpointApprovalDecision,
+        BreakpointResult as BreakpointApprovalResult,
+    )
 
     print()
     print("=" * 60)
