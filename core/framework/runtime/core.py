@@ -145,6 +145,28 @@ class Runtime:
         """Get the current run (for inspection)."""
         return self._current_run
 
+    def get_evolution_timeline(self, run_id: str) -> list[dict[str, Any]]:
+        """
+        Get the ordered evolution events for a given run to visualize its timeline.
+        """
+        run = self.storage.load_run(run_id)
+        if not run:
+            return []
+
+        return [
+            {
+                "id": evt.id,
+                "timestamp": evt.timestamp.isoformat(),
+                "event_type": evt.event_type,
+                "description": evt.description,
+                "decision_id": evt.decision_id,
+                "node_id": evt.node_id,
+                "error_message": evt.error_message,
+                "adaptation_details": evt.adaptation_details,
+            }
+            for evt in sorted(run.evolution_events, key=lambda e: e.timestamp)
+        ]
+
     # === DECISION RECORDING ===
 
     def decide(
@@ -268,6 +290,38 @@ class Runtime:
         )
 
         self._current_run.record_outcome(decision_id, outcome)
+
+        # Track evolution events automatically
+        decision = next((d for d in self._current_run.decisions if d.id == decision_id), None)
+        node_id = decision.node_id if decision else None
+
+        if not success:
+            self._current_run.add_evolution_event(
+                event_type="failure",
+                description=summary or "Action failed",
+                decision_id=decision_id,
+                node_id=node_id,
+                error_message=error,
+            )
+        else:
+            # Check if this successful outcome followed previous failures for the same intent/node
+            if decision:
+                # Naive heuristic: if there are previous failed decisions in this node with same intent
+                previous_failures = [
+                    d for d in self._current_run.decisions
+                    if d.node_id == node_id
+                    and d.intent == decision.intent
+                    and d.id != decision_id
+                    and not d.was_successful
+                ]
+                if previous_failures:
+                    self._current_run.add_evolution_event(
+                        event_type="adaptation",
+                        description=f"Successfully adapted after {len(previous_failures)} failures",
+                        decision_id=decision_id,
+                        node_id=node_id,
+                        adaptation_details=summary,
+                    )
 
     # === PROBLEM RECORDING ===
 

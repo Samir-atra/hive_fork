@@ -24,6 +24,22 @@ class RunStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class EvolutionEvent(BaseModel):
+    """
+    An event representing a step in the agent's self-improvement or adaptation process.
+    """
+    id: str
+    timestamp: datetime = Field(default_factory=datetime.now)
+    event_type: str = Field(description="failure, retry, adaptation, success")
+    decision_id: str | None = None
+    node_id: str | None = None
+    description: str = ""
+    error_message: str | None = None
+    adaptation_details: str | None = None
+
+    model_config = {"extra": "allow"}
+
+
 class Problem(BaseModel):
     """
     A problem that occurred during the run.
@@ -83,6 +99,9 @@ class Run(BaseModel):
     # All decisions made during this run
     decisions: list[Decision] = Field(default_factory=list)
 
+    # Evolution events during this run
+    evolution_events: list[EvolutionEvent] = Field(default_factory=list)
+
     # Problems that occurred
     problems: list[Problem] = Field(default_factory=list)
 
@@ -129,6 +148,29 @@ class Run(BaseModel):
                 self.metrics.total_tokens += outcome.tokens_used
                 self.metrics.total_latency_ms += outcome.latency_ms
                 break
+
+    def add_evolution_event(
+        self,
+        event_type: str,
+        description: str,
+        decision_id: str | None = None,
+        node_id: str | None = None,
+        error_message: str | None = None,
+        adaptation_details: str | None = None,
+    ) -> str:
+        """Add an evolution event to this run."""
+        event_id = f"evt_{len(self.evolution_events)}"
+        event = EvolutionEvent(
+            id=event_id,
+            event_type=event_type,
+            description=description,
+            decision_id=decision_id,
+            node_id=node_id,
+            error_message=error_message,
+            adaptation_details=adaptation_details,
+        )
+        self.evolution_events.append(event)
+        return event_id
 
     def add_problem(
         self,

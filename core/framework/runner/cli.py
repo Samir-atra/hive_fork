@@ -108,6 +108,31 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
     )
     validate_parser.set_defaults(func=cmd_validate)
 
+    # history command
+    history_parser = subparsers.add_parser(
+        "history",
+        help="Show evolution history of an agent run",
+        description="Display the evolution timeline and retries for a specific agent run.",
+    )
+    history_parser.add_argument(
+        "agent_path",
+        type=str,
+        help="Path to the agent folder",
+    )
+    history_parser.add_argument(
+        "--run-id",
+        type=str,
+        required=True,
+        help="The ID of the run to show history for",
+    )
+    history_parser.add_argument(
+        "--format",
+        choices=["json", "markdown"],
+        default="markdown",
+        help="Output format (default: markdown)",
+    )
+    history_parser.set_defaults(func=cmd_history)
+
     # list command
     list_parser = subparsers.add_parser(
         "list",
@@ -826,6 +851,60 @@ def cmd_validate(args: argparse.Namespace) -> int:
     runner.cleanup()
     return 0 if validation.valid else 1
 
+
+def cmd_history(args: argparse.Namespace) -> int:
+    """Show evolution history timeline of an agent run."""
+    from framework.runner import AgentRunner
+    from framework.runtime.agent_runtime import create_agent_runtime
+
+    runner = AgentRunner.load(args.agent_path)
+
+    # We need to initialize the runtime to get access to storage
+    # We don't actually need to start it
+    runner._setup_agent_runtime()
+    runtime = runner._agent_runtime
+
+    if not runtime:
+        print("Failed to initialize runtime.")
+        return 1
+
+    timeline = runtime.get_evolution_timeline(args.run_id)
+
+    if not timeline:
+        print(f"No evolution history found for run {args.run_id}.")
+        return 0
+
+    if args.format == "json":
+        import json
+        print(json.dumps(timeline, indent=2))
+    else:
+        # Markdown format
+        print(f"# Evolution History for Run {args.run_id}\n")
+
+        for evt in timeline:
+            timestamp = evt["timestamp"]
+            # Formatting timestamp just to make it a bit nicer to read if it's an isoformat string
+            if "T" in timestamp:
+                timestamp = timestamp.replace("T", " ")[:19]
+
+            evt_type = evt["event_type"].upper()
+            icon = "❌" if evt["event_type"] == "failure" else "🔄" if evt["event_type"] == "retry" else "✅" if evt["event_type"] == "success" else "✨"
+
+            print(f"### {icon} {timestamp} - {evt_type}")
+            print(f"**Description:** {evt['description']}")
+
+            if evt.get("node_id"):
+                print(f"**Node:** `{evt['node_id']}`")
+
+            if evt.get("error_message"):
+                print(f"\n**Error:**\n```\n{evt['error_message']}\n```")
+
+            if evt.get("adaptation_details"):
+                print(f"\n**Adaptation:**\n```\n{evt['adaptation_details']}\n```")
+
+            print("\n---\n")
+
+    return 0
 
 def cmd_list(args: argparse.Namespace) -> int:
     """List available agents."""
