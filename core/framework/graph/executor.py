@@ -1307,6 +1307,49 @@ class GraphExecutor:
             # Collect output
             output = memory.read_all()
 
+            if steps >= graph.max_steps:
+                error_msg = f"Execution exceeded maximum steps limit ({graph.max_steps})"
+                self.logger.error(f"❌ {error_msg}")
+                self.runtime.report_problem(severity="error", description=error_msg)
+
+                total_retries_count = sum(node_retry_counts.values())
+                nodes_failed = [nid for nid, count in node_retry_counts.items() if count > 0]
+
+                self.runtime.end_run(
+                    success=False,
+                    narrative=error_msg,
+                )
+
+                if self.runtime_logger:
+                    await self.runtime_logger.end_run(
+                        status="failure",
+                        duration_ms=total_latency,
+                        node_path=path,
+                        execution_quality="failed",
+                    )
+
+                return ExecutionResult(
+                    success=False,
+                    error=error_msg,
+                    output=output,
+                    steps_executed=steps,
+                    total_tokens=total_tokens,
+                    total_latency_ms=total_latency,
+                    path=path,
+                    total_retries=total_retries_count,
+                    nodes_with_failures=nodes_failed,
+                    retry_details=dict(node_retry_counts),
+                    had_partial_failures=len(nodes_failed) > 0,
+                    execution_quality="failed",
+                    node_visit_counts=dict(node_visit_counts),
+                    session_state={
+                        "memory": output,
+                        "execution_path": list(path),
+                        "node_visit_counts": dict(node_visit_counts),
+                        "resume_from": current_node_id,
+                    },
+                )
+
             self.logger.info("\n✓ Execution complete!")
             self.logger.info(f"   Steps: {steps}")
             self.logger.info(f"   Path: {' → '.join(path)}")
