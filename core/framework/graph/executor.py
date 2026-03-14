@@ -893,9 +893,6 @@ class GraphExecutor:
                         max_retries = 0
 
                     if node_retry_counts[current_node_id] < max_retries:
-                        # Retry - don't increment steps for retries
-                        steps -= 1
-
                         # --- EXPONENTIAL BACKOFF ---
                         retry_count = node_retry_counts[current_node_id]
                         # Backoff formula: 1.0 * (2^(retry - 1)) -> 1s, 2s, 4s...
