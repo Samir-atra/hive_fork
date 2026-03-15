@@ -1,5 +1,11 @@
 """Agent Runner - load and run exported agents."""
 
+from framework.runner.mcp_registry import (
+    InstalledServer,
+    MCPRegistry,
+    RegistryConfig,
+    RegistryIndex,
+)
 from framework.runner.orchestrator import AgentOrchestrator
 from framework.runner.protocol import (
     AgentMessage,
@@ -25,4 +31,9 @@ __all__ = [
     "CapabilityLevel",
     "CapabilityResponse",
     "OrchestratorResult",
+    # MCP Registry
+    "MCPRegistry",
+    "InstalledServer",
+    "RegistryConfig",
+    "RegistryIndex",
 ]
