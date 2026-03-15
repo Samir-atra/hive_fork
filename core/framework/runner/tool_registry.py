@@ -51,7 +51,7 @@ class ToolRegistry:
     # Credential directory used for change detection
     _CREDENTIAL_DIR = Path("~/.hive/credentials/credentials").expanduser()
 
-    def __init__(self):
+    def __init__(self, use_shared_connections: bool = False):
         self._tools: dict[str, RegisteredTool] = {}
         self._mcp_clients: list[Any] = []  # List of MCPClient instances
         self._session_context: dict[str, Any] = {}  # Auto-injected context for tools
@@ -62,6 +62,9 @@ class ToolRegistry:
         self._mcp_cred_snapshot: set[str] = set()  # Credential filenames at MCP load time
         self._mcp_aden_key_snapshot: str | None = None  # ADEN_API_KEY value at MCP load time
         self._mcp_server_tools: dict[str, set[str]] = {}  # server name -> tool names
+        # Shared connection management (opt-in)
+        self._use_shared_connections = use_shared_connections
+        self._shared_server_names: list[str] = []  # Server names using shared connections
 
     def register(
         self,
@@ -503,12 +506,17 @@ class ToolRegistry:
                 description=server_config.get("description", ""),
             )
 
-            # Create and connect client
-            client = MCPClient(config)
-            client.connect()
+            # Create and connect client (use shared connection manager if enabled)
+            if self._use_shared_connections:
+                from framework.runner.mcp_connection_manager import MCPConnectionManager
 
-            # Store client for cleanup
-            self._mcp_clients.append(client)
+                manager = MCPConnectionManager.get_instance()
+                client = manager.acquire(config)
+                self._shared_server_names.append(config.name)
+            else:
+                client = MCPClient(config)
+                client.connect()
+                self._mcp_clients.append(client)
 
             # Register each tool
             server_name = server_config["name"]
@@ -728,6 +736,19 @@ class ToolRegistry:
 
     def cleanup(self) -> None:
         """Clean up all MCP client connections."""
+        # Release shared connections first
+        if self._shared_server_names:
+            from framework.runner.mcp_connection_manager import MCPConnectionManager
+
+            manager = MCPConnectionManager.get_instance()
+            for server_name in self._shared_server_names:
+                try:
+                    manager.release(server_name)
+                except Exception as e:
+                    logger.warning(f"Error releasing shared connection '{server_name}': {e}")
+            self._shared_server_names.clear()
+
+        # Clean up direct MCP clients
         for client in self._mcp_clients:
             try:
                 client.disconnect()
