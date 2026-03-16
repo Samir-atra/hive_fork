@@ -239,7 +239,7 @@ def test_tool_execution_error_logs_stack_trace_and_context(caplog):
 
     assert any("failing_tool" in record.message for record in caplog.records)
     assert any("test_call_123" in record.message for record in caplog.records)
-    assert any("Traceback" in record.message for record in caplog.records)
+    assert any(record.exc_info is not None for record in caplog.records)
 
 
 def test_tool_execution_error_logs_inputs(caplog):
@@ -286,3 +286,33 @@ def test_unknown_tool_error_returns_proper_result():
     assert result.is_error is True
     assert "Unknown tool" in result.content
     assert "nonexistent_tool" in result.content
+
+
+def test_tool_execution_error_truncates_large_inputs(caplog):
+    """ToolRegistry should truncate large inputs in error logs."""
+    registry = ToolRegistry()
+
+    def failing_executor(inputs: dict) -> None:
+        raise RuntimeError("Tool failed")
+
+    tool = Tool(
+        name="large_input_tool",
+        description="Tests input truncation",
+        parameters={"type": "object", "properties": {}},
+    )
+    registry.register("large_input_tool", tool, failing_executor)
+
+    large_input = {"data": "x" * 1000}
+    tool_use = ToolUse(
+        id="call_789",
+        name="large_input_tool",
+        input=large_input,
+    )
+
+    with caplog.at_level(logging.ERROR):
+        executor = registry.get_executor()
+        executor(tool_use)
+
+    log_messages = [record.message for record in caplog.records]
+    full_log = " ".join(log_messages)
+    assert "...(truncated)" in full_log
