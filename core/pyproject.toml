@@ -16,7 +16,10 @@ dependencies = [
 
 [project.optional-dependencies]
 webhook = ["aiohttp>=3.9.0"]
-server = ["aiohttp>=3.9.0"]
+server = [
+  "aiohttp>=3.9.0",
+  "watchdog>=3.0.0",
+]
 testing = [
   "pytest>=8.0",
   "pytest-asyncio>=0.23",

@@ -243,6 +243,11 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
         action="store_true",
         help="Open dashboard in browser after server starts",
     )
+    serve_parser.add_argument(
+        "--watch",
+        action="store_true",
+        help="Watch agent directories for changes and hot-reload active sessions",
+    )
     serve_parser.add_argument("--verbose", "-v", action="store_true", help="Enable INFO log level")
     serve_parser.add_argument("--debug", action="store_true", help="Enable DEBUG log level")
     serve_parser.set_defaults(func=cmd_serve)
@@ -281,6 +286,11 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
         type=str,
         default=None,
         help="LLM model for preloaded agents",
+    )
+    open_parser.add_argument(
+        "--watch",
+        action="store_true",
+        help="Watch agent directories for changes and hot-reload active sessions",
     )
     open_parser.add_argument("--verbose", "-v", action="store_true", help="Enable INFO log level")
     open_parser.add_argument("--debug", action="store_true", help="Enable DEBUG log level")
@@ -1644,6 +1654,27 @@ def cmd_serve(args: argparse.Namespace) -> int:
     async def run_server():
         manager = app["manager"]
 
+        # Setup watchdog observer if --watch flag is active
+        observer = None
+        if getattr(args, "watch", False):
+            import logging
+
+            from watchdog.observers import Observer
+
+            from framework.server.watcher import AgentReloadHandler
+
+            handler = AgentReloadHandler(manager, model)
+            observer = Observer()
+
+            from framework.server.app import _get_allowed_agent_roots
+
+            for root in _get_allowed_agent_roots():
+                if root.exists() and root.is_dir():
+                    observer.schedule(handler, str(root), recursive=True)
+
+            observer.start()
+            logging.getLogger(__name__).info("Watching agent directories for changes...")
+
         # Preload agents specified via --agent
         for agent_path in args.agent:
             try:
@@ -1687,6 +1718,9 @@ def cmd_serve(args: argparse.Namespace) -> int:
         except asyncio.CancelledError:
             pass
         finally:
+            if observer:
+                observer.stop()
+                observer.join()
             await manager.shutdown_all()
             await runner.cleanup()
 
