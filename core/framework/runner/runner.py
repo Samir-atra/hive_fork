@@ -766,9 +766,12 @@ class AgentRunner:
             self._storage_path = storage_path
             self._temp_dir = None
         else:
-            # Use persistent storage in ~/.hive/agents/{agent_name}/ per RUNTIME_LOGGING.md spec
+            # Use persistent storage in ~/.hive/agents/{agent_name}_{hash}/ per RUNTIME_LOGGING.md spec
+            import hashlib
+
             home = Path.home()
-            default_storage = home / ".hive" / "agents" / agent_path.name
+            path_hash = hashlib.md5(str(agent_path.resolve()).encode("utf-8")).hexdigest()[:8]
+            default_storage = home / ".hive" / "agents" / f"{agent_path.name}_{path_hash}"
             default_storage.mkdir(parents=True, exist_ok=True)
             self._storage_path = default_storage
             self._temp_dir = None
