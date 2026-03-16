@@ -466,6 +466,34 @@ class GraphExecutor:
                 ),
             )
 
+        # Validate Goal schemas format
+        try:
+            from jsonschema import Draft7Validator
+            from jsonschema.exceptions import SchemaError
+            
+            for schema_name, schema in [("input_schema", goal.input_schema), ("output_schema", goal.output_schema)]:
+                if schema:
+                    try:
+                        Draft7Validator.check_schema(schema)
+                    except SchemaError as e:
+                        return ExecutionResult(
+                            success=False,
+                            error=f"Invalid {schema_name} format in Goal: {e.message}",
+                        )
+        except ImportError:
+            self.logger.warning("jsonschema not installed, skipping Goal schema format validation")
+
+        # Validate input_data against Goal.input_schema
+        if goal.input_schema and input_data is not None:
+            val_result = self.validator.validate_schema(input_data, goal.input_schema)
+            if not val_result.success:
+                error_msg = f"Input validation against goal.input_schema failed: {val_result.error}"
+                self.logger.error(f"❌ {error_msg}")
+                return ExecutionResult(
+                    success=False,
+                    error=error_msg,
+                )
+
         # Initialize execution state
         memory = SharedMemory()
 
@@ -1545,6 +1573,54 @@ class GraphExecutor:
             total_retries_count = sum(node_retry_counts.values())
             nodes_failed = [nid for nid, count in node_retry_counts.items() if count > 0]
             exec_quality = "degraded" if total_retries_count > 0 else "clean"
+
+            # Validate final output against Goal.output_schema
+            if goal.output_schema and output:
+                val_result = self.validator.validate_schema(output, goal.output_schema)
+                if not val_result.success:
+                    error_msg = f"Output validation against goal.output_schema failed: {val_result.error}"
+                    self.logger.error(f"❌ {error_msg}")
+                    # Force execution quality to failed
+                    exec_quality = "failed"
+                    
+                    self.runtime.report_problem(
+                        severity="critical",
+                        description=error_msg,
+                    )
+                    self.runtime.end_run(
+                        success=False,
+                        output_data=output,
+                        narrative=f"Failed at output validation: {error_msg}",
+                    )
+                    
+                    if self.runtime_logger:
+                        await self.runtime_logger.end_run(
+                            status="failure",
+                            duration_ms=total_latency,
+                            node_path=path,
+                            execution_quality="failed",
+                        )
+                        
+                    return ExecutionResult(
+                        success=False,
+                        error=error_msg,
+                        output=output,
+                        steps_executed=steps,
+                        total_tokens=total_tokens,
+                        total_latency_ms=total_latency,
+                        path=path,
+                        total_retries=total_retries_count,
+                        nodes_with_failures=nodes_failed,
+                        retry_details=dict(node_retry_counts),
+                        had_partial_failures=len(nodes_failed) > 0,
+                        execution_quality=exec_quality,
+                        node_visit_counts=dict(node_visit_counts),
+                        session_state={
+                            "memory": output,
+                            "execution_path": list(path),
+                            "node_visit_counts": dict(node_visit_counts),
+                        },
+                    )
 
             # Update narrative to reflect execution quality
             quality_suffix = ""
