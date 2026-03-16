@@ -59,6 +59,7 @@ from .models import (
     CredentialType,
     CredentialUsageSpec,
     CredentialValidationError,
+    InvalidCredentialIdError,
 )
 from .provider import (
     BearerTokenProvider,
@@ -138,6 +139,7 @@ __all__ = [
     "CredentialRefreshError",
     "CredentialValidationError",
     "CredentialDecryptionError",
+    "InvalidCredentialIdError",
     # Key storage (bootstrap credentials)
     "load_credential_key",
     "save_credential_key",

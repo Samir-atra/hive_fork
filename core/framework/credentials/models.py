@@ -343,3 +343,9 @@ class CredentialDecryptionError(CredentialError):
     """Raised when credential decryption fails."""
 
     pass
+
+
+class InvalidCredentialIdError(CredentialError):
+    """Raised when a credential ID is invalid (empty, null bytes, path traversal)."""
+
+    pass

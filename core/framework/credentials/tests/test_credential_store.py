@@ -29,6 +29,7 @@ from core.framework.credentials import (
     EncryptedFileStorage,
     EnvVarStorage,
     InMemoryStorage,
+    InvalidCredentialIdError,
     StaticProvider,
     TemplateResolver,
 )
@@ -322,6 +323,101 @@ class TestEncryptedFileStorage:
         storage.save(CredentialObject(id="test", keys={}))
         assert storage.delete("test")
         assert storage.load("test") is None
+
+    def test_reject_empty_credential_id(self, storage):
+        """Test that empty credential ID is rejected."""
+        with pytest.raises(InvalidCredentialIdError, match="cannot be empty"):
+            storage.load("")
+
+    def test_reject_whitespace_credential_id(self, storage):
+        """Test that whitespace-only credential ID is rejected."""
+        with pytest.raises(InvalidCredentialIdError, match="cannot be empty"):
+            storage.load("   ")
+
+    def test_reject_null_byte_in_credential_id(self, storage):
+        """Test that credential ID with null byte is rejected."""
+        with pytest.raises(InvalidCredentialIdError, match="null bytes"):
+            storage.load("test\x00malicious")
+
+    def test_reject_path_traversal_dotdot(self, storage):
+        """Test that path traversal with .. is rejected."""
+        with pytest.raises(InvalidCredentialIdError, match="path traversal"):
+            storage.load("../etc/passwd")
+
+    def test_reject_path_traversal_slash(self, storage):
+        """Test that path traversal with / is rejected."""
+        with pytest.raises(InvalidCredentialIdError, match="path traversal"):
+            storage.load("etc/passwd")
+
+    def test_reject_path_traversal_backslash(self, storage):
+        """Test that path traversal with backslash is rejected."""
+        with pytest.raises(InvalidCredentialIdError, match="path traversal"):
+            storage.load("etc\\passwd")
+
+    def test_valid_credential_id_passes(self, storage):
+        """Test that valid credential IDs work correctly."""
+        cred = CredentialObject(
+            id="valid_credential-123",
+            keys={"api_key": CredentialKey(name="api_key", value=SecretStr("test"))},
+        )
+        storage.save(cred)
+        loaded = storage.load("valid_credential-123")
+        assert loaded is not None
+        assert loaded.id == "valid_credential-123"
+
+
+class TestValidateCredentialIdFunction:
+    """Tests for the validate_credential_id helper function."""
+
+    def test_validate_empty_string(self):
+        """Test that empty string raises error."""
+        from core.framework.credentials.storage import validate_credential_id
+
+        with pytest.raises(InvalidCredentialIdError, match="cannot be empty"):
+            validate_credential_id("")
+
+    def test_validate_whitespace_only(self):
+        """Test that whitespace-only string raises error."""
+        from core.framework.credentials.storage import validate_credential_id
+
+        with pytest.raises(InvalidCredentialIdError, match="cannot be empty"):
+            validate_credential_id("   \t\n")
+
+    def test_validate_null_byte(self):
+        """Test that null byte raises error."""
+        from core.framework.credentials.storage import validate_credential_id
+
+        with pytest.raises(InvalidCredentialIdError, match="null bytes"):
+            validate_credential_id("test\x00id")
+
+    def test_validate_path_traversal_dotdot(self):
+        """Test that .. path traversal raises error."""
+        from core.framework.credentials.storage import validate_credential_id
+
+        with pytest.raises(InvalidCredentialIdError, match="path traversal"):
+            validate_credential_id("../etc/passwd")
+
+    def test_validate_path_traversal_slash(self):
+        """Test that / in ID raises error."""
+        from core.framework.credentials.storage import validate_credential_id
+
+        with pytest.raises(InvalidCredentialIdError, match="path traversal"):
+            validate_credential_id("path/to/credential")
+
+    def test_validate_path_traversal_backslash(self):
+        """Test that backslash in ID raises error."""
+        from core.framework.credentials.storage import validate_credential_id
+
+        with pytest.raises(InvalidCredentialIdError, match="path traversal"):
+            validate_credential_id("path\\to\\credential")
+
+    def test_validate_valid_id(self):
+        """Test that valid ID passes validation."""
+        from core.framework.credentials.storage import validate_credential_id
+
+        assert validate_credential_id("brave_search") == "brave_search"
+        assert validate_credential_id("my-api-key-123") == "my-api-key-123"
+        assert validate_credential_id("credential.name") == "credential.name"
 
 
 class TestCompositeStorage:

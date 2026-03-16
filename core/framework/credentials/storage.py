@@ -20,9 +20,57 @@ from typing import Any
 
 from pydantic import SecretStr
 
-from .models import CredentialDecryptionError, CredentialKey, CredentialObject, CredentialType
+from .models import (
+    CredentialDecryptionError,
+    CredentialKey,
+    CredentialObject,
+    CredentialType,
+    InvalidCredentialIdError,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def validate_credential_id(credential_id: str) -> str:
+    """
+    Validate a credential ID for safe use in file paths.
+
+    This function ensures that credential IDs are safe to use in file system
+    operations by checking for:
+    - Empty or whitespace-only strings
+    - Null bytes (which can truncate paths unexpectedly)
+    - Path traversal attempts (e.g., "..", "/", "\\")
+
+    Args:
+        credential_id: The credential ID to validate.
+
+    Returns:
+        The validated credential ID (unchanged if valid).
+
+    Raises:
+        InvalidCredentialIdError: If the credential ID is invalid.
+
+    Example:
+        >>> validate_credential_id("brave_search")
+        'brave_search'
+        >>> validate_credential_id("")
+        InvalidCredentialIdError: Credential ID cannot be empty
+        >>> validate_credential_id("../etc/passwd")
+        InvalidCredentialIdError: Credential ID contains invalid path traversal
+    """
+    if not credential_id or not credential_id.strip():
+        logger.warning("Rejected empty credential ID")
+        raise InvalidCredentialIdError("Credential ID cannot be empty")
+
+    if "\x00" in credential_id:
+        logger.warning(f"Rejected credential ID containing null byte: {credential_id!r}")
+        raise InvalidCredentialIdError("Credential ID cannot contain null bytes")
+
+    if ".." in credential_id or "/" in credential_id or "\\" in credential_id:
+        logger.warning(f"Rejected credential ID with path traversal: {credential_id!r}")
+        raise InvalidCredentialIdError("Credential ID contains invalid path traversal characters")
+
+    return credential_id
 
 
 class CredentialStorage(ABC):
@@ -168,9 +216,8 @@ class EncryptedFileStorage(CredentialStorage):
 
     def _cred_path(self, credential_id: str) -> Path:
         """Get the file path for a credential."""
-        # Sanitize credential_id to prevent path traversal
-        safe_id = credential_id.replace("/", "_").replace("\\", "_").replace("..", "_")
-        return self.base_path / "credentials" / f"{safe_id}.enc"
+        validate_credential_id(credential_id)
+        return self.base_path / "credentials" / f"{credential_id}.enc"
 
     def save(self, credential: CredentialObject) -> None:
         """Encrypt and save credential."""
