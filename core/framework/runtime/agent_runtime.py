@@ -1433,6 +1433,41 @@ class AgentRuntime:
         """Unsubscribe from events."""
         return self._event_bus.unsubscribe(subscription_id)
 
+    def get_evolution_timeline(self, execution_id: str) -> list[dict[str, Any]]:
+        """Get the ordered evolution events for a given run to visualize its timeline."""
+        # Check active streams first
+        for stream in self._streams.values():
+            if hasattr(stream, 'runtime') and hasattr(stream.runtime, 'get_evolution_timeline'):
+                timeline = stream.runtime.get_evolution_timeline(execution_id)
+                if timeline:
+                    return timeline
+
+        # Check persistent storage if not found in active streams
+        try:
+            if hasattr(self._storage, 'load_run_sync'):
+                run = self._storage.load_run_sync(execution_id)
+            else:
+                run = self._storage.load_run(execution_id)
+
+            if run:
+                return [
+                    {
+                        "id": evt.id,
+                        "timestamp": evt.timestamp.isoformat(),
+                        "event_type": evt.event_type,
+                        "description": evt.description,
+                        "decision_id": evt.decision_id,
+                        "node_id": evt.node_id,
+                        "error_message": evt.error_message,
+                        "adaptation_details": evt.adaptation_details,
+                    }
+                    for evt in sorted(run.evolution_events, key=lambda e: e.timestamp)
+                ]
+        except Exception:
+            pass
+
+        return []
+
     # === STATS AND MONITORING ===
 
     def get_stats(self) -> dict:

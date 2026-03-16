@@ -866,6 +866,10 @@ class ExecutionStream:
         """Get execution context."""
         return self._active_executions.get(execution_id)
 
+    def get_evolution_timeline(self, execution_id: str) -> list[dict[str, Any]]:
+        """Get the ordered evolution events for a given run to visualize its timeline."""
+        return self.runtime.get_evolution_timeline(execution_id)
+
     async def cancel_execution(self, execution_id: str) -> bool:
         """
         Cancel a running execution.
