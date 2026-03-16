@@ -7,6 +7,7 @@ import inspect
 import json
 import logging
 import os
+import traceback
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +16,8 @@ from typing import Any
 from framework.llm.provider import Tool, ToolResult, ToolUse
 
 logger = logging.getLogger(__name__)
+
+_TOOL_DEBUG_ENABLED = os.environ.get("HIVE_TOOL_DEBUG", "").lower() in ("1", "true", "yes")
 
 # Per-execution context overrides.  Each asyncio task (and thus each
 # concurrent graph execution) gets its own copy, so there are no races
@@ -269,9 +272,24 @@ class ToolRegistry:
                             r = await result
                             return _wrap_result(tool_use.id, r)
                         except Exception as exc:
+                            logger.error(
+                                "Tool execution failed",
+                                exc_info=True,
+                                extra={
+                                    "tool_use_id": tool_use.id,
+                                    "tool_name": tool_use.name,
+                                    "input": tool_use.input,
+                                },
+                            )
+                            error_response: dict[str, Any] = {
+                                "error": str(exc),
+                                "error_type": type(exc).__name__,
+                            }
+                            if _TOOL_DEBUG_ENABLED:
+                                error_response["traceback"] = traceback.format_exc()
                             return ToolResult(
                                 tool_use_id=tool_use.id,
-                                content=json.dumps({"error": str(exc)}),
+                                content=json.dumps(error_response),
                                 is_error=True,
                             )
 
@@ -279,9 +297,24 @@ class ToolRegistry:
 
                 return _wrap_result(tool_use.id, result)
             except Exception as e:
+                logger.error(
+                    "Tool execution failed",
+                    exc_info=True,
+                    extra={
+                        "tool_use_id": tool_use.id,
+                        "tool_name": tool_use.name,
+                        "input": tool_use.input,
+                    },
+                )
+                error_response: dict[str, Any] = {
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                }
+                if _TOOL_DEBUG_ENABLED:
+                    error_response["traceback"] = traceback.format_exc()
                 return ToolResult(
                     tool_use_id=tool_use.id,
-                    content=json.dumps({"error": str(e)}),
+                    content=json.dumps(error_response),
                     is_error=True,
                 )
 
@@ -555,8 +588,21 @@ class ToolRegistry:
                                 return result[0]
                             return result
                         except Exception as e:
-                            logger.error(f"MCP tool '{tool_name}' execution failed: {e}")
-                            return {"error": str(e)}
+                            logger.error(
+                                f"MCP tool '{tool_name}' execution failed",
+                                exc_info=True,
+                                extra={
+                                    "tool_name": tool_name,
+                                    "inputs": inputs,
+                                },
+                            )
+                            error_response: dict[str, Any] = {
+                                "error": str(e),
+                                "error_type": type(e).__name__,
+                            }
+                            if _TOOL_DEBUG_ENABLED:
+                                error_response["traceback"] = traceback.format_exc()
+                            return error_response
 
                     return executor
 

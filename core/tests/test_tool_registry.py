@@ -6,9 +6,13 @@ ToolResult instances. Historically, invalid JSON in ToolResult.content
 could cause a json.JSONDecodeError and crash execution.
 """
 
+import json
+import os
 import textwrap
 from pathlib import Path
+from unittest.mock import patch
 
+from framework.llm.provider import Tool, ToolUse
 from framework.runner.tool_registry import ToolRegistry
 
 
@@ -91,3 +95,80 @@ def test_discover_from_module_handles_empty_content(tmp_path):
     result = registered.executor({})
     assert isinstance(result, dict)
     assert result == {}
+
+
+def test_get_executor_includes_error_type_on_exception():
+    """ToolRegistry.get_executor should include error_type when tool raises."""
+    registry = ToolRegistry()
+
+    def failing_executor(inputs: dict):
+        raise ValueError("intentional test error")
+
+    registry.register(
+        "failing_tool",
+        Tool(name="failing_tool", description="A tool that fails", parameters={}),
+        failing_executor,
+    )
+
+    executor = registry.get_executor()
+    result = executor(ToolUse(id="test-123", name="failing_tool", input={}))
+
+    content = json.loads(result.content)
+    assert result.is_error is True
+    assert "error" in content
+    assert content["error"] == "intentional test error"
+    assert "error_type" in content
+    assert content["error_type"] == "ValueError"
+
+
+def test_get_executor_includes_traceback_in_debug_mode():
+    """ToolRegistry.get_executor should include traceback when HIVE_TOOL_DEBUG is set."""
+    registry = ToolRegistry()
+
+    def failing_executor(inputs: dict):
+        raise RuntimeError("debug test error")
+
+    registry.register(
+        "debug_tool",
+        Tool(name="debug_tool", description="A tool for debug testing", parameters={}),
+        failing_executor,
+    )
+
+    with patch.dict(os.environ, {"HIVE_TOOL_DEBUG": "1"}):
+        from framework.runner import tool_registry
+
+        tool_registry._TOOL_DEBUG_ENABLED = True
+        executor = registry.get_executor()
+        result = executor(ToolUse(id="test-456", name="debug_tool", input={}))
+        tool_registry._TOOL_DEBUG_ENABLED = False
+
+    content = json.loads(result.content)
+    assert result.is_error is True
+    assert "traceback" in content
+    assert "RuntimeError: debug test error" in content["traceback"]
+
+
+def test_get_executor_excludes_traceback_in_production():
+    """ToolRegistry.get_executor should exclude traceback when HIVE_TOOL_DEBUG is not set."""
+    registry = ToolRegistry()
+
+    def failing_executor(inputs: dict):
+        raise RuntimeError("production test error")
+
+    registry.register(
+        "prod_tool",
+        Tool(name="prod_tool", description="A tool for prod testing", parameters={}),
+        failing_executor,
+    )
+
+    with patch.dict(os.environ, {}, clear=True):
+        from framework.runner import tool_registry
+
+        tool_registry._TOOL_DEBUG_ENABLED = False
+        executor = registry.get_executor()
+        result = executor(ToolUse(id="test-789", name="prod_tool", input={}))
+
+    content = json.loads(result.content)
+    assert result.is_error is True
+    assert "traceback" not in content
+    assert "error_type" in content
