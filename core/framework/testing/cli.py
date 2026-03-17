@@ -177,6 +177,10 @@ def cmd_test_run(args: argparse.Namespace) -> int:
 
     cmd.append("--tb=short")
 
+    # Add json report
+    report_file = tests_dir / ".report.json"
+    cmd.extend(["--json-report", f"--json-report-file={report_file}"])
+
     # Set PYTHONPATH to project root
     env = os.environ.copy()
     pythonpath = env.get("PYTHONPATH", "")
@@ -200,6 +204,74 @@ def cmd_test_run(args: argparse.Namespace) -> int:
     except Exception as e:
         print(f"Error: Failed to run pytest: {e}")
         return 1
+
+    # Parse JSON report and store failures
+    if report_file.exists():
+        try:
+            import json
+
+            from framework.testing.test_result import TestResult
+            from framework.testing.test_storage import TestStorage
+
+            with open(report_file, encoding="utf-8") as f:
+                report_data = json.load(f)
+
+            storage = TestStorage(agent_path)
+
+            for test in report_data.get("tests", []):
+                # nodeid format: "test_file.py::test_name"
+                nodeid = test.get("nodeid", "")
+                if "::" in nodeid:
+                    test_id = nodeid.split("::")[-1]
+                else:
+                    test_id = nodeid
+
+                outcome = test.get("outcome", "failed")
+                passed = outcome == "passed"
+
+                duration_s = 0.0
+                duration_s += test.get("setup", {}).get("duration", 0.0)
+                duration_s += test.get("call", {}).get("duration", 0.0)
+                duration_s += test.get("teardown", {}).get("duration", 0.0)
+                duration_ms = int(duration_s * 1000)
+
+                error_message = None
+                stack_trace = None
+
+                if not passed:
+                    # Errors can happen in setup, call, or teardown
+                    failed_phase = {}
+                    if test.get("call", {}).get("outcome") == "failed":
+                        failed_phase = test.get("call", {})
+                    elif test.get("setup", {}).get("outcome") == "failed":
+                        failed_phase = test.get("setup", {})
+                    elif test.get("teardown", {}).get("outcome") == "failed":
+                        failed_phase = test.get("teardown", {})
+
+                    crash = failed_phase.get("crash", {})
+                    if crash:
+                        error_message = crash.get("message")
+
+                    longrepr = failed_phase.get("longrepr")
+                    if longrepr:
+                        if isinstance(longrepr, str):
+                            stack_trace = longrepr
+                        elif isinstance(longrepr, dict) and "reprcrash" in longrepr:
+                            stack_trace = longrepr["reprcrash"].get("message")
+                        elif isinstance(longrepr, dict) and "reprtraceback" in longrepr:
+                            stack_trace = str(longrepr["reprtraceback"])
+
+                test_result = TestResult(
+                    test_id=test_id,
+                    passed=passed,
+                    duration_ms=duration_ms,
+                    error_message=error_message,
+                    stack_trace=stack_trace,
+                )
+
+                storage.save_result(test_id, test_result)
+        except Exception as e:
+            print(f"Warning: Failed to parse or store test report: {e}")
 
     return result.returncode
 
