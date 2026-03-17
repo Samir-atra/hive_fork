@@ -87,6 +87,7 @@ class AgentOrchestrator:
         agent_path: str | Path,
         capabilities: list[str] | None = None,
         priority: int = 0,
+        fallback_models: list[str] | None = None,
     ) -> None:
         """
         Register an agent with the orchestrator.
@@ -96,8 +97,9 @@ class AgentOrchestrator:
             agent_path: Path to agent folder (containing agent.json)
             capabilities: Optional list of capability keywords
             priority: Higher = checked first for routing
+            fallback_models: List of fallback models to use if the primary model fails
         """
-        runner = AgentRunner.load(agent_path)
+        runner = AgentRunner.load(agent_path, fallback_models=fallback_models)
         info = runner.info()
 
         self._agents[name] = RegisteredAgent(

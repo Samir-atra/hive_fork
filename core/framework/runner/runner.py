@@ -856,6 +856,7 @@ class AgentRunner:
         interactive: bool = True,
         skip_credential_validation: bool | None = None,
         credential_store: Any | None = None,
+        fallback_models: list[str] | None = None,
     ) -> "AgentRunner":
         """
         Load an agent from an export folder.
@@ -970,7 +971,7 @@ class AgentRunner:
             configure_fn = getattr(agent_module, "configure_for_account", None)
             list_accts_fn = getattr(agent_module, "list_connected_accounts", None)
 
-            return cls(
+            runner = cls(
                 agent_path=agent_path,
                 graph=graph,
                 goal=goal,
@@ -986,6 +987,10 @@ class AgentRunner:
                 list_accounts=list_accts_fn,
                 credential_store=credential_store,
             )
+
+            if fallback_models is not None:
+                runner.config.fallback_models = fallback_models
+            return runner
 
         # Fallback: load from agent.json (legacy JSON-based agents)
         agent_json_path = agent_path / "agent.json"
@@ -1003,7 +1008,7 @@ class AgentRunner:
         except json.JSONDecodeError as exc:
             raise ValueError(f"Invalid JSON in agent export file: {agent_json_path}") from exc
 
-        return cls(
+        runner = cls(
             agent_path=agent_path,
             graph=graph,
             goal=goal,
@@ -1014,6 +1019,10 @@ class AgentRunner:
             skip_credential_validation=skip_credential_validation or False,
             credential_store=credential_store,
         )
+
+        if fallback_models is not None:
+            runner.config.fallback_models = fallback_models
+        return runner
 
     def register_tool(
         self,
@@ -1103,6 +1112,92 @@ class AgentRunner:
         """
         self._approval_callback = callback
 
+    def _create_provider_for_model(self, model: str, api_base: str | None = None) -> Any:
+        from framework.config import get_hive_config
+        from framework.llm.litellm import LiteLLMProvider
+
+        config = get_hive_config()
+        llm_config = config.get("llm", {})
+        use_claude_code = llm_config.get("use_claude_code_subscription", False)
+        use_codex = llm_config.get("use_codex_subscription", False)
+        use_kimi_code = llm_config.get("use_kimi_code_subscription", False)
+
+        api_key = None
+        if use_claude_code:
+            api_key = get_claude_code_token()
+            if not api_key:
+                print("Warning: Claude Code subscription configured but no token found.")
+                print("Run 'claude' to authenticate, then try again.")
+        elif use_codex:
+            api_key = get_codex_token()
+            if not api_key:
+                print("Warning: Codex subscription configured but no token found.")
+                print("Run 'codex' to authenticate, then try again.")
+        elif use_kimi_code:
+            api_key = get_kimi_code_token()
+            if not api_key:
+                print("Warning: Kimi Code subscription configured but no key found.")
+                print("Run 'kimi /login' to authenticate, then try again.")
+
+        if api_key and use_claude_code:
+            return LiteLLMProvider(
+                model=model,
+                api_key=api_key,
+                api_base=api_base,
+                extra_headers={"authorization": f"Bearer {api_key}"},
+            )
+        elif api_key and use_codex:
+            extra_headers: dict[str, str] = {
+                "Authorization": f"Bearer {api_key}",
+                "User-Agent": "CodexBar",
+            }
+            account_id = get_codex_account_id()
+            if account_id:
+                extra_headers["ChatGPT-Account-Id"] = account_id
+            return LiteLLMProvider(
+                model=model,
+                api_key=api_key,
+                api_base="https://chatgpt.com/backend-api/codex",
+                extra_headers=extra_headers,
+                store=False,
+                allowed_openai_params=["store"],
+            )
+        elif api_key and use_kimi_code:
+            return LiteLLMProvider(
+                model=model,
+                api_key=api_key,
+                api_base=api_base,
+            )
+        else:
+            if self._is_local_model(model):
+                return LiteLLMProvider(
+                    model=model,
+                    api_base=api_base,
+                )
+            else:
+                api_key_env = llm_config.get("api_key_env_var") or self._get_api_key_env_var(model)
+                import os
+
+                if api_key_env and os.environ.get(api_key_env):
+                    return LiteLLMProvider(
+                        model=model,
+                        api_key=os.environ[api_key_env],
+                        api_base=api_base,
+                    )
+                else:
+                    api_key = self._get_api_key_from_credential_store()
+                    if api_key:
+                        if api_key_env:
+                            os.environ[api_key_env] = api_key
+                        return LiteLLMProvider(
+                            model=model, api_key=api_key, api_base=api_base
+                        )
+                    elif api_key_env:
+                        print(f"Warning: {api_key_env} not set. LLM calls will fail.")
+                        print(f"Set it with: export {api_key_env}=your-api-key")
+
+        return None
+
     def _setup(self, event_bus=None) -> None:
         """Set up runtime, LLM, and executor."""
         # Configure structured logging (auto-detects JSON vs human-readable)
@@ -1130,106 +1225,34 @@ class AgentRunner:
 
             self._llm = MockLLMProvider(model=self.model)
         else:
-            from framework.llm.litellm import LiteLLMProvider
+            from framework.llm.router import LLMRouter
 
-            # Check if a subscription mode is configured
             config = get_hive_config()
             llm_config = config.get("llm", {})
-            use_claude_code = llm_config.get("use_claude_code_subscription", False)
-            use_codex = llm_config.get("use_codex_subscription", False)
-            use_kimi_code = llm_config.get("use_kimi_code_subscription", False)
             api_base = llm_config.get("api_base")
 
-            api_key = None
-            if use_claude_code:
-                # Get OAuth token from Claude Code subscription
-                api_key = get_claude_code_token()
-                if not api_key:
-                    print("Warning: Claude Code subscription configured but no token found.")
-                    print("Run 'claude' to authenticate, then try again.")
-            elif use_codex:
-                # Get OAuth token from Codex subscription
-                api_key = get_codex_token()
-                if not api_key:
-                    print("Warning: Codex subscription configured but no token found.")
-                    print("Run 'codex' to authenticate, then try again.")
-            elif use_kimi_code:
-                # Get API key from Kimi Code CLI config (~/.kimi/config.toml)
-                api_key = get_kimi_code_token()
-                if not api_key:
-                    print("Warning: Kimi Code subscription configured but no key found.")
-                    print("Run 'kimi /login' to authenticate, then try again.")
+            primary_provider = self._create_provider_for_model(self.model, api_base)
 
-            if api_key and use_claude_code:
-                # Use litellm's built-in Anthropic OAuth support.
-                # The lowercase "authorization" key triggers OAuth detection which
-                # adds the required anthropic-beta and browser-access headers.
-                self._llm = LiteLLMProvider(
-                    model=self.model,
-                    api_key=api_key,
-                    api_base=api_base,
-                    extra_headers={"authorization": f"Bearer {api_key}"},
-                )
-            elif api_key and use_codex:
-                # OpenAI Codex subscription routes through the ChatGPT backend
-                # (chatgpt.com/backend-api/codex/responses), NOT the standard
-                # OpenAI API.  The consumer OAuth token lacks platform API scopes.
-                extra_headers: dict[str, str] = {
-                    "Authorization": f"Bearer {api_key}",
-                    "User-Agent": "CodexBar",
-                }
-                account_id = get_codex_account_id()
-                if account_id:
-                    extra_headers["ChatGPT-Account-Id"] = account_id
-                self._llm = LiteLLMProvider(
-                    model=self.model,
-                    api_key=api_key,
-                    api_base="https://chatgpt.com/backend-api/codex",
-                    extra_headers=extra_headers,
-                    store=False,
-                    allowed_openai_params=["store"],
-                )
-            elif api_key and use_kimi_code:
-                # Kimi Code subscription uses the Kimi coding API (OpenAI-compatible).
-                # The api_base is set automatically by LiteLLMProvider for kimi/ models.
-                self._llm = LiteLLMProvider(
-                    model=self.model,
-                    api_key=api_key,
-                    api_base=api_base,
-                )
-            else:
-                # Local models (e.g. Ollama) don't need an API key
-                if self._is_local_model(self.model):
-                    self._llm = LiteLLMProvider(
-                        model=self.model,
-                        api_base=api_base,
-                    )
-                else:
-                    # Fall back to environment variable
-                    # First check api_key_env_var from config (set by quickstart)
-                    api_key_env = llm_config.get("api_key_env_var") or self._get_api_key_env_var(
-                        self.model
-                    )
-                    if api_key_env and os.environ.get(api_key_env):
-                        self._llm = LiteLLMProvider(
-                            model=self.model,
-                            api_key=os.environ[api_key_env],
-                            api_base=api_base,
+            fallback_models = getattr(self.config, "fallback_models", None)
+            if fallback_models:
+                providers = []
+                if primary_provider:
+                    providers.append(primary_provider)
+
+                for fallback_model in fallback_models:
+                    if fallback_model != self.model:
+                        fallback_provider = self._create_provider_for_model(
+                            fallback_model, api_base
                         )
-                    else:
-                        # Fall back to credential store
-                        api_key = self._get_api_key_from_credential_store()
-                        if api_key:
-                            self._llm = LiteLLMProvider(
-                                model=self.model, api_key=api_key, api_base=api_base
-                            )
-                            # Set env var so downstream code (e.g. cleanup LLM in
-                            # node._extract_json) can also find it
-                            if api_key_env:
-                                os.environ[api_key_env] = api_key
-                        elif api_key_env:
-                            print(f"Warning: {api_key_env} not set. LLM calls will fail.")
-                            print(f"Set it with: export {api_key_env}=your-api-key")
+                        if fallback_provider:
+                            providers.append(fallback_provider)
+
+                if providers:
+                    self._llm = LLMRouter(providers=providers, strategy="fallback")
+                else:
+                    self._llm = None
+            else:
+                self._llm = primary_provider
 
             # Fail fast if the agent needs an LLM but none was configured
             if self._llm is None:

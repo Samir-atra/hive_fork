@@ -17,6 +17,11 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
         description="Execute an exported agent with the given input.",
     )
     run_parser.add_argument(
+        "--fallback-models",
+        type=str,
+        help="Comma-separated list of fallback models to use if the primary model fails",
+    )
+    run_parser.add_argument(
         "agent_path",
         type=str,
         help="Path to agent folder (containing agent.json)",
@@ -126,6 +131,11 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
         description="Route a request to the best agent(s) using the orchestrator.",
     )
     dispatch_parser.add_argument(
+        "--fallback-models",
+        type=str,
+        help="Comma-separated list of fallback models to use if the primary model fails",
+    )
+    dispatch_parser.add_argument(
         "agents_dir",
         type=str,
         nargs="?",
@@ -164,6 +174,11 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
         "shell",
         help="Interactive agent session",
         description="Start an interactive REPL session with agents.",
+    )
+    shell_parser.add_argument(
+        "--fallback-models",
+        type=str,
+        help="Comma-separated list of fallback models to use if the primary model fails",
     )
     shell_parser.add_argument(
         "agent_path",
@@ -379,6 +394,9 @@ def _prompt_before_start(agent_path: str, runner, model: str | None = None):
 
 def cmd_run(args: argparse.Namespace) -> int:
     """Run an exported agent."""
+    fallback_models = None
+    if getattr(args, "fallback_models", None):
+        fallback_models = [m.strip() for m in args.fallback_models.split(",") if m.strip()]
 
     from framework.credentials.models import CredentialError
     from framework.observability import configure_logging
@@ -431,6 +449,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         runner = AgentRunner.load(
             args.agent_path,
             model=args.model,
+            fallback_models=fallback_models,
         )
     except CredentialError as e:
         print(f"\n{e}", file=sys.stderr)
@@ -724,6 +743,10 @@ def cmd_list(args: argparse.Namespace) -> int:
 
 def cmd_dispatch(args: argparse.Namespace) -> int:
     """Dispatch request to multiple agents via orchestrator."""
+    fallback_models = None
+    if getattr(args, "fallback_models", None):
+        fallback_models = [m.strip() for m in args.fallback_models.split(",") if m.strip()]
+
     from framework.runner import AgentOrchestrator
 
     # Parse input
@@ -775,7 +798,7 @@ def cmd_dispatch(args: argparse.Namespace) -> int:
     # Register agents
     for name, path in agent_paths:
         try:
-            orchestrator.register(name, path)
+            orchestrator.register(name, path, fallback_models=fallback_models)
             if not args.quiet:
                 print(f"Registered agent: {name}")
         except Exception as e:
@@ -922,6 +945,9 @@ def _format_natural_language_to_json(
 
 def cmd_shell(args: argparse.Namespace) -> int:
     """Start an interactive agent session."""
+    fallback_models = None
+    if getattr(args, "fallback_models", None):
+        fallback_models = [m.strip() for m in args.fallback_models.split(",") if m.strip()]
 
     from framework.credentials.models import CredentialError
     from framework.observability import configure_logging
@@ -944,7 +970,9 @@ def cmd_shell(args: argparse.Namespace) -> int:
             return 1
 
     try:
-        runner = AgentRunner.load(agent_path)
+        runner = AgentRunner.load(agent_path,
+                fallback_models=fallback_models,
+            )
     except CredentialError as e:
         print(f"\n{e}", file=sys.stderr)
         return 1

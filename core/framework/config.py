@@ -51,6 +51,17 @@ def get_preferred_model() -> str:
     return "anthropic/claude-sonnet-4-20250514"
 
 
+def get_fallback_models() -> list[str] | None:
+    """Return the list of fallback models if configured."""
+    llm = get_hive_config().get("llm", {})
+    fallback_models = llm.get("fallback_models")
+    if isinstance(fallback_models, list) and fallback_models:
+        return fallback_models
+    elif isinstance(fallback_models, str) and fallback_models.strip():
+        return [m.strip() for m in fallback_models.split(",") if m.strip()]
+    return None
+
+
 def get_max_tokens() -> int:
     """Return the configured max_tokens, falling back to DEFAULT_MAX_TOKENS."""
     return get_hive_config().get("llm", {}).get("max_tokens", DEFAULT_MAX_TOKENS)
@@ -192,6 +203,7 @@ class RuntimeConfig:
     """Agent runtime configuration loaded from ~/.hive/configuration.json."""
 
     model: str = field(default_factory=get_preferred_model)
+    fallback_models: list[str] | None = field(default_factory=get_fallback_models)
     temperature: float = 0.7
     max_tokens: int = field(default_factory=get_max_tokens)
     max_context_tokens: int = field(default_factory=get_max_context_tokens)
