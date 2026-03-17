@@ -28,7 +28,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --project core --group dev
+        run: uv sync --frozen --project core --group dev
 
       - name: Ruff lint
         run: |
@@ -62,7 +62,7 @@ jobs:
       - name: Install dependencies and run tests
         working-directory: core
         run: |
-          uv sync
+          uv sync --frozen
           uv run pytest tests/ -v
 
   test-tools:
@@ -87,7 +87,7 @@ jobs:
       - name: Install dependencies and run tests
         working-directory: tools
         run: |
-          uv sync --extra dev
+          uv sync --frozen --extra dev
           uv run pytest tests/ -v
 
   validate:
@@ -110,7 +110,7 @@ jobs:
       - name: Install dependencies
         working-directory: core
         run: |
-          uv sync
+          uv sync --frozen
 
       - name: Validate exported agents
         run: |
