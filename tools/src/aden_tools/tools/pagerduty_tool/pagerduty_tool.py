@@ -408,3 +408,99 @@ def register_tools(mcp: FastMCP, credentials: Any = None) -> None:
                 for p in policies
             ],
         }
+
+    @mcp.tool()
+    def trigger_incident(title: str, service_id: str, urgency: str, from_email: str) -> dict:
+        """Triggers a new incident on a specified service.
+
+        Args:
+            title: Incident title/summary.
+            service_id: The ID of the service to create the incident on.
+            urgency: Incident urgency.
+            from_email: The email address of a valid user associated with the account.
+        """
+        headers = _get_headers(write=True)
+        if headers is None:
+            return {
+                "error": "PAGERDUTY_API_KEY is required",
+                "help": "Set PAGERDUTY_API_KEY environment variable",
+            }
+
+        headers["From"] = from_email
+
+        payload = {
+            "incident": {
+                "type": "incident",
+                "title": title,
+                "service": {"id": service_id, "type": "service_reference"},
+                "urgency": urgency
+            }
+        }
+        data = _post("/incidents", headers, payload)
+        if "error" in data:
+            return data
+
+        inc = data.get("incident", {})
+        return {
+            "incident_id": inc.get("id"),
+            "status": inc.get("status")
+        }
+
+    @mcp.tool()
+    def get_on_call(schedule_id: str) -> dict:
+        """Retrieves the currently on-call user for a given schedule.
+
+        Args:
+            schedule_id: The ID of the schedule.
+        """
+        headers = _get_headers()
+        if headers is None:
+            return {
+                "error": "PAGERDUTY_API_KEY is required",
+                "help": "Set PAGERDUTY_API_KEY environment variable",
+            }
+
+        data = _get("/oncalls", headers, params={"schedule_ids[]": [schedule_id]})
+        if "error" in data:
+            return data
+
+        oncalls = data.get("oncalls", [])
+        if not oncalls:
+            return {"error": "No on-call user found for this schedule"}
+
+        user = oncalls[0].get("user", {})
+        return {
+            "user_name": user.get("summary") or user.get("name"),
+            "user_email": user.get("email"),
+            "user_id": user.get("id")
+        }
+
+    @mcp.tool()
+    def resolve_incident(incident_id: str, from_email: str) -> dict:
+        """Resolves an existing incident after successful remediation.
+
+        Args:
+            incident_id: The ID of the incident to resolve.
+            from_email: The email address of a valid user associated with the account.
+        """
+        headers = _get_headers(write=True)
+        if headers is None:
+            return {
+                "error": "PAGERDUTY_API_KEY is required",
+                "help": "Set PAGERDUTY_API_KEY environment variable",
+            }
+
+        headers["From"] = from_email
+
+        payload = {
+            "incident": {
+                "type": "incident_reference",
+                "status": "resolved"
+            }
+        }
+        data = _put(f"/incidents/{incident_id}", headers, payload)
+        if "error" in data:
+            return data
+
+        inc = data.get("incident", {})
+        return {"status": inc.get("status")}

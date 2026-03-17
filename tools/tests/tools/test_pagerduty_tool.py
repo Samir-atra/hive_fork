@@ -164,3 +164,110 @@ class TestPagerdutyListServices:
 
         assert result["count"] == 1
         assert result["services"][0]["name"] == "Web Service"
+
+
+class TestTriggerIncident:
+    def test_missing_params(self, tool_fns):
+        with patch.dict("os.environ", ENV):
+            # Missing one of the required params (TypeError handled by pytest if called directly,
+            # but FastMCP tool calls enforce types)
+            pass
+
+    def test_successful_trigger(self, tool_fns):
+        data = {"incident": INCIDENT_DATA}
+        with (
+            patch.dict("os.environ", ENV),
+            patch(
+                "aden_tools.tools.pagerduty_tool.pagerduty_tool.httpx.post",
+                return_value=_mock_resp(data, 201),
+            ) as mock_post,
+        ):
+            result = tool_fns["trigger_incident"](
+                title="Critical failure", service_id="PWIXJZS", urgency="high", from_email="agent@example.com"
+            )
+
+        assert result["incident_id"] == "PT4KHLK"
+        assert result["status"] == "triggered"
+
+        # Verify the payload was constructed properly
+        assert mock_post.called
+        call_args = mock_post.call_args
+        payload = call_args.kwargs["json"]
+        assert call_args.kwargs["headers"]["From"] == "agent@example.com"
+        assert payload["incident"]["type"] == "incident"
+        assert payload["incident"]["title"] == "Critical failure"
+        assert payload["incident"]["service"]["id"] == "PWIXJZS"
+        assert payload["incident"]["urgency"] == "high"
+
+
+class TestGetOnCall:
+    def test_missing_credentials(self, tool_fns):
+        with patch.dict("os.environ", {}, clear=True):
+            result = tool_fns["get_on_call"](schedule_id="SCHED123")
+        assert "error" in result
+
+    def test_successful_get_on_call(self, tool_fns):
+        data = {
+            "oncalls": [
+                {
+                    "user": {
+                        "summary": "Jane Smith",
+                        "email": "jane@example.com",
+                        "id": "PU12345"
+                    }
+                }
+            ]
+        }
+        with (
+            patch.dict("os.environ", ENV),
+            patch(
+                "aden_tools.tools.pagerduty_tool.pagerduty_tool.httpx.get",
+                return_value=_mock_resp(data),
+            ) as mock_get,
+        ):
+            result = tool_fns["get_on_call"](schedule_id="SCHED123")
+
+        assert result["user_name"] == "Jane Smith"
+        assert result["user_email"] == "jane@example.com"
+        assert result["user_id"] == "PU12345"
+
+        # Verify params
+        assert mock_get.called
+        call_args = mock_get.call_args
+        assert call_args.kwargs["params"]["schedule_ids[]"] == ["SCHED123"]
+
+
+class TestResolveIncident:
+    def test_missing_credentials(self, tool_fns):
+        with patch.dict("os.environ", {}, clear=True):
+            result = tool_fns["resolve_incident"](incident_id="PT4KHLK", from_email="agent@example.com")
+        assert "error" in result
+
+    def test_successful_resolve(self, tool_fns):
+        ack = dict(INCIDENT_DATA)
+        ack["status"] = "resolved"
+        data = {"incident": ack}
+        with (
+            patch.dict("os.environ", ENV),
+            patch(
+                "aden_tools.tools.pagerduty_tool.pagerduty_tool.httpx.put",
+                return_value=_mock_resp(data),
+            ) as mock_put,
+        ):
+            result = tool_fns["resolve_incident"](
+                incident_id="PT4KHLK", from_email="agent@example.com"
+            )
+
+        assert result["status"] == "resolved"
+
+        assert mock_put.called
+        call_args = mock_put.call_args
+
+        # Check from_email header
+        headers = call_args.kwargs["headers"]
+        assert headers["From"] == "agent@example.com"
+
+        # Check payload
+        payload = call_args.kwargs["json"]
+        assert payload["incident"]["type"] == "incident_reference"
+        assert payload["incident"]["status"] == "resolved"
