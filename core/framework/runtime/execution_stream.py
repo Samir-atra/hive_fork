@@ -1067,7 +1067,7 @@ class ExecutionStream:
             return
 
         import json as _json
-        import os as _os
+
 
         session_dir = self._session_store.get_session_path(execution_id)
         runs_dir = session_dir / "runs" / ctx.run_id
@@ -1081,7 +1081,7 @@ class ExecutionStream:
             # 2. events.jsonl
             runs_jsonl = session_dir / "runs.jsonl"
             if runs_jsonl.exists():
-                with open(runs_jsonl, "r", encoding="utf-8") as fin:
+                with open(runs_jsonl, encoding="utf-8") as fin:
                     with open(runs_dir / "events.jsonl", "w", encoding="utf-8") as fout:
                         for line in fin:
                             try:
@@ -1099,9 +1099,9 @@ class ExecutionStream:
             for edge in self.graph.edges:
                 label = str(edge.condition) if edge.condition else ""
                 if label:
-                    mermaid_lines.append(f'  {edge.source} -->|{label}| {edge.target}')
+                    mermaid_lines.append(f"  {edge.source} -->|{label}| {edge.target}")
                 else:
-                    mermaid_lines.append(f'  {edge.source} --> {edge.target}')
+                    mermaid_lines.append(f"  {edge.source} --> {edge.target}")
 
             with open(runs_dir / "graph.mermaid", "w", encoding="utf-8") as f:
                 f.write("\n".join(mermaid_lines))
