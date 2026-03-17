@@ -68,7 +68,6 @@ class LLMRouter(LLMProvider):
         errors: list[Exception] = []
 
         for idx, provider in enumerate(self.providers):
-            events_yielded = 0
             try:
                 if idx > 0:
                     logger.info(
@@ -111,7 +110,6 @@ class LLMRouter(LLMProvider):
         errors: list[Exception] = []
 
         for idx, provider in enumerate(self.providers):
-            events_yielded = 0
             try:
                 if idx > 0:
                     logger.info(
