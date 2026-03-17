@@ -70,6 +70,10 @@ class ExecutionResult:
     # Visit tracking (for feedback/callback edges)
     node_visit_counts: dict[str, int] = field(default_factory=dict)  # {node_id: visit_count}
 
+    # Execution timeline and latency tracking
+    timeline: list[dict[str, Any]] = field(default_factory=list)  # Ordered execution events
+    latency_metrics: dict[str, int] = field(default_factory=dict)  # {node_id: total_latency_ms}
+
     @property
     def is_clean_success(self) -> bool:
         """True only if execution succeeded with no retries or failures."""
@@ -518,6 +522,8 @@ class GraphExecutor:
         path: list[str] = []
         total_tokens = 0
         total_latency = 0
+        timeline: list[dict[str, Any]] = []
+        latency_metrics: dict[str, int] = {}
         node_retry_counts: dict[str, int] = {}  # Track retries per node
         node_visit_counts: dict[str, int] = {}  # Track visits for feedback loops
         _is_retry = False  # True when looping back for a retry (not a new visit)
@@ -780,6 +786,8 @@ class GraphExecutor:
                         error="Execution paused by user request",
                         session_state=pause_session_state,
                         node_visit_counts=dict(node_visit_counts),
+                        timeline=timeline,
+                        latency_metrics=latency_metrics,
                     )
 
                 # Get current node
@@ -1045,6 +1053,16 @@ class GraphExecutor:
                 total_tokens += result.tokens_used
                 total_latency += result.latency_ms
 
+                # Update execution timeline and latency metrics
+                timeline.append({
+                    "node_id": current_node_id,
+                    "node_name": node_spec.name,
+                    "latency_ms": result.latency_ms,
+                    "tokens_used": result.tokens_used,
+                    "success": result.success,
+                })
+                latency_metrics[current_node_id] = latency_metrics.get(current_node_id, 0) + result.latency_ms
+
                 # Handle failure
                 if not result.success:
                     # Track retries per node
@@ -1175,6 +1193,8 @@ class GraphExecutor:
                                 execution_quality="failed",
                                 node_visit_counts=dict(node_visit_counts),
                                 session_state=failure_session_state,
+                                timeline=timeline,
+                                latency_metrics=latency_metrics,
                             )
 
                 # Check if we just executed a pause node - if so, save state and return
@@ -1235,6 +1255,8 @@ class GraphExecutor:
                         had_partial_failures=len(nodes_failed) > 0,
                         execution_quality=exec_quality,
                         node_visit_counts=dict(node_visit_counts),
+                        timeline=timeline,
+                        latency_metrics=latency_metrics,
                     )
 
                 # Check if this is a terminal node - if so, we're done
@@ -1311,6 +1333,23 @@ class GraphExecutor:
 
                         total_tokens += branch_tokens
                         total_latency += branch_latency
+
+                        # Add parallel branch executions to timeline and latency_metrics
+                        for branch_id, branch_res in _branch_results.items():
+                            # Extract node ID from branch_id (source_to_target format)
+                            branch_node_id = branch_id.split("_to_")[-1] if "_to_" in branch_id else branch_id
+                            branch_node_spec = graph.get_node(branch_node_id)
+                            branch_node_name = branch_node_spec.name if branch_node_spec else branch_node_id
+
+                            timeline.append({
+                                "node_id": branch_node_id,
+                                "node_name": branch_node_name,
+                                "latency_ms": branch_res.latency_ms,
+                                "tokens_used": branch_res.tokens_used,
+                                "success": branch_res.success,
+                                "is_parallel": True
+                            })
+                            latency_metrics[branch_node_id] = latency_metrics.get(branch_node_id, 0) + branch_res.latency_ms
 
                         # Continue from fan-in node
                         if fan_in_node:
@@ -1587,6 +1626,8 @@ class GraphExecutor:
                     "execution_path": list(path),
                     "node_visit_counts": dict(node_visit_counts),
                 },
+                timeline=timeline,
+                latency_metrics=latency_metrics,
             )
 
         except asyncio.CancelledError:
@@ -1659,6 +1700,8 @@ class GraphExecutor:
                 had_partial_failures=len(nodes_failed) > 0,
                 execution_quality=exec_quality,
                 node_visit_counts=dict(node_visit_counts),
+                timeline=timeline,
+                latency_metrics=latency_metrics,
             )
 
         except Exception as e:
@@ -1759,6 +1802,8 @@ class GraphExecutor:
                 execution_quality="failed",
                 node_visit_counts=dict(node_visit_counts),
                 session_state=session_state_out,
+                timeline=timeline,
+                latency_metrics=latency_metrics,
             )
 
         finally:
