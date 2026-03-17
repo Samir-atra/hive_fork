@@ -22,12 +22,6 @@ jobs:
             const prTitle = pr.title || '';
             const prLabels = (pr.labels || []).map(l => l.name);
 
-            // Skip requirements check if this is a fork (not running in upstream)
-            if (context.repo.owner !== 'adenhq') {
-              console.log('Skipping PR requirements check in fork repository.');
-              return;
-            }
-
             // Allow micro-fix and documentation PRs without a linked issue
             const isMicroFix = prLabels.includes('micro-fix') || /micro-fix/i.test(prTitle);
             const isDocumentation = prLabels.includes('documentation') || /\bdocs?\b/i.test(prTitle);
