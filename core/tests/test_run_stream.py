@@ -12,10 +12,11 @@ async def test_agent_runner_run_stream(tmp_path):
     """Test that AgentRunner.run_stream yields events properly."""
 
     # We don't want to actually load an agent, so we mock the _setup
-    with patch("framework.runner.runner.AgentRunner._setup"), \
-         patch("framework.runner.runner.AgentRunner.validate") as mock_validate, \
-         patch("framework.runner.runner.run_preload_validation"):
-
+    with (
+        patch("framework.runner.runner.AgentRunner._setup"),
+        patch("framework.runner.runner.AgentRunner.validate") as mock_validate,
+        patch("framework.runner.runner.run_preload_validation"),
+    ):
         mock_validate.return_value = MagicMock(missing_credentials=[])
 
         # We also need to mock the AgentRuntime that gets used
@@ -30,20 +31,14 @@ async def test_agent_runner_run_stream(tmp_path):
         async def mock_trigger_and_stream(*args, **kwargs):
             yield AgentEvent(type=EventType.EXECUTION_STARTED, stream_id="default")
             yield AgentEvent(
-                type=EventType.NODE_LOOP_STARTED,
-                stream_id="default",
-                node_id="test_node"
+                type=EventType.NODE_LOOP_STARTED, stream_id="default", node_id="test_node"
             )
             yield AgentEvent(type=EventType.EXECUTION_COMPLETED, stream_id="default")
 
         mock_runtime.trigger_and_stream = mock_trigger_and_stream
 
         # Instantiate runner with a fake graph
-        runner = AgentRunner(
-            graph=MagicMock(),
-            goal=MagicMock(),
-            agent_path=Path("/fake/path")
-        )
+        runner = AgentRunner(graph=MagicMock(), goal=MagicMock(), agent_path=Path("/fake/path"))
         runner._tool_registry = MagicMock()
         runner._agent_runtime = mock_runtime
 
@@ -64,18 +59,15 @@ async def test_agent_runner_run_stream(tmp_path):
 async def test_agent_runner_run_stream_validation_failure():
     """Test that run_stream handles credential validation failures."""
 
-    with patch("framework.runner.runner.AgentRunner.validate") as mock_validate, \
-         patch("framework.runner.runner.run_preload_validation"):
+    with (
+        patch("framework.runner.runner.AgentRunner.validate") as mock_validate,
+        patch("framework.runner.runner.run_preload_validation"),
+    ):
         mock_validate.return_value = MagicMock(
-            missing_credentials=["test_cred"],
-            warnings=["Missing test_cred"]
+            missing_credentials=["test_cred"], warnings=["Missing test_cred"]
         )
 
-        runner = AgentRunner(
-            graph=MagicMock(),
-            goal=MagicMock(),
-            agent_path=Path("/fake/path")
-        )
+        runner = AgentRunner(graph=MagicMock(), goal=MagicMock(), agent_path=Path("/fake/path"))
         runner._tool_registry = MagicMock()
 
         # When validation fails, it returns an ExecutionResult instead of yielding events

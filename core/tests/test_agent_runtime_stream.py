@@ -14,27 +14,22 @@ async def test_agent_runtime_trigger_and_stream(tmp_path):
     mock_graph = MagicMock()
     mock_goal = MagicMock()
 
-    runtime = AgentRuntime(
-        graph=mock_graph,
-        goal=mock_goal,
-        storage_path=tmp_path
-    )
+    runtime = AgentRuntime(graph=mock_graph, goal=mock_goal, storage_path=tmp_path)
     # Mock stream resolution
     mock_stream = MagicMock()
     mock_stream.stream_id = "test_stream"
     mock_stream.wait_for_completion = AsyncMock()
 
     # Needs to be a bit more than just returning stream
-    with patch.object(runtime, "_resolve_stream", return_value=mock_stream), \
-         patch.object(runtime, "trigger", new_callable=AsyncMock) as mock_trigger, \
-         patch(
-             "framework.runtime.agent_runtime.AgentRuntime.is_running",
-             new_callable=pytest.MonkeyPatch
-         ) as _mock:
-
-        pytest.MonkeyPatch().setattr(
-            type(runtime), "is_running", property(lambda self: True)
-        )
+    with (
+        patch.object(runtime, "_resolve_stream", return_value=mock_stream),
+        patch.object(runtime, "trigger", new_callable=AsyncMock) as mock_trigger,
+        patch(
+            "framework.runtime.agent_runtime.AgentRuntime.is_running",
+            new_callable=pytest.MonkeyPatch,
+        ) as _mock,
+    ):
+        pytest.MonkeyPatch().setattr(type(runtime), "is_running", property(lambda self: True))
 
         mock_trigger.return_value = "exec_123"
 
@@ -55,13 +50,13 @@ async def test_agent_runtime_trigger_and_stream(tmp_path):
             asyncio.create_task(simulate_events(sub_id, handler))
             return sub_id
 
-        with patch.object(runtime._event_bus, "subscribe", side_effect=mock_subscribe), \
-             patch.object(runtime._event_bus, "unsubscribe") as mock_unsubscribe:
-
+        with (
+            patch.object(runtime._event_bus, "subscribe", side_effect=mock_subscribe),
+            patch.object(runtime._event_bus, "unsubscribe") as mock_unsubscribe,
+        ):
             events = []
             async for event in runtime.trigger_and_stream(
-                entry_point_id="default",
-                input_data={"test": "data"}
+                entry_point_id="default", input_data={"test": "data"}
             ):
                 events.append(event)
 

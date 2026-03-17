@@ -1579,7 +1579,7 @@ class AgentRunner:
             yield AgentEvent(
                 type=EventType.EXECUTION_FAILED,
                 stream_id="default",  # We don't have a stream ID yet
-                data={"error": error_msg}
+                data={"error": error_msg},
             )
             return
 
