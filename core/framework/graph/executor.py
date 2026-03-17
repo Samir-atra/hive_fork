@@ -1061,7 +1061,9 @@ class GraphExecutor:
                     "tokens_used": result.tokens_used,
                     "success": result.success,
                 })
-                latency_metrics[current_node_id] = latency_metrics.get(current_node_id, 0) + result.latency_ms
+                latency_metrics[current_node_id] = (
+                    latency_metrics.get(current_node_id, 0) + result.latency_ms
+                )
 
                 # Handle failure
                 if not result.success:
@@ -1337,9 +1339,13 @@ class GraphExecutor:
                         # Add parallel branch executions to timeline and latency_metrics
                         for branch_id, branch_res in _branch_results.items():
                             # Extract node ID from branch_id (source_to_target format)
-                            branch_node_id = branch_id.split("_to_")[-1] if "_to_" in branch_id else branch_id
+                            branch_node_id = (
+                                branch_id.split("_to_")[-1] if "_to_" in branch_id else branch_id
+                            )
                             branch_node_spec = graph.get_node(branch_node_id)
-                            branch_node_name = branch_node_spec.name if branch_node_spec else branch_node_id
+                            branch_node_name = (
+                                branch_node_spec.name if branch_node_spec else branch_node_id
+                            )
 
                             timeline.append({
                                 "node_id": branch_node_id,
@@ -1347,9 +1353,11 @@ class GraphExecutor:
                                 "latency_ms": branch_res.latency_ms,
                                 "tokens_used": branch_res.tokens_used,
                                 "success": branch_res.success,
-                                "is_parallel": True
+                                "is_parallel": True,
                             })
-                            latency_metrics[branch_node_id] = latency_metrics.get(branch_node_id, 0) + branch_res.latency_ms
+                            latency_metrics[branch_node_id] = (
+                                latency_metrics.get(branch_node_id, 0) + branch_res.latency_ms
+                            )
 
                         # Continue from fan-in node
                         if fan_in_node:
