@@ -286,6 +286,19 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
     open_parser.add_argument("--debug", action="store_true", help="Enable DEBUG log level")
     open_parser.set_defaults(func=cmd_open)
 
+    # feedback command (store persistent preferences)
+    feedback_parser = subparsers.add_parser(
+        "feedback",
+        help="Add persistent developer feedback",
+        description="Store developer preferences to be persistently injected into agent contexts.",
+    )
+    feedback_parser.add_argument(
+        "instruction",
+        type=str,
+        help="The instruction (e.g., 'When generating tests, use pytest-asyncio strict mode')",
+    )
+    feedback_parser.set_defaults(func=cmd_feedback)
+
 
 def _load_resume_state(
     agent_path: str, session_id: str, checkpoint_id: str | None = None
@@ -1702,3 +1715,17 @@ def cmd_open(args: argparse.Namespace) -> int:
     """Start the HTTP API server and open the dashboard in the browser."""
     args.open = True
     return cmd_serve(args)
+
+
+def cmd_feedback(args: argparse.Namespace) -> int:
+    """Handle adding developer feedback."""
+    from framework.adaptiveness.feedback_store import FeedbackStore
+
+    try:
+        store = FeedbackStore()
+        store.add_feedback(args.instruction)
+        print(f"✓ Feedback stored successfully: '{args.instruction}'")
+        return 0
+    except Exception as e:
+        print(f"Error storing feedback: {e}", file=sys.stderr)
+        return 1

@@ -1811,6 +1811,26 @@ class GraphExecutor:
                 node_tool_names=node_spec.tools,
             )
 
+        # Inject persistent developer feedback
+        from framework.adaptiveness.feedback_store import FeedbackStore
+
+        feedback_items = FeedbackStore().get_global_feedback()
+        if feedback_items:
+            feedback_block = (
+                "--- Developer Instructions ---\n"
+                "The developer has provided the following persistent preferences "
+                "that you MUST follow:\n"
+            )
+            for item in feedback_items:
+                feedback_block += f"- {item}\n"
+
+            # Prepend the feedback block to the narrative layer (Layer 2)
+            # This ensures it's included in the system prompt context.
+            if narrative:
+                narrative = f"{feedback_block}\n\n{narrative}"
+            else:
+                narrative = feedback_block
+
         goal_context = goal.to_prompt_context()
 
         return NodeContext(
