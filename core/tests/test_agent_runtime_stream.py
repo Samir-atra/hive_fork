@@ -1,6 +1,7 @@
 import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
 
 from framework.runtime.agent_runtime import AgentRuntime
 from framework.runtime.event_bus import AgentEvent, EventType
@@ -24,17 +25,21 @@ async def test_agent_runtime_trigger_and_stream(tmp_path):
     mock_stream.wait_for_completion = AsyncMock()
 
     # Needs to be a bit more than just returning stream
-    with patch.object(runtime, '_resolve_stream', return_value=mock_stream), \
-         patch.object(runtime, 'trigger', new_callable=AsyncMock) as mock_trigger, \
-         patch("framework.runtime.agent_runtime.AgentRuntime.is_running", new_callable=pytest.MonkeyPatch) as _mock:
+    with patch.object(runtime, "_resolve_stream", return_value=mock_stream), \
+         patch.object(runtime, "trigger", new_callable=AsyncMock) as mock_trigger, \
+         patch(
+             "framework.runtime.agent_runtime.AgentRuntime.is_running",
+             new_callable=pytest.MonkeyPatch
+         ) as _mock:
 
-        pytest.MonkeyPatch().setattr(type(runtime), 'is_running', property(lambda self: True))
+        pytest.MonkeyPatch().setattr(
+            type(runtime), "is_running", property(lambda self: True)
+        )
 
         mock_trigger.return_value = "exec_123"
 
         # We need to simulate events being published to the event bus
         # So we capture the handler from subscribe and call it manually
-        original_subscribe = runtime._event_bus.subscribe
 
         async def simulate_events(sub_id, handler):
             await asyncio.sleep(0.01)
@@ -50,8 +55,8 @@ async def test_agent_runtime_trigger_and_stream(tmp_path):
             asyncio.create_task(simulate_events(sub_id, handler))
             return sub_id
 
-        with patch.object(runtime._event_bus, 'subscribe', side_effect=mock_subscribe), \
-             patch.object(runtime._event_bus, 'unsubscribe') as mock_unsubscribe:
+        with patch.object(runtime._event_bus, "subscribe", side_effect=mock_subscribe), \
+             patch.object(runtime._event_bus, "unsubscribe") as mock_unsubscribe:
 
             events = []
             async for event in runtime.trigger_and_stream(

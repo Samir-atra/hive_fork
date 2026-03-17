@@ -1,11 +1,10 @@
-import asyncio
-import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from framework.runner.runner import AgentRunner
 from framework.runtime.event_bus import AgentEvent, EventType
-from framework.graph.executor import ExecutionResult
 
 
 @pytest.mark.asyncio
@@ -13,7 +12,7 @@ async def test_agent_runner_run_stream(tmp_path):
     """Test that AgentRunner.run_stream yields events properly."""
 
     # We don't want to actually load an agent, so we mock the _setup
-    with patch("framework.runner.runner.AgentRunner._setup") as mock_setup, \
+    with patch("framework.runner.runner.AgentRunner._setup"), \
          patch("framework.runner.runner.AgentRunner.validate") as mock_validate, \
          patch("framework.runner.runner.run_preload_validation"):
 
@@ -30,7 +29,11 @@ async def test_agent_runner_run_stream(tmp_path):
         # Create an async generator for trigger_and_stream
         async def mock_trigger_and_stream(*args, **kwargs):
             yield AgentEvent(type=EventType.EXECUTION_STARTED, stream_id="default")
-            yield AgentEvent(type=EventType.NODE_LOOP_STARTED, stream_id="default", node_id="test_node")
+            yield AgentEvent(
+                type=EventType.NODE_LOOP_STARTED,
+                stream_id="default",
+                node_id="test_node"
+            )
             yield AgentEvent(type=EventType.EXECUTION_COMPLETED, stream_id="default")
 
         mock_runtime.trigger_and_stream = mock_trigger_and_stream
