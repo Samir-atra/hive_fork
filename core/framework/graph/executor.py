@@ -1054,13 +1054,15 @@ class GraphExecutor:
                 total_latency += result.latency_ms
 
                 # Update execution timeline and latency metrics
-                timeline.append({
-                    "node_id": current_node_id,
-                    "node_name": node_spec.name,
-                    "latency_ms": result.latency_ms,
-                    "tokens_used": result.tokens_used,
-                    "success": result.success,
-                })
+                timeline.append(
+                    {
+                        "node_id": current_node_id,
+                        "node_name": node_spec.name,
+                        "latency_ms": result.latency_ms,
+                        "tokens_used": result.tokens_used,
+                        "success": result.success,
+                    }
+                )
                 latency_metrics[current_node_id] = (
                     latency_metrics.get(current_node_id, 0) + result.latency_ms
                 )
@@ -1347,14 +1349,16 @@ class GraphExecutor:
                                 branch_node_spec.name if branch_node_spec else branch_node_id
                             )
 
-                            timeline.append({
-                                "node_id": branch_node_id,
-                                "node_name": branch_node_name,
-                                "latency_ms": branch_res.latency_ms,
-                                "tokens_used": branch_res.tokens_used,
-                                "success": branch_res.success,
-                                "is_parallel": True,
-                            })
+                            timeline.append(
+                                {
+                                    "node_id": branch_node_id,
+                                    "node_name": branch_node_name,
+                                    "latency_ms": branch_res.latency_ms,
+                                    "tokens_used": branch_res.tokens_used,
+                                    "success": branch_res.success,
+                                    "is_parallel": True,
+                                }
+                            )
                             latency_metrics[branch_node_id] = (
                                 latency_metrics.get(branch_node_id, 0) + branch_res.latency_ms
                             )
