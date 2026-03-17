@@ -1,0 +1,15 @@
+--- .github/workflows/pr-requirements.yml
++++ .github/workflows/pr-requirements.yml
+@@ -19,6 +19,11 @@
+             const prTitle = pr.title || '';
+             const prLabels = (pr.labels || []).map(l => l.name);
+
++            // Skip check if running in a fork
++            if (context.repo.owner !== 'adenhq' && context.repo.owner !== 'aden-hive') {
++              console.log('Running in a fork, skipping issue assignment check.');
++              return;
++            }
++
+             // Allow micro-fix and documentation PRs without a linked issue
+             const isMicroFix = prLabels.includes('micro-fix') || /micro-fix/i.test(prTitle);
+             const isDocumentation = prLabels.includes('documentation') || /\bdocs?\b/i.test(prTitle);
