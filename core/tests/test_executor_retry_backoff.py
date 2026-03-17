@@ -1,16 +1,17 @@
-import asyncio
-import pytest
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
+from framework.graph.edge import GraphSpec
 from framework.graph.executor import GraphExecutor
-from framework.graph.node import NodeContext, NodeProtocol, NodeResult, NodeSpec, RetryConfig
-from framework.graph.edge import EdgeSpec, GraphSpec
 from framework.graph.goal import Goal
+from framework.graph.node import NodeContext, NodeProtocol, NodeResult, NodeSpec, RetryConfig
 from framework.runtime.core import Runtime
 
 
 class FailingNode(NodeProtocol):
     """A node that always fails to trigger retry logic."""
+
     def __init__(self):
         self.call_count = 0
 
@@ -36,7 +37,7 @@ async def test_retry_backoff_defaults(mock_sleep, runtime):
         id="failing_node",
         name="Failing Node",
         description="Fails",
-            node_type="event_loop",
+        node_type="event_loop",
         max_retries=4,
     )
     graph = GraphSpec(
@@ -68,9 +69,9 @@ async def test_retry_backoff_custom_config(mock_sleep, runtime):
         id="failing_node",
         name="Failing Node",
         description="Fails",
-            node_type="event_loop",
+        node_type="event_loop",
         max_retries=5,
-        retry_config=RetryConfig(initial_delay=2.0, multiplier=3.0, max_delay=30.0, jitter=False)
+        retry_config=RetryConfig(initial_delay=2.0, multiplier=3.0, max_delay=30.0, jitter=False),
     )
     graph = GraphSpec(
         id="test_graph",
@@ -110,9 +111,9 @@ async def test_retry_backoff_jitter(mock_sleep, mock_uniform, runtime):
         id="failing_node",
         name="Failing Node",
         description="Fails",
-            node_type="event_loop",
+        node_type="event_loop",
         max_retries=2,
-        retry_config=RetryConfig(initial_delay=1.0, multiplier=2.0, max_delay=60.0, jitter=True)
+        retry_config=RetryConfig(initial_delay=1.0, multiplier=2.0, max_delay=60.0, jitter=True),
     )
     graph = GraphSpec(
         id="test_graph",

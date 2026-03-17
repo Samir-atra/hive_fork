@@ -143,8 +143,12 @@ class RetryConfig(BaseModel):
     Configuration for node execution retries with exponential backoff and jitter.
     """
 
-    initial_delay: float = Field(default=1.0, description="Initial delay before first retry in seconds")
-    multiplier: float = Field(default=2.0, description="Multiplier applied to delay on subsequent retries")
+    initial_delay: float = Field(
+        default=1.0, description="Initial delay before first retry in seconds"
+    )
+    multiplier: float = Field(
+        default=2.0, description="Multiplier applied to delay on subsequent retries"
+    )
     max_delay: float = Field(default=60.0, description="Maximum delay between retries in seconds")
     jitter: bool = Field(default=False, description="Whether to apply random jitter to the delay")
 
@@ -233,7 +237,9 @@ class NodeSpec(BaseModel):
     # Retry behavior
     max_retries: int = Field(default=3)
     retry_on: list[str] = Field(default_factory=list, description="Error types to retry on")
-    retry_config: RetryConfig | None = Field(default=None, description="Optional retry config to override executor defaults")
+    retry_config: RetryConfig | None = Field(
+        default=None, description="Optional retry config to override executor defaults"
+    )
 
     # Visit limits (for feedback/callback edges)
     max_node_visits: int = Field(

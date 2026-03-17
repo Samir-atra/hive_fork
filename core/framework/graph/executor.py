@@ -25,8 +25,8 @@ from framework.graph.node import (
     NodeProtocol,
     NodeResult,
     NodeSpec,
-    SharedMemory,
     RetryConfig,
+    SharedMemory,
 )
 from framework.graph.validator import OutputValidator
 from framework.llm.provider import LLMProvider, Tool, ToolUse
@@ -1080,8 +1080,14 @@ class GraphExecutor:
                         # --- EXPONENTIAL BACKOFF ---
                         retry_count = node_retry_counts[current_node_id]
 
-                        retry_config = getattr(node_spec, "retry_config", None) or self.default_retry_config or RetryConfig()
-                        base_delay = retry_config.initial_delay * (retry_config.multiplier ** (retry_count - 1))
+                        retry_config = (
+                            getattr(node_spec, "retry_config", None)
+                            or self.default_retry_config
+                            or RetryConfig()
+                        )
+                        base_delay = retry_config.initial_delay * (
+                            retry_config.multiplier ** (retry_count - 1)
+                        )
 
                         if retry_config.jitter:
                             delay = random.uniform(0.5 * base_delay, 1.5 * base_delay)
