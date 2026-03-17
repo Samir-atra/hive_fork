@@ -1050,9 +1050,88 @@ class ExecutionStream:
             await self._session_store.write_state(execution_id, state)
             logger.debug(f"Wrote state.json for session {execution_id} (status={status})")
 
+            # EXPORT RUN ARTIFACT
+            await self._export_run_artifact(execution_id, ctx, result)
+
         except Exception as e:
             # Log but don't fail the execution
             logger.error(f"Failed to write state.json for {execution_id}: {e}")
+
+    async def _export_run_artifact(
+        self,
+        execution_id: str,
+        ctx: ExecutionContext,
+        result: ExecutionResult | None,
+    ) -> None:
+        if not self._session_store or not ctx.run_id:
+            return
+
+        import json as _json
+        import os as _os
+
+        session_dir = self._session_store.get_session_path(execution_id)
+        runs_dir = session_dir / "runs" / ctx.run_id
+        runs_dir.mkdir(parents=True, exist_ok=True)
+
+        try:
+            # 1. graph.json
+            with open(runs_dir / "graph.json", "w", encoding="utf-8") as f:
+                _json.dump(self.graph.model_dump(), f, indent=2, default=str)
+
+            # 2. events.jsonl
+            runs_jsonl = session_dir / "runs.jsonl"
+            if runs_jsonl.exists():
+                with open(runs_jsonl, "r", encoding="utf-8") as fin:
+                    with open(runs_dir / "events.jsonl", "w", encoding="utf-8") as fout:
+                        for line in fin:
+                            try:
+                                record = _json.loads(line)
+                                if record.get("run_id") == ctx.run_id:
+                                    fout.write(line)
+                            except _json.JSONDecodeError:
+                                pass
+
+            # 3. graph.mermaid
+            mermaid_lines = ["graph TD;"]
+            for node in self.graph.nodes:
+                name = node.name.replace('"', '\\"')
+                mermaid_lines.append(f'  {node.id}["{name}"]')
+            for edge in self.graph.edges:
+                label = str(edge.condition) if edge.condition else ""
+                if label:
+                    mermaid_lines.append(f'  {edge.source} -->|{label}| {edge.target}')
+                else:
+                    mermaid_lines.append(f'  {edge.source} --> {edge.target}')
+
+            with open(runs_dir / "graph.mermaid", "w", encoding="utf-8") as f:
+                f.write("\n".join(mermaid_lines))
+
+            # 4. summary.md
+            summary_lines = [
+                f"# Run Summary ({ctx.run_id})",
+                "",
+                f"- **Agent**: {self.graph.id}",
+                f"- **Started**: {ctx.started_at.isoformat()}",
+            ]
+
+            if ctx.completed_at:
+                summary_lines.append(f"- **Completed**: {ctx.completed_at.isoformat()}")
+
+            summary_lines.append(f"- **Status**: {ctx.status}")
+
+            if result:
+                summary_lines.append(f"- **Success**: {result.success}")
+                if result.error:
+                    summary_lines.append(f"- **Error**: {result.error}")
+                if result.paused_at:
+                    summary_lines.append(f"- **Paused At**: {result.paused_at}")
+                summary_lines.append(f"- **Steps**: {result.steps_executed}")
+
+            with open(runs_dir / "summary.md", "w", encoding="utf-8") as f:
+                f.write("\n".join(summary_lines))
+
+        except Exception as e:
+            logger.error(f"Failed to export run artifact for run_id {ctx.run_id}: {e}")
 
     def _create_modified_graph(self) -> "GraphSpec":
         """Create a graph with the entry point overridden.
