@@ -11,6 +11,7 @@ The executor:
 
 import asyncio
 import logging
+import random
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -25,6 +26,7 @@ from framework.graph.node import (
     NodeResult,
     NodeSpec,
     SharedMemory,
+    RetryConfig,
 )
 from framework.graph.validator import OutputValidator
 from framework.llm.provider import LLMProvider, Tool, ToolUse
@@ -151,6 +153,7 @@ class GraphExecutor:
         dynamic_tools_provider: Callable | None = None,
         dynamic_prompt_provider: Callable | None = None,
         iteration_metadata_provider: Callable | None = None,
+        default_retry_config: RetryConfig | None = None,
     ):
         """
         Initialize the executor.
@@ -207,6 +210,8 @@ class GraphExecutor:
 
         # Track the currently executing node for external injection routing
         self.current_node_id: str | None = None
+
+        self.default_retry_config = default_retry_config
 
     def _write_progress(
         self,
@@ -1074,9 +1079,18 @@ class GraphExecutor:
 
                         # --- EXPONENTIAL BACKOFF ---
                         retry_count = node_retry_counts[current_node_id]
-                        # Backoff formula: 1.0 * (2^(retry - 1)) -> 1s, 2s, 4s...
-                        delay = 1.0 * (2 ** (retry_count - 1))
-                        self.logger.info(f"   Using backoff: Sleeping {delay}s before retry...")
+
+                        retry_config = getattr(node_spec, "retry_config", None) or self.default_retry_config or RetryConfig()
+                        base_delay = retry_config.initial_delay * (retry_config.multiplier ** (retry_count - 1))
+
+                        if retry_config.jitter:
+                            delay = random.uniform(0.5 * base_delay, 1.5 * base_delay)
+                        else:
+                            delay = base_delay
+
+                        delay = min(delay, retry_config.max_delay)
+
+                        self.logger.info(f"   Using backoff: Sleeping {delay:.2f}s before retry...")
                         await asyncio.sleep(delay)
                         # --------------------------------------
 
