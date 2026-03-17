@@ -1068,7 +1068,6 @@ class ExecutionStream:
 
         import json as _json
 
-
         session_dir = self._session_store.get_session_path(execution_id)
         runs_dir = session_dir / "runs" / ctx.run_id
         runs_dir.mkdir(parents=True, exist_ok=True)

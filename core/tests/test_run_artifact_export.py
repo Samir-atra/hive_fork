@@ -36,7 +36,7 @@ async def test_artifact(tmp_path):
         input_keys=["data"],
         output_keys=["result"],
         system_prompt="Return result",
-        max_retries=1
+        max_retries=1,
     )
 
     graph = GraphSpec(
@@ -45,14 +45,11 @@ async def test_artifact(tmp_path):
         entry_node="test_node",
         nodes=[node],
         edges=[],
-        max_steps=2
+        max_steps=2,
     )
 
     entry_point = EntryPointSpec(
-        id="default",
-        entry_node="test_node",
-        name="Default",
-        trigger_type="manual"
+        id="default", entry_node="test_node", name="Default", trigger_type="manual"
     )
 
     config = AgentRuntimeConfig()
