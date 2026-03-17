@@ -890,9 +890,9 @@ The foundation—triangulated verification provides reliable evaluation through 
 - Rule match rate (how often rules provide definitive answers)
 - LLM confidence distribution (calibration signal)
 
-### Phase 2: Confidence Calibration (Next)
+### Phase 2: Confidence Calibration
 
-**Status**: Designed, not yet implemented
+**Status**: Implemented
 
 Learn optimal confidence thresholds by comparing LLM judgments to human decisions.
 

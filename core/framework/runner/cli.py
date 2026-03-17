@@ -6,6 +6,8 @@ import json
 import sys
 from pathlib import Path
 
+from framework.graph.calibration import CalibrationRecord, calibrate_thresholds
+
 
 def register_commands(subparsers: argparse._SubParsersAction) -> None:
     """Register runner commands with the main CLI."""
@@ -203,6 +205,18 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
         help="Path to agent folder (optional - runs general setup if not specified)",
     )
     setup_creds_parser.set_defaults(func=cmd_setup_credentials)
+
+    # calibrate
+    calibrate_parser = subparsers.add_parser(
+        "calibrate", help="Run confidence calibration on judgment data"
+    )
+    calibrate_parser.add_argument(
+        "data_path", help="Path to JSON lines file containing judgment data"
+    )
+    calibrate_parser.add_argument(
+        "--target", type=float, default=0.95, help="Target accuracy (default: 0.95)"
+    )
+    calibrate_parser.set_defaults(func=cmd_calibrate)
 
     # serve command (HTTP API server)
     serve_parser = subparsers.add_parser(
@@ -1702,3 +1716,47 @@ def cmd_open(args: argparse.Namespace) -> int:
     """Start the HTTP API server and open the dashboard in the browser."""
     args.open = True
     return cmd_serve(args)
+
+
+def cmd_calibrate(args: argparse.Namespace) -> int:
+    import json
+    import sys
+
+    try:
+        records = []
+        with open(args.data_path) as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                data = json.loads(line)
+                records.append(
+                    CalibrationRecord(
+                        run_id=data.get("run_id", ""),
+                        step_id=data.get("step_id", ""),
+                        llm_judgment=data.get("llm_judgment", "ACCEPT"),
+                        llm_confidence=float(data.get("llm_confidence", 1.0)),
+                        human_judgment=data.get("human_judgment", "ACCEPT"),
+                        goal_type=data.get("goal_type"),
+                    )
+                )
+
+        print(f"Loaded {len(records)} records from {args.data_path}")
+        metrics = calibrate_thresholds(records, args.target)
+
+        print(f"\nCalibration Results (Target Accuracy: {args.target:.0%}):")
+        print(f"Recommended Threshold: {metrics.recommended_threshold:.2f}")
+        print(f"Retry Success Rate: {metrics.retry_success_rate:.0%}")
+
+        print("\nAccept Accuracy by Confidence:")
+        for conf, acc in metrics.accept_accuracy_by_confidence.items():
+            print(f"  >= {conf:.1f}: {acc:.0%}")
+
+        if metrics.threshold_by_goal_type:
+            print("\nRecommended Threshold by Goal Type:")
+            for goal, thresh in metrics.threshold_by_goal_type.items():
+                print(f"  {goal}: {thresh:.2f}")
+
+        return 0
+    except Exception as e:
+        print(f"Error running calibration: {e}", file=sys.stderr)
+        return 1
