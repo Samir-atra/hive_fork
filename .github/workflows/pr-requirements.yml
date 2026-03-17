@@ -107,8 +107,8 @@ jobs:
             for (const issueNum of issueNumbers) {
               try {
                 const { data: issue } = await github.rest.issues.get({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
+                  owner: 'adenhq',
+                  repo: 'hive',
                   issue_number: issueNum,
                 });
 
