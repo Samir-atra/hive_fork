@@ -1,9 +1,11 @@
+from collections.abc import AsyncIterator
+from typing import Any
+
 import pytest
-from typing import Any, AsyncIterator
 
 from framework.llm.provider import LLMProvider, LLMResponse, Tool
-from framework.llm.stream_events import StreamEvent, TextDeltaEvent, StreamErrorEvent
 from framework.llm.router import LLMRouter
+from framework.llm.stream_events import StreamErrorEvent, StreamEvent, TextDeltaEvent
 
 
 class DummyProvider(LLMProvider):
