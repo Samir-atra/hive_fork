@@ -851,6 +851,73 @@ class AgentRuntime:
             raise ValueError(f"Entry point '{entry_point_id}' not found")
         return await stream.wait_for_completion(exec_id, timeout)
 
+    async def trigger_and_stream(
+        self,
+        entry_point_id: str,
+        input_data: dict[str, Any],
+        timeout: float | None = None,
+        session_state: dict[str, Any] | None = None,
+    ):
+        """
+        Trigger execution and stream events until completion.
+
+        Args:
+            entry_point_id: Which entry point to trigger
+            input_data: Input data for the execution
+            timeout: Maximum time to wait for completion (seconds)
+            session_state: Optional session state to resume from
+
+        Yields:
+            AgentEvent objects emitted during the execution
+        """
+        from framework.runtime.event_bus import AgentEvent
+
+        if not self.is_running:
+            raise RuntimeError("AgentRuntime is not running")
+
+        stream = self._resolve_stream(entry_point_id)
+        if stream is None:
+            raise ValueError(f"Entry point '{entry_point_id}' not found")
+
+        queue: asyncio.Queue[AgentEvent] = asyncio.Queue()
+
+        async def _event_handler(event: AgentEvent) -> None:
+            # Only put events belonging to the current stream
+            if event.stream_id == stream.stream_id:
+                queue.put_nowait(event)
+
+        from framework.runtime.event_bus import EventType
+
+        # Subscribe to all events
+        sub_id = self._event_bus.subscribe(
+            event_types=list(EventType),  # All events
+            handler=_event_handler,
+        )
+
+        try:
+            # Trigger the execution
+            exec_id = await self.trigger(entry_point_id, input_data, session_state=session_state)
+
+            # Start waiting for completion as a task
+            wait_task = asyncio.create_task(stream.wait_for_completion(exec_id, timeout))
+
+            while not wait_task.done():
+                try:
+                    # Wait for the next event, or briefly timeout to check if the task is done
+                    event = await asyncio.wait_for(queue.get(), timeout=0.1)
+                    yield event
+                except TimeoutError:
+                    continue
+
+            # Yield any remaining events in the queue
+            while not queue.empty():
+                yield queue.get_nowait()
+
+            # Await the task to raise any exceptions that might have occurred during wait
+            await wait_task
+        finally:
+            self._event_bus.unsubscribe(sub_id)
+
     # === MULTI-GRAPH MANAGEMENT ===
 
     async def add_graph(

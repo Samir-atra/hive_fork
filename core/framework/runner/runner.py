@@ -1544,6 +1544,68 @@ class AgentRunner:
             session_state=session_state,
         )
 
+    async def run_stream(
+        self,
+        input_data: dict | None = None,
+        session_state: dict | None = None,
+        entry_point_id: str | None = None,
+    ):
+        """One-shot execution for worker agents (headless CLI), streaming events.
+
+        Validates credentials, runs the graph to completion, and yields
+        AgentEvent objects emitted during the execution.
+
+        Args:
+            input_data: Input data for the agent (e.g., {"lead_id": "123"})
+            session_state: Optional session state to resume from
+            entry_point_id: For multi-entry-point agents, which entry point to trigger
+                           (defaults to first entry point or "default")
+
+        Yields:
+            AgentEvent objects emitted during the execution
+        """
+        # Validate credentials before execution (fail-fast)
+        validation = self.validate()
+        if validation.missing_credentials:
+            error_lines = ["Cannot run agent: missing required credentials\n"]
+            for warning in validation.warnings:
+                if "Missing " in warning:
+                    error_lines.append(f"  {warning}")
+            error_lines.append("\nSet the required environment variables and re-run the agent.")
+            error_msg = "\n".join(error_lines)
+            from framework.runtime.event_bus import AgentEvent, EventType
+
+            # Since we can't return a value, we yield an execution failed event
+            yield AgentEvent(
+                type=EventType.EXECUTION_FAILED,
+                stream_id="default",  # We don't have a stream ID yet
+                data={"error": error_msg}
+            )
+            return
+
+        if self._agent_runtime is None:
+            self._setup()
+
+        # Start runtime if not running
+        if not self._agent_runtime.is_running:
+            await self._agent_runtime.start()
+
+        # Determine entry point
+        if entry_point_id is None:
+            # Use first entry point or "default" if no entry points defined
+            entry_points = self._agent_runtime.get_entry_points()
+            if entry_points:
+                entry_point_id = entry_points[0].id
+            else:
+                entry_point_id = "default"
+
+        async for event in self._agent_runtime.trigger_and_stream(
+            entry_point_id=entry_point_id,
+            input_data=input_data or {},
+            session_state=session_state,
+        ):
+            yield event
+
     async def _run_with_agent_runtime(
         self,
         input_data: dict,
