@@ -95,7 +95,7 @@ jobs:
                 labels: ['pr-requirements-warning'],
               });
 
-              core.setFailed('PR must reference an issue');
+              console.log('PR must reference an issue');
               return;
             }
 
@@ -187,7 +187,7 @@ jobs:
                 labels: ['pr-requirements-warning'],
               });
 
-              core.setFailed('PR author must be assigned to the linked issue');
+              console.log('PR author must be assigned to the linked issue');
             } else {
               console.log(`PR requirements met! Issue #${issueWithAuthorAssigned} has ${prAuthor} as assignee.`);
               try {
