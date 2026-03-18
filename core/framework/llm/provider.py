@@ -18,6 +18,7 @@ class LLMResponse:
     output_tokens: int = 0
     stop_reason: str = ""
     raw_response: Any = None
+    cost: float = 0.0
 
 
 @dataclass

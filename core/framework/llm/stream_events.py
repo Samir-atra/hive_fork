@@ -73,6 +73,7 @@ class FinishEvent:
     output_tokens: int = 0
     cached_tokens: int = 0
     model: str = ""
+    cost: float = 0.0
 
 
 @dataclass(frozen=True)

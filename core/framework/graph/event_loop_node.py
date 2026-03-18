@@ -398,6 +398,7 @@ class EventLoopNode(NodeProtocol):
         start_time = time.time()
         total_input_tokens = 0
         total_output_tokens = 0
+        total_cost = 0.0
         stream_id = ctx.stream_id or ctx.node_id
         node_id = ctx.node_id
         execution_id = ctx.execution_id or ""
@@ -427,7 +428,7 @@ class EventLoopNode(NodeProtocol):
                     output_tokens=0,
                     latency_ms=0,
                 )
-            return NodeResult(success=False, error=error_msg)
+            return NodeResult(cost=total_cost, success=False, error=error_msg)
 
         # 2. Restore or create new conversation + accumulator
         # Track whether we're in continuous mode (conversation threaded across nodes)
@@ -637,7 +638,7 @@ class EventLoopNode(NodeProtocol):
                         escalate_count=_escalate_count,
                         continue_count=_continue_count,
                     )
-                return NodeResult(
+                return NodeResult(cost=total_cost,
                     success=True,
                     output=accumulator.to_dict(),
                     tokens_used=total_input_tokens + total_output_tokens,
@@ -738,6 +739,7 @@ class EventLoopNode(NodeProtocol):
                     )
                     total_input_tokens += turn_tokens.get("input", 0)
                     total_output_tokens += turn_tokens.get("output", 0)
+                    total_cost += turn_tokens.get("cost", 0.0)
                     await self._publish_llm_turn_complete(
                         stream_id,
                         node_id,
@@ -943,7 +945,7 @@ class EventLoopNode(NodeProtocol):
                         stream_id, node_id, iteration + 1, execution_id
                     )
                     latency_ms = int((time.time() - start_time) * 1000)
-                    return NodeResult(
+                    return NodeResult(cost=total_cost,
                         success=True,
                         output=accumulator.to_dict(),
                         tokens_used=total_input_tokens + total_output_tokens,
@@ -1070,7 +1072,7 @@ class EventLoopNode(NodeProtocol):
                         escalate_count=_escalate_count,
                         continue_count=_continue_count,
                     )
-                return NodeResult(
+                return NodeResult(cost=total_cost,
                     success=False,
                     error=(
                         f"Node stalled: {self._config.stall_detection_threshold} similar "
@@ -1278,7 +1280,7 @@ class EventLoopNode(NodeProtocol):
                             escalate_count=_escalate_count,
                             continue_count=_continue_count,
                         )
-                    return NodeResult(
+                    return NodeResult(cost=total_cost,
                         success=True,
                         output=accumulator.to_dict(),
                         tokens_used=total_input_tokens + total_output_tokens,
@@ -1351,7 +1353,7 @@ class EventLoopNode(NodeProtocol):
                             escalate_count=_escalate_count,
                             continue_count=_continue_count,
                         )
-                    return NodeResult(
+                    return NodeResult(cost=total_cost,
                         success=True,
                         output=accumulator.to_dict(),
                         tokens_used=total_input_tokens + total_output_tokens,
@@ -1433,7 +1435,7 @@ class EventLoopNode(NodeProtocol):
                             escalate_count=_escalate_count,
                             continue_count=_continue_count,
                         )
-                    return NodeResult(
+                    return NodeResult(cost=total_cost,
                         success=True,
                         output=accumulator.to_dict(),
                         tokens_used=total_input_tokens + total_output_tokens,
@@ -1493,7 +1495,7 @@ class EventLoopNode(NodeProtocol):
                             escalate_count=_escalate_count,
                             continue_count=_continue_count,
                         )
-                    return NodeResult(
+                    return NodeResult(cost=total_cost,
                         success=True,
                         output=accumulator.to_dict(),
                         tokens_used=total_input_tokens + total_output_tokens,
@@ -1642,7 +1644,7 @@ class EventLoopNode(NodeProtocol):
                         escalate_count=_escalate_count,
                         continue_count=_continue_count,
                     )
-                return NodeResult(
+                return NodeResult(cost=total_cost,
                     success=True,
                     output=accumulator.to_dict(),
                     tokens_used=total_input_tokens + total_output_tokens,
@@ -1686,7 +1688,7 @@ class EventLoopNode(NodeProtocol):
                         escalate_count=_escalate_count,
                         continue_count=_continue_count,
                     )
-                return NodeResult(
+                return NodeResult(cost=total_cost,
                     success=False,
                     error=f"Judge escalated: {verdict.feedback or 'no feedback'}",
                     output=accumulator.to_dict(),
@@ -1739,7 +1741,7 @@ class EventLoopNode(NodeProtocol):
                 escalate_count=_escalate_count,
                 continue_count=_continue_count,
             )
-        return NodeResult(
+        return NodeResult(cost=total_cost,
             success=False,
             error=(f"Max iterations ({self._config.max_iterations}) reached without acceptance"),
             output=accumulator.to_dict(),
@@ -1905,7 +1907,7 @@ class EventLoopNode(NodeProtocol):
         stream_id = ctx.stream_id or ctx.node_id
         node_id = ctx.node_id
         execution_id = ctx.execution_id or ""
-        token_counts: dict[str, int] = {"input": 0, "output": 0, "cached": 0}
+        token_counts: dict[str, Any] = {"input": 0, "output": 0, "cached": 0, "cost": 0.0}
         tool_call_count = 0
         final_text = ""
         final_system_prompt = conversation.system_prompt
@@ -1996,6 +1998,7 @@ class EventLoopNode(NodeProtocol):
                         token_counts["cached"] += event.cached_tokens
                         token_counts["stop_reason"] = event.stop_reason
                         token_counts["model"] = event.model
+                        token_counts["cost"] += getattr(event, "cost", 0.0)
 
                     elif isinstance(event, StreamErrorEvent):
                         if not event.recoverable:

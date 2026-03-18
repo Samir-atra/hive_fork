@@ -51,6 +51,7 @@ class RunMetrics(BaseModel):
 
     total_tokens: int = 0
     total_latency_ms: int = 0
+    total_cost: float = 0.0
 
     nodes_executed: list[str] = Field(default_factory=list)
     edges_traversed: list[str] = Field(default_factory=list)
@@ -128,6 +129,7 @@ class Run(BaseModel):
                     self.metrics.failed_decisions += 1
                 self.metrics.total_tokens += outcome.tokens_used
                 self.metrics.total_latency_ms += outcome.latency_ms
+                self.metrics.total_cost += getattr(outcome, "cost", 0.0)
                 break
 
     def add_problem(
@@ -205,6 +207,7 @@ class RunSummary(BaseModel):
     decision_count: int
     success_rate: float
     problem_count: int
+    cost: float = 0.0
 
     # Narrative
     narrative: str
@@ -253,6 +256,7 @@ class RunSummary(BaseModel):
             decision_count=run.metrics.total_decisions,
             success_rate=run.metrics.success_rate,
             problem_count=len(run.problems),
+            cost=getattr(run.metrics, "total_cost", 0.0),
             narrative=run.narrative,
             key_decisions=key_decisions,
             critical_problems=critical,

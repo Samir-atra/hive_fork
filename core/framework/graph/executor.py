@@ -56,6 +56,7 @@ class ExecutionResult:
     steps_executed: int = 0
     total_tokens: int = 0
     total_latency_ms: int = 0
+    total_cost: float = 0.0
     path: list[str] = field(default_factory=list)  # Node IDs traversed
     paused_at: str | None = None  # Node ID where execution paused for HITL
     session_state: dict[str, Any] = field(default_factory=dict)  # State to resume from
@@ -518,6 +519,7 @@ class GraphExecutor:
         path: list[str] = []
         total_tokens = 0
         total_latency = 0
+        total_cost = 0.0
         node_retry_counts: dict[str, int] = {}  # Track retries per node
         node_visit_counts: dict[str, int] = {}  # Track visits for feedback loops
         _is_retry = False  # True when looping back for a retry (not a new visit)
@@ -1012,12 +1014,13 @@ class GraphExecutor:
                                 output={},
                                 tokens_used=result.tokens_used,
                                 latency_ms=result.latency_ms,
+                                cost=getattr(result, "cost", 0.0),
                             )
 
                 if result.success:
                     self.logger.info(
                         f"   ✓ Success (tokens: {result.tokens_used}, "
-                        f"latency: {result.latency_ms}ms)"
+                        f"latency: {result.latency_ms}ms, cost: ${getattr(result, 'cost', 0.0):.4f})"
                     )
 
                     # Generate and log human-readable summary
@@ -1044,6 +1047,7 @@ class GraphExecutor:
 
                 total_tokens += result.tokens_used
                 total_latency += result.latency_ms
+                total_cost += getattr(result, "cost", 0.0)
 
                 # Handle failure
                 if not result.success:
@@ -1167,6 +1171,7 @@ class GraphExecutor:
                                 steps_executed=steps,
                                 total_tokens=total_tokens,
                                 total_latency_ms=total_latency,
+                                total_cost=total_cost,
                                 path=path,
                                 total_retries=total_retries_count,
                                 nodes_with_failures=nodes_failed,
@@ -1298,6 +1303,7 @@ class GraphExecutor:
                             _branch_results,
                             branch_tokens,
                             branch_latency,
+                            branch_cost,
                         ) = await self._execute_parallel_branches(
                             graph=graph,
                             goal=goal,
@@ -1311,6 +1317,7 @@ class GraphExecutor:
 
                         total_tokens += branch_tokens
                         total_latency += branch_latency
+                        total_cost += branch_cost
 
                         # Continue from fan-in node
                         if fan_in_node:
@@ -1575,6 +1582,7 @@ class GraphExecutor:
                 steps_executed=steps,
                 total_tokens=total_tokens,
                 total_latency_ms=total_latency,
+                total_cost=total_cost,
                 path=path,
                 total_retries=total_retries_count,
                 nodes_with_failures=nodes_failed,
@@ -2227,6 +2235,7 @@ class GraphExecutor:
         # Process results
         total_tokens = 0
         total_latency = 0
+        total_cost = 0.0
         branch_results: dict[str, NodeResult] = {}
         failed_branches: list[ParallelBranch] = []
 
@@ -2240,6 +2249,7 @@ class GraphExecutor:
             else:
                 total_tokens += result.tokens_used
                 total_latency += result.latency_ms
+                total_cost += getattr(result, "cost", 0.0)
                 branch_results[branch.branch_id] = result
 
         # Handle failures based on config
@@ -2255,7 +2265,7 @@ class GraphExecutor:
         self.logger.info(
             f"   ⑃ Fan-out complete: {len(branch_results)}/{len(branches)} branches succeeded"
         )
-        return branch_results, total_tokens, total_latency
+        return branch_results, total_tokens, total_latency, total_cost
 
     def register_node(self, node_id: str, implementation: NodeProtocol) -> None:
         """Register a custom node implementation."""

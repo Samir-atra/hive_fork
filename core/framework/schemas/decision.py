@@ -68,6 +68,7 @@ class Outcome(BaseModel):
     state_changes: dict[str, Any] = Field(default_factory=dict)
     tokens_used: int = 0
     latency_ms: int = 0
+    cost: float = 0.0
 
     # Natural language summary (crucial for Builder)
     summary: str = ""  # "Found 3 contacts matching query"

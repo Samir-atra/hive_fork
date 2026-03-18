@@ -19,9 +19,11 @@ from typing import Any
 try:
     import litellm
     from litellm.exceptions import RateLimitError
+    from litellm.cost_calculator import completion_cost
 except ImportError:
     litellm = None  # type: ignore[assignment]
     RateLimitError = Exception  # type: ignore[assignment, misc]
+    completion_cost = None  # type: ignore[assignment]
 
 from framework.llm.provider import LLMProvider, LLMResponse, Tool
 from framework.llm.stream_events import StreamEvent
@@ -580,6 +582,13 @@ class LiteLLMProvider(LLMProvider):
         input_tokens = usage.prompt_tokens if usage else 0
         output_tokens = usage.completion_tokens if usage else 0
 
+        cost = 0.0
+        if completion_cost is not None:
+            try:
+                cost = completion_cost(completion_response=response) or 0.0
+            except Exception as e:
+                logger.debug(f"[cost] Failed to calculate cost for {self.model}: {e}")
+
         return LLMResponse(
             content=content,
             model=response.model or self.model,
@@ -587,6 +596,7 @@ class LiteLLMProvider(LLMProvider):
             output_tokens=output_tokens,
             stop_reason=response.choices[0].finish_reason or "",
             raw_response=response,
+            cost=cost,
         )
 
     # ------------------------------------------------------------------
@@ -762,6 +772,13 @@ class LiteLLMProvider(LLMProvider):
         input_tokens = usage.prompt_tokens if usage else 0
         output_tokens = usage.completion_tokens if usage else 0
 
+        cost = 0.0
+        if completion_cost is not None:
+            try:
+                cost = completion_cost(completion_response=response) or 0.0
+            except Exception as e:
+                logger.debug(f"[cost] Failed to calculate async cost for {self.model}: {e}")
+
         return LLMResponse(
             content=content,
             model=response.model or self.model,
@@ -769,6 +786,7 @@ class LiteLLMProvider(LLMProvider):
             output_tokens=output_tokens,
             stop_reason=response.choices[0].finish_reason or "",
             raw_response=response,
+            cost=cost,
         )
 
     def _tool_to_openai_format(self, tool: Tool) -> dict[str, Any]:
@@ -855,6 +873,7 @@ class LiteLLMProvider(LLMProvider):
             input_tokens=response.input_tokens,
             output_tokens=response.output_tokens,
             model=response.model,
+            cost=getattr(response, "cost", 0.0),
         )
 
     async def stream(
@@ -1084,13 +1103,21 @@ class LiteLLMProvider(LLMProvider):
                                 self.model,
                             )
 
+                            cost = 0.0
+                            if completion_cost is not None and getattr(chunk, "usage", None):
+                                try:
+                                    cost = completion_cost(completion_response=chunk) or 0.0
+                                except Exception as e:
+                                    logger.debug(f"[cost] Failed to calculate stream cost for {self.model}: {e}")
+
                         logger.debug(
-                            "[tokens] finish event: input=%d output=%d cached=%d stop=%s model=%s",
+                                "[tokens] finish event: input=%d output=%d cached=%d stop=%s model=%s cost=%f",
                             input_tokens,
                             output_tokens,
                             cached_tokens,
                             choice.finish_reason,
                             self.model,
+                                cost,
                         )
                         tail_events.append(
                             FinishEvent(
@@ -1099,6 +1126,7 @@ class LiteLLMProvider(LLMProvider):
                                 output_tokens=output_tokens,
                                 cached_tokens=cached_tokens,
                                 model=self.model,
+                                    cost=cost,
                             )
                         )
 
@@ -1123,13 +1151,21 @@ class LiteLLMProvider(LLMProvider):
                                 if _details is not None
                                 else getattr(_usage, "cache_read_input_tokens", 0) or 0
                             )
+                            fallback_cost = 0.0
+                            if completion_cost is not None and getattr(response, "chunks", None):
+                                try:
+                                    fallback_cost = completion_cost(completion_response=response) or 0.0
+                                except Exception as e:
+                                    logger.debug(f"[cost] Failed to calculate fallback stream cost for {self.model}: {e}")
+
                             logger.debug(
                                 "[tokens] post-loop chunks fallback:"
-                                " input=%d output=%d cached=%d model=%s",
+                                " input=%d output=%d cached=%d model=%s cost=%f",
                                 input_tokens,
                                 output_tokens,
                                 cached_tokens,
                                 self.model,
+                                fallback_cost,
                             )
                             # Patch the FinishEvent already queued with 0 tokens
                             for _i, _ev in enumerate(tail_events):
@@ -1140,6 +1176,7 @@ class LiteLLMProvider(LLMProvider):
                                         output_tokens=output_tokens,
                                         cached_tokens=cached_tokens,
                                         model=_ev.model,
+                                        cost=max(_ev.cost, fallback_cost),
                                     )
                                     break
                     except Exception as _e:
@@ -1264,6 +1301,7 @@ class LiteLLMProvider(LLMProvider):
         output_tokens = 0
         stop_reason = ""
         model = self.model
+        cost = 0.0
 
         async for event in stream:
             if isinstance(event, TextDeltaEvent):
@@ -1282,6 +1320,7 @@ class LiteLLMProvider(LLMProvider):
                 stop_reason = event.stop_reason
                 if event.model:
                     model = event.model
+                cost = getattr(event, "cost", 0.0)
             elif isinstance(event, StreamErrorEvent):
                 if not event.recoverable:
                     raise RuntimeError(f"Stream error: {event.error}")
@@ -1293,4 +1332,5 @@ class LiteLLMProvider(LLMProvider):
             output_tokens=output_tokens,
             stop_reason=stop_reason,
             raw_response={"tool_calls": tool_calls} if tool_calls else None,
+            cost=cost,
         )
