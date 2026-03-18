@@ -40,6 +40,11 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
         help="Write results to file instead of stdout",
     )
     run_parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Show full, unfiltered output keys",
+    )
+    run_parser.add_argument(
         "--quiet",
         "-q",
         action="store_true",
@@ -176,6 +181,11 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
         type=str,
         default="exports",
         help="Directory containing agents (default: exports)",
+    )
+    shell_parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Show full, unfiltered output keys",
     )
     shell_parser.add_argument(
         "--multi",
@@ -518,44 +528,49 @@ def cmd_run(args: argparse.Namespace) -> int:
 
             if result.success:
                 print("\n--- Results ---")
-                # Show only meaningful output keys (skip internal/intermediate values)
-                meaningful_keys = ["final_response", "response", "result", "answer", "output"]
+                if getattr(args, "full", False):
+                    print(json.dumps(result.output, indent=2, default=str))
+                else:
+                    # Show only meaningful output keys (skip internal/intermediate values)
+                    meaningful_keys = ["final_response", "response", "result", "answer", "output"]
 
-                # Try to find the most relevant output
-                shown = False
-                for key in meaningful_keys:
-                    if key in result.output:
-                        value = result.output[key]
-                        if isinstance(value, str) and len(value) > 10:
-                            print(value)
-                            shown = True
-                            break
-                        elif isinstance(value, (dict, list)):
-                            print(json.dumps(value, indent=2, default=str))
-                            shown = True
-                            break
+                    # Try to find the most relevant output
+                    shown = False
+                    for key in meaningful_keys:
+                        if key in result.output:
+                            value = result.output[key]
+                            if isinstance(value, str) and len(value) > 10:
+                                print(value)
+                                shown = True
+                                break
+                            elif isinstance(value, (dict, list)):
+                                print(json.dumps(value, indent=2, default=str))
+                                shown = True
+                                break
 
-                # If no meaningful key found, show all non-internal keys
-                if not shown:
-                    for key, value in result.output.items():
-                        if not key.startswith("_") and key not in [
-                            "user_id",
-                            "request",
-                            "memory_loaded",
-                            "user_profile",
-                            "recent_context",
-                        ]:
-                            if isinstance(value, (dict, list)):
-                                print(f"\n{key}:")
-                                value_str = json.dumps(value, indent=2, default=str)
-                                if len(value_str) > 300:
-                                    value_str = value_str[:300] + "..."
-                                print(value_str)
-                            else:
-                                val_str = str(value)
-                                if len(val_str) > 200:
-                                    val_str = val_str[:200] + "..."
-                                print(f"{key}: {val_str}")
+                    # If no meaningful key found, show all non-internal keys
+                    if not shown:
+                        for key, value in result.output.items():
+                            if not key.startswith("_") and key not in [
+                                "user_id",
+                                "request",
+                                "memory_loaded",
+                                "user_profile",
+                                "recent_context",
+                            ]:
+                                if isinstance(value, (dict, list)):
+                                    print(f"\n{key}:")
+                                    value_str = json.dumps(value, indent=2, default=str)
+                                    if len(value_str) > 300:
+                                        value_str = value_str[:300] + "..."
+                                    print(value_str)
+                                else:
+                                    val_str = str(value)
+                                    if len(val_str) > 200:
+                                        val_str = val_str[:200] + "..."
+                                    print(f"{key}: {val_str}")
+
+                    print("\n(Output has been filtered. Use --full to see all output keys)")
             elif result.error:
                 print(f"\nError: {result.error}")
 
@@ -975,6 +990,7 @@ def cmd_shell(args: argparse.Namespace) -> int:
     print("  /info    - Show agent details")
     print("  /nodes   - Show agent nodes")
     print("  /reset   - Reset conversation state")
+    print("  /full    - Toggle full output on/off")
     print("  /quit    - Exit interactive mode")
     print("  {...}    - JSON input to run agent")
     print("  anything else - Natural language (auto-formatted with Haiku)")
@@ -984,6 +1000,7 @@ def cmd_shell(args: argparse.Namespace) -> int:
     session_memory = {}
     conversation_history = []
     agent_session_state = None  # Track paused agent state
+    full_output = getattr(args, "full", False)
 
     while True:
         try:
@@ -1025,6 +1042,13 @@ def cmd_shell(args: argparse.Namespace) -> int:
             conversation_history = []
             agent_session_state = None  # Clear agent's internal state too
             print("✓ Conversation state and agent session cleared")
+            print()
+            continue
+
+        if user_input == "/full":
+            full_output = not full_output
+            state = "ON" if full_output else "OFF"
+            print(f"✓ Full output mode is now {state}")
             print()
             continue
 
@@ -1095,23 +1119,29 @@ def cmd_shell(args: argparse.Namespace) -> int:
 
         # Show clean output - prioritize meaningful keys
         if result.output:
-            meaningful_keys = ["final_response", "response", "result", "answer", "output"]
-            shown = False
-
-            for key in meaningful_keys:
-                if key in result.output:
-                    value = result.output[key]
-                    if isinstance(value, str) and len(value) > 10:
-                        print(f"\n{value}\n")
-                        shown = True
-                        break
-
-            if not shown:
+            if full_output:
                 print("\nOutput:")
-                for key, value in result.output.items():
-                    if not key.startswith("_"):
-                        val_str = str(value)[:200]
-                        print(f"  {key}: {val_str}")
+                print(json.dumps(result.output, indent=2, default=str))
+            else:
+                meaningful_keys = ["final_response", "response", "result", "answer", "output"]
+                shown = False
+
+                for key in meaningful_keys:
+                    if key in result.output:
+                        value = result.output[key]
+                        if isinstance(value, str) and len(value) > 10:
+                            print(f"\n{value}\n")
+                            shown = True
+                            break
+
+                if not shown:
+                    print("\nOutput:")
+                    for key, value in result.output.items():
+                        if not key.startswith("_"):
+                            val_str = str(value)[:200]
+                            print(f"  {key}: {val_str}")
+
+                print("\n(Output has been filtered. Use /full to see all output keys)")
 
         if result.error:
             print(f"\nError: {result.error}")
