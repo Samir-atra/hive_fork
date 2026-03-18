@@ -37,25 +37,41 @@
 
 ## Overview
 
-Generate a swarm of worker agents with a coding agent(queen) that control them. Define your goal through conversation with hive queen, and the framework generates a node graph with dynamically created connection code. When things break, the framework captures failure data, evolves the agent through the coding agent, and redeploys. Built-in human-in-the-loop nodes, browser use, credential management, and real-time monitoring give you control without sacrificing adaptability.
+**Hive is an open-source, multi-agent framework designed for developers to build, deploy, and scale autonomous AI agents.** It uses a unique "queen" agent to generate and orchestrate a swarm of worker agents by creating dynamic execution graphs based on your goals.
+
+Whether you need to build a sales agent, automate customer support with AI, or scrape web data at scale, Hive handles the complex wiring for you. When agents encounter errors, the framework captures failure data, evolves the agent graph to fix issues, and redeploys automatically.
+
+### What is this for?
+Hive is for software engineers and data teams who want to move beyond simple chat scripts and build **production-ready agentic workflows**. It provides the infrastructure to run scalable, self-healing multi-agent systems without manually defining every node and edge.
 
 Visit [adenhq.com](https://adenhq.com) for complete documentation, examples, and guides.
 
 [![Hive Demo](https://img.youtube.com/vi/XDOG9fOaLjU/maxresdefault.jpg)](https://www.youtube.com/watch?v=XDOG9fOaLjU)
 
+## Use Cases
+
+Developers search for and use Hive to build specialized, autonomous agents that solve real business problems. Popular use cases include:
+
+- **Automate Customer Support with AI:** Build AI agents that triage incoming tickets, fetch context from internal wikis, and draft responses before escalating to a human if necessary.
+- **Build a Sales Agent:** Create a system that automatically researches inbound leads via the browser, cross-references CRM data, and drafts personalized outreach emails.
+- **Data Extraction & Web Scraping:** Deploy a swarm of agents to navigate complex websites, bypass captchas (using built-in browser use), and structure unstructured data into your database.
+- **Software Testing & QA:** Run automated testing flows where agents dynamically write, execute, and debug integration tests against your staging environment.
+
+
 ## Who Is Hive For?
 
-Hive is designed for developers and teams who want to build many **autonomous AI agents** fast without manually wiring complex workflows.
+Hive is designed for **software developers, AI engineers, and product teams** who want to build many autonomous AI agents fast without manually wiring complex workflows.
 
-Hive is a good fit if you:
+**Hive is for you if:**
+- You want AI agents that **execute real business processes**, not just demos.
+- You need **fast or high-volume agent execution** over open workflow.
+- You need **self-healing and adaptive agents** that improve over time.
+- You require **human-in-the-loop control**, observability, and cost limits.
+- You plan to run agents in **production environments**.
 
-- Want AI agents that **execute real business processes**, not demos
-- Need **fast or high volume agent execution** over open workflow
-- Need **self-healing and adaptive agents** that improve over time
-- Require **human-in-the-loop control**, observability, and cost limits
-- Plan to run agents in **production environments**
-
-Hive may not be the best fit if you’re only experimenting with simple agent chains or one-off scripts.
+**Hive might not be for you if:**
+- You're only experimenting with simple, single-turn chat completion scripts.
+- You prefer to manually hardcode every single state transition in your agent graph.
 
 ## When Should You Use Hive?
 
@@ -375,45 +391,7 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 ## Frequently Asked Questions (FAQ)
 
-**Q: What LLM providers does Hive support?**
-
-Hive supports 100+ LLM providers through LiteLLM integration, including OpenAI (GPT-4, GPT-4o), Anthropic (Claude models), Google Gemini, DeepSeek, Mistral, Groq, and many more. Simply set the appropriate API key environment variable and specify the model name. We recommend using Claude, GLM and Gemini as they have the best performance.
-
-**Q: Can I use Hive with local AI models like Ollama?**
-
-Yes! Hive supports local models through LiteLLM. Simply use the model name format `ollama/model-name` (e.g., `ollama/llama3`, `ollama/mistral`) and ensure Ollama is running locally.
-
-**Q: What makes Hive different from other agent frameworks?**
-
-Hive generates your entire agent system from natural language goals using a coding agent—you don't hardcode workflows or manually define graphs. When agents fail, the framework automatically captures failure data, [evolves the agent graph](docs/key_concepts/evolution.md), and redeploys. This self-improving loop is unique to Aden.
-
-**Q: Is Hive open-source?**
-
-Yes, Hive is fully open-source under the Apache License 2.0. We actively encourage community contributions and collaboration.
-
-**Q: Does Hive support human-in-the-loop workflows?**
-
-Yes, Hive fully supports [human-in-the-loop](docs/key_concepts/graph.md#human-in-the-loop) workflows through intervention nodes that pause execution for human input. These include configurable timeouts and escalation policies, allowing seamless collaboration between human experts and AI agents.
-
-**Q: What programming languages does Hive support?**
-
-The Hive framework is built in Python. A JavaScript/TypeScript SDK is on the roadmap.
-
-**Q: Can Hive agents interact with external tools and APIs?**
-
-Yes. Aden's SDK-wrapped nodes provide built-in tool access, and the framework supports flexible tool ecosystems. Agents can integrate with external APIs, databases, and services through the node architecture.
-
-**Q: How does cost control work in Hive?**
-
-Hive provides granular budget controls including spending limits, throttles, and automatic model degradation policies. You can set budgets at the team, agent, or workflow level, with real-time cost tracking and alerts.
-
-**Q: Where can I find examples and documentation?**
-
-Visit [docs.adenhq.com](https://docs.adenhq.com/) for complete guides, API reference, and getting started tutorials. The repository also includes documentation in the `docs/` folder and a comprehensive [developer guide](docs/developer-guide.md).
-
-**Q: How can I contribute to Aden?**
-
-Contributions are welcome! Fork the repository, create your feature branch, implement your changes, and submit a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+Read our [Frequently Asked Questions (FAQ)](docs/faq.md) to learn more about supported LLMs, local models (Ollama), capabilities, and more.
 
 ## Star History
 
