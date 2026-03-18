@@ -239,9 +239,8 @@ class AzureKeyVaultStorage(CredentialStorage):
         import urllib.request
 
         secret_name = self._secret_name(credential_id)
-        # Using the same GET request as exists since Azure KV doesn't have a HEAD or lean describe endpoint
-        # that doesn't return the value for secrets specifically, but getting metadata works by getting the secret without value?
-        # Actually, GET on the secret returns the value. We can just catch 404.
+        # Azure KV doesn't have a lean describe endpoint.
+        # Using GET returns the value. We just catch 404.
         url = f"{self.vault_url}secrets/{secret_name}?api-version={self._api_version}"
 
         headers = {

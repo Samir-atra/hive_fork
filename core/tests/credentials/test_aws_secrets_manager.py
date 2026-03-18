@@ -78,7 +78,11 @@ class TestAWSSecretsManagerStorage:
 
     def test_load_returns_credential(self, mock_boto3):
         mock_boto3.get_secret_value.return_value = {
-            "SecretString": json.dumps({"_type": "api_key", "keys": {"api_key": {"name": "api_key", "value": "my-secret"}}, "id": "test_api"})
+            "SecretString": json.dumps({
+                "_type": "api_key",
+                "keys": {"api_key": {"name": "api_key", "value": "my-secret"}},
+                "id": "test_api"
+            })
         }
 
         storage = AWSSecretsManagerStorage()
@@ -174,7 +178,6 @@ class TestAWSSecretsManagerStorage:
     def test_health_check_failure(self, mock_boto3):
         with patch.object(storage := AWSSecretsManagerStorage(), "_session") as mock_session:
             sts_client = MagicMock()
-            error_response = {"Error": {"Code": "InvalidClientTokenId"}}
             sts_client.get_caller_identity.side_effect = Exception("failed")
             mock_session.client.return_value = sts_client
             assert storage.health_check() is False
