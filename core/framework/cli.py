@@ -89,6 +89,11 @@ def main():
 
     register_testing_commands(subparsers)
 
+    # Register cost tracking commands (costs)
+    from framework.costs.cli import register_cost_commands
+
+    register_cost_commands(subparsers)
+
     args = parser.parse_args()
 
     if hasattr(args, "func"):
