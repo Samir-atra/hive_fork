@@ -18,8 +18,7 @@ class TestAzureKeyVaultStorage:
     def mock_azure(self):
         """Mock azure-identity and urllib for testing."""
         with patch.dict(
-            "sys.modules",
-            {"azure": MagicMock(), "azure.identity": MagicMock()}
+            "sys.modules", {"azure": MagicMock(), "azure.identity": MagicMock()}
         ) as sys_modules:
             mock_cred = sys_modules["azure.identity"].DefaultAzureCredential
             credential_instance = MagicMock()
@@ -67,13 +66,17 @@ class TestAzureKeyVaultStorage:
     @patch("urllib.request.urlopen")
     def test_load_returns_credential(self, mock_urlopen, mock_azure):
         mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps({
-            "value": json.dumps({
-                "_type": "api_key",
-                "keys": {"api_key": {"name": "api_key", "value": "my-secret"}},
-                "id": "test_api"
-            })
-        }).encode("utf-8")
+        mock_response.read.return_value = json.dumps(
+            {
+                "value": json.dumps(
+                    {
+                        "_type": "api_key",
+                        "keys": {"api_key": {"name": "api_key", "value": "my-secret"}},
+                        "id": "test_api",
+                    }
+                )
+            }
+        ).encode("utf-8")
         mock_response.__enter__.return_value = mock_response
         mock_urlopen.return_value = mock_response
 
@@ -113,17 +116,21 @@ class TestAzureKeyVaultStorage:
     @patch("urllib.request.urlopen")
     def test_list_all_with_pagination(self, mock_urlopen, mock_azure):
         mock_response1 = MagicMock()
-        mock_response1.read.return_value = json.dumps({
-            "value": [{"id": "https://test.vault.azure.net/secrets/hive-credentials-api1"}],
-            "nextLink": "https://test.vault.azure.net/secrets?page=2"
-        }).encode("utf-8")
+        mock_response1.read.return_value = json.dumps(
+            {
+                "value": [{"id": "https://test.vault.azure.net/secrets/hive-credentials-api1"}],
+                "nextLink": "https://test.vault.azure.net/secrets?page=2",
+            }
+        ).encode("utf-8")
         mock_response1.__enter__.return_value = mock_response1
 
         mock_response2 = MagicMock()
-        mock_response2.read.return_value = json.dumps({
-            "value": [{"id": "https://test.vault.azure.net/secrets/hive-credentials-api2"}],
-            "nextLink": None
-        }).encode("utf-8")
+        mock_response2.read.return_value = json.dumps(
+            {
+                "value": [{"id": "https://test.vault.azure.net/secrets/hive-credentials-api2"}],
+                "nextLink": None,
+            }
+        ).encode("utf-8")
         mock_response2.__enter__.return_value = mock_response2
 
         mock_urlopen.side_effect = [mock_response1, mock_response2]

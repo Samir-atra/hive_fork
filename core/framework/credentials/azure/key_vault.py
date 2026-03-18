@@ -16,6 +16,7 @@ from framework.credentials.storage import CredentialStorage
 
 logger = logging.getLogger(__name__)
 
+
 class AzureKeyVaultStorage(CredentialStorage):
     """
     Azure Key Vault storage backend.
@@ -30,11 +31,7 @@ class AzureKeyVaultStorage(CredentialStorage):
         )
     """
 
-    def __init__(
-        self,
-        vault_url: str,
-        secret_prefix: str = "hive-credentials"
-    ):
+    def __init__(self, vault_url: str, secret_prefix: str = "hive-credentials"):
         """
         Initialize Azure Key Vault storage.
 
@@ -72,6 +69,7 @@ class AzureKeyVaultStorage(CredentialStorage):
         """
         # Replace invalid characters with dashes
         import re
+
         safe_id = re.sub(r"[^0-9a-zA-Z-]+", "-", credential_id)
         if self.secret_prefix:
             return f"{self.secret_prefix}-{safe_id}"
@@ -116,7 +114,7 @@ class AzureKeyVaultStorage(CredentialStorage):
 
         headers = {
             "Authorization": f"Bearer {self._get_token()}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
         data = json.dumps({"value": secret_string}).encode("utf-8")
@@ -140,9 +138,7 @@ class AzureKeyVaultStorage(CredentialStorage):
         secret_name = self._secret_name(credential_id)
         url = f"{self.vault_url}secrets/{secret_name}?api-version={self._api_version}"
 
-        headers = {
-            "Authorization": f"Bearer {self._get_token()}"
-        }
+        headers = {"Authorization": f"Bearer {self._get_token()}"}
 
         req = urllib.request.Request(url, headers=headers, method="GET")
 
@@ -177,9 +173,7 @@ class AzureKeyVaultStorage(CredentialStorage):
         secret_name = self._secret_name(credential_id)
         url = f"{self.vault_url}secrets/{secret_name}?api-version={self._api_version}"
 
-        headers = {
-            "Authorization": f"Bearer {self._get_token()}"
-        }
+        headers = {"Authorization": f"Bearer {self._get_token()}"}
 
         req = urllib.request.Request(url, headers=headers, method="DELETE")
 
@@ -203,9 +197,7 @@ class AzureKeyVaultStorage(CredentialStorage):
 
         url = f"{self.vault_url}secrets?api-version={self._api_version}"
 
-        headers = {
-            "Authorization": f"Bearer {self._get_token()}"
-        }
+        headers = {"Authorization": f"Bearer {self._get_token()}"}
 
         credential_ids = []
 
@@ -222,7 +214,7 @@ class AzureKeyVaultStorage(CredentialStorage):
                         name = secret_id_url.split("/")[-1]
 
                         if self.secret_prefix and name.startswith(f"{self.secret_prefix}-"):
-                            credential_ids.append(name[len(f"{self.secret_prefix}-"):])
+                            credential_ids.append(name[len(f"{self.secret_prefix}-") :])
                         elif not self.secret_prefix:
                             credential_ids.append(name)
 
@@ -243,9 +235,7 @@ class AzureKeyVaultStorage(CredentialStorage):
         # Using GET returns the value. We just catch 404.
         url = f"{self.vault_url}secrets/{secret_name}?api-version={self._api_version}"
 
-        headers = {
-            "Authorization": f"Bearer {self._get_token()}"
-        }
+        headers = {"Authorization": f"Bearer {self._get_token()}"}
 
         req = urllib.request.Request(url, headers=headers, method="GET")
 

@@ -16,6 +16,7 @@ from framework.credentials.storage import CredentialStorage
 
 logger = logging.getLogger(__name__)
 
+
 class AWSSecretsManagerStorage(CredentialStorage):
     """
     AWS Secrets Manager storage backend.
@@ -50,8 +51,7 @@ class AWSSecretsManagerStorage(CredentialStorage):
             import boto3
         except ImportError as e:
             raise ImportError(
-                "AWS Secrets Manager support requires 'boto3'. "
-                "Install with: uv pip install boto3"
+                "AWS Secrets Manager support requires 'boto3'. Install with: uv pip install boto3"
             ) from e
 
         self.secret_prefix = secret_prefix.strip("/")
@@ -119,10 +119,7 @@ class AWSSecretsManagerStorage(CredentialStorage):
 
         try:
             # Try to update if it exists
-            self._client.put_secret_value(
-                SecretId=secret_name,
-                SecretString=secret_string
-            )
+            self._client.put_secret_value(SecretId=secret_name, SecretString=secret_string)
             logger.debug(f"Updated credential '{credential.id}' in AWS Secrets Manager")
         except Exception as e:
             is_not_found = False
@@ -139,16 +136,12 @@ class AWSSecretsManagerStorage(CredentialStorage):
                 description = credential.description or f"Hive credential: {credential.id}"
                 tags = [{"Key": "hive_credential_id", "Value": credential.id}]
                 if credential.credential_type:
-                    tags.append({
-                        "Key": "hive_credential_type",
-                        "Value": credential.credential_type.value
-                    })
+                    tags.append(
+                        {"Key": "hive_credential_type", "Value": credential.credential_type.value}
+                    )
 
                 self._client.create_secret(
-                    Name=secret_name,
-                    Description=description,
-                    SecretString=secret_string,
-                    Tags=tags
+                    Name=secret_name, Description=description, SecretString=secret_string, Tags=tags
                 )
                 logger.debug(f"Created new credential '{credential.id}' in AWS Secrets Manager")
             else:
@@ -196,10 +189,7 @@ class AWSSecretsManagerStorage(CredentialStorage):
             # ForceDeleteWithoutRecovery=True ensures immediate deletion without
             # the standard 7-30 day recovery window, making tests and typical
             # development flows easier. In production you might want recovery.
-            self._client.delete_secret(
-                SecretId=secret_name,
-                ForceDeleteWithoutRecovery=True
-            )
+            self._client.delete_secret(SecretId=secret_name, ForceDeleteWithoutRecovery=True)
             logger.debug(f"Deleted credential '{credential_id}' from AWS Secrets Manager")
             return True
         except Exception as e:
@@ -223,10 +213,7 @@ class AWSSecretsManagerStorage(CredentialStorage):
         # Filter secrets by prefix if set
         filters = []
         if self.secret_prefix:
-            filters.append({
-                "Key": "name",
-                "Values": [f"{self.secret_prefix}/"]
-            })
+            filters.append({"Key": "name", "Values": [f"{self.secret_prefix}/"]})
 
         kwargs = {}
         if filters:
@@ -237,7 +224,7 @@ class AWSSecretsManagerStorage(CredentialStorage):
                 name = secret["Name"]
                 # Extract the ID from the full name
                 if self.secret_prefix and name.startswith(f"{self.secret_prefix}/"):
-                    credential_ids.append(name[len(f"{self.secret_prefix}/"):])
+                    credential_ids.append(name[len(f"{self.secret_prefix}/") :])
                 else:
                     credential_ids.append(name)
 

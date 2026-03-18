@@ -18,9 +18,10 @@ class TestAWSSecretsManagerStorage:
         """Mock boto3 for testing without AWS credentials."""
         with patch.dict(
             "sys.modules",
-            {"boto3": MagicMock(), "botocore": MagicMock(), "botocore.exceptions": MagicMock()}
+            {"boto3": MagicMock(), "botocore": MagicMock(), "botocore.exceptions": MagicMock()},
         ):
             import boto3
+
             session = MagicMock()
             client = MagicMock()
             session.client.return_value = client
@@ -51,9 +52,7 @@ class TestAWSSecretsManagerStorage:
                     f"when calling the {operation} operation"
                 )
 
-        mock_boto3.put_secret_value.side_effect = MockClientError(
-            error_response, "PutSecretValue"
-        )
+        mock_boto3.put_secret_value.side_effect = MockClientError(error_response, "PutSecretValue")
 
         storage = AWSSecretsManagerStorage()
         cred = CredentialObject(
@@ -78,11 +77,13 @@ class TestAWSSecretsManagerStorage:
 
     def test_load_returns_credential(self, mock_boto3):
         mock_boto3.get_secret_value.return_value = {
-            "SecretString": json.dumps({
-                "_type": "api_key",
-                "keys": {"api_key": {"name": "api_key", "value": "my-secret"}},
-                "id": "test_api"
-            })
+            "SecretString": json.dumps(
+                {
+                    "_type": "api_key",
+                    "keys": {"api_key": {"name": "api_key", "value": "my-secret"}},
+                    "id": "test_api",
+                }
+            )
         }
 
         storage = AWSSecretsManagerStorage()
@@ -103,9 +104,7 @@ class TestAWSSecretsManagerStorage:
                     f"when calling the {operation} operation"
                 )
 
-        mock_boto3.get_secret_value.side_effect = MockClientError(
-            error_response, "GetSecretValue"
-        )
+        mock_boto3.get_secret_value.side_effect = MockClientError(error_response, "GetSecretValue")
 
         storage = AWSSecretsManagerStorage()
         assert storage.load("nonexistent") is None
@@ -126,9 +125,7 @@ class TestAWSSecretsManagerStorage:
                     f"when calling the {operation} operation"
                 )
 
-        mock_boto3.delete_secret.side_effect = MockClientError(
-            error_response, "DeleteSecret"
-        )
+        mock_boto3.delete_secret.side_effect = MockClientError(error_response, "DeleteSecret")
 
         storage = AWSSecretsManagerStorage()
         assert storage.delete("nonexistent") is False
@@ -162,9 +159,7 @@ class TestAWSSecretsManagerStorage:
                     f"when calling the {operation} operation"
                 )
 
-        mock_boto3.describe_secret.side_effect = MockClientError(
-            error_response, "DescribeSecret"
-        )
+        mock_boto3.describe_secret.side_effect = MockClientError(error_response, "DescribeSecret")
 
         storage = AWSSecretsManagerStorage()
         assert storage.exists("nonexistent") is False
@@ -188,9 +183,10 @@ class TestOAuth2CredentialRoundTrip:
     def mock_boto3(self):
         with patch.dict(
             "sys.modules",
-            {"boto3": MagicMock(), "botocore": MagicMock(), "botocore.exceptions": MagicMock()}
+            {"boto3": MagicMock(), "botocore": MagicMock(), "botocore.exceptions": MagicMock()},
         ):
             import boto3
+
             session = MagicMock()
             client = MagicMock()
             session.client.return_value = client
@@ -204,19 +200,17 @@ class TestOAuth2CredentialRoundTrip:
             id="github_oauth",
             credential_type=CredentialType.OAUTH2,
             keys={
-                "access_token": CredentialKey(
-                    name="access_token", value=SecretStr("gho_xxx")
-                ),
-                "refresh_token": CredentialKey(
-                    name="refresh_token", value=SecretStr("ghr_yyy")
-                ),
+                "access_token": CredentialKey(name="access_token", value=SecretStr("gho_xxx")),
+                "refresh_token": CredentialKey(name="refresh_token", value=SecretStr("ghr_yyy")),
             },
         )
 
         saved_data = None
+
         def capture_save(**kwargs):
             nonlocal saved_data
             saved_data = json.loads(kwargs["SecretString"])
+
         mock_boto3.put_secret_value.side_effect = capture_save
 
         storage.save(cred)
