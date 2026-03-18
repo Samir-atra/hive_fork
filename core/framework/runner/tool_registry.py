@@ -8,9 +8,8 @@ import json
 import logging
 import os
 import subprocess
-import sys
-import urllib.request
 import urllib.parse
+import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -258,13 +257,20 @@ class ToolRegistry:
                         mod = importlib.import_module(module_name)
                         func = getattr(mod, func_name)
                     except Exception as e:
-                        logger.error("Failed to load python_function %s.%s for tool %s: %s", module_name, func_name, name, e)
+                        logger.error(
+                            "Failed to load python_function %s.%s for tool %s: %s",
+                            module_name,
+                            func_name,
+                            name,
+                            e,
+                        )
                         continue
 
-                    def make_python_executor(f):
-                        def executor(args: dict) -> Any:
+                    def make_python_executor(f: Callable) -> Callable:
+                        def _executor(args: dict) -> Any:
                             return f(**args)
-                        return executor
+                        return _executor
+
                     executor = make_python_executor(func)
 
                 elif exec_type == "shell":
@@ -273,20 +279,32 @@ class ToolRegistry:
                         logger.error("Tool %s exec missing 'command'", name)
                         continue
 
-                    def make_shell_executor(cmd: str):
-                        def executor(args: dict) -> Any:
+                    def make_shell_executor(cmd: str) -> Callable:
+                        def _executor(args: dict) -> Any:
                             # Map arguments to environment variables
                             env = os.environ.copy()
                             for k, v in args.items():
                                 env[k.upper()] = str(v)
                             try:
-                                result = subprocess.run(cmd, shell=True, env=env, capture_output=True, text=True, check=True)
+                                result = subprocess.run(
+                                    cmd,
+                                    shell=True,
+                                    env=env,
+                                    capture_output=True,
+                                    text=True,
+                                    check=True,
+                                )
                                 return {"stdout": result.stdout, "stderr": result.stderr}
                             except subprocess.CalledProcessError as e:
-                                return {"error": f"Command failed with exit code {e.returncode}", "stdout": e.stdout, "stderr": e.stderr}
+                                return {
+                                    "error": f"Command failed with exit code {e.returncode}",
+                                    "stdout": e.stdout,
+                                    "stderr": e.stderr,
+                                }
                             except Exception as e:
                                 return {"error": str(e)}
-                        return executor
+                        return _executor
+
                     executor = make_shell_executor(command)
 
                 elif exec_type == "http":
@@ -296,14 +314,15 @@ class ToolRegistry:
                         continue
                     method = (tool_exec.get("method") or t.get("method") or "GET").upper()
 
-                    def make_http_executor(url: str, meth: str):
-                        def executor(args: dict) -> Any:
+                    def make_http_executor(url: str, meth: str) -> Callable:
+                        def _executor(args: dict) -> Any:
                             # Replace path parameters e.g., /resource/<resource_id>
                             request_url = url
                             for k, v in list(args.items()):
                                 placeholder = f"<{k}>"
                                 if placeholder in request_url:
-                                    request_url = request_url.replace(placeholder, urllib.parse.quote(str(v)))
+                                    quoted_val = urllib.parse.quote(str(v))
+                                    request_url = request_url.replace(placeholder, quoted_val)
                                     args.pop(k)
 
                             data = None
@@ -326,7 +345,8 @@ class ToolRegistry:
                                         return {"text": response_data}
                             except Exception as e:
                                 return {"error": str(e)}
-                        return executor
+                        return _executor
+
                     executor = make_http_executor(api_url, method)
                 else:
                     logger.error("Unsupported exec type '%s' for tool %s", exec_type, name)

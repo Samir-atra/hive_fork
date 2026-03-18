@@ -1,9 +1,5 @@
 import json
-import subprocess
-from pathlib import Path
-from unittest.mock import patch, MagicMock
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from framework.runner.tool_registry import ToolRegistry
 
@@ -28,7 +24,7 @@ def test_discover_declarative_python_tool(tmp_path):
     tools_dir.mkdir()
 
     # Create declarative tool definition
-    yaml_content = f"""
+    yaml_content = """
 name: repeat_text
 description: Repeat text a given number of times
 exec:
@@ -57,7 +53,7 @@ inputs:
 
     executor = registry.get_executor()
 
-    from framework.llm.provider import ToolUse, ToolResult
+    from framework.llm.provider import ToolResult, ToolUse
     tool_use = ToolUse(id="1", name="repeat_text", input={"text": "hello", "count": 2})
     result = executor(tool_use)
 
@@ -80,7 +76,7 @@ def test_discover_declarative_shell_tool(tmp_path):
         "description": "Echoes text",
         "exec": {
             "type": "shell",
-            "command": "echo $TEXT_TO_ECHO"
+            "command": 'python -c "import os; print(os.environ.get(\'TEXT_TO_ECHO\', \'\'))"'
         },
         "inputs": [
             {
@@ -138,7 +134,7 @@ exec:
 
     executor = registry.get_executor()
 
-    from framework.llm.provider import ToolUse, ToolResult
+    from framework.llm.provider import ToolResult, ToolUse
     tool_use = ToolUse(id="1", name="get_user", input={"user_id": 123})
 
     # Mock urllib.request.urlopen
