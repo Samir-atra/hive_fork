@@ -106,11 +106,10 @@ jobs:
 
             for (const issueNum of issueNumbers) {
               try {
-                const { data: issue } = await github.rest.issues.get({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issueNum,
-                });
+                // Use unauthenticated fetch to avoid 404s when GITHUB_TOKEN doesn't have access to upstream repo
+                const res = await fetch(`https://api.github.com/repos/adenhq/hive/issues/${issueNum}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const issue = await res.json();
 
                 const assigneeLogins = (issue.assignees || []).map(a => a.login);
                 if (assigneeLogins.includes(prAuthor)) {

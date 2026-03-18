@@ -139,7 +139,10 @@ class AWSSecretsManagerStorage(CredentialStorage):
                 description = credential.description or f"Hive credential: {credential.id}"
                 tags = [{"Key": "hive_credential_id", "Value": credential.id}]
                 if credential.credential_type:
-                    tags.append({"Key": "hive_credential_type", "Value": credential.credential_type.value})
+                    tags.append({
+                        "Key": "hive_credential_type",
+                        "Value": credential.credential_type.value
+                    })
 
                 self._client.create_secret(
                     Name=secret_name,

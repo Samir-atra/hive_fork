@@ -192,7 +192,8 @@ class AzureKeyVaultStorage(CredentialStorage):
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return False
-            logger.error(f"Failed to delete credential '{credential_id}': {e.read().decode('utf-8')}")
+            err_msg = e.read().decode("utf-8")
+            logger.error(f"Failed to delete credential '{credential_id}': {err_msg}")
             raise
 
     def list_all(self) -> list[str]:

@@ -16,7 +16,10 @@ class TestAWSSecretsManagerStorage:
     @pytest.fixture
     def mock_boto3(self):
         """Mock boto3 for testing without AWS credentials."""
-        with patch.dict("sys.modules", {"boto3": MagicMock(), "botocore": MagicMock(), "botocore.exceptions": MagicMock()}):
+        with patch.dict(
+            "sys.modules",
+            {"boto3": MagicMock(), "botocore": MagicMock(), "botocore.exceptions": MagicMock()}
+        ):
             import boto3
             session = MagicMock()
             client = MagicMock()
@@ -43,7 +46,10 @@ class TestAWSSecretsManagerStorage:
         class MockClientError(Exception):
             def __init__(self, response, operation):
                 self.response = response
-                super().__init__(f"An error occurred ({response['Error']['Code']}) when calling the {operation} operation")
+                super().__init__(
+                    f"An error occurred ({response['Error']['Code']}) "
+                    f"when calling the {operation} operation"
+                )
 
         mock_boto3.put_secret_value.side_effect = MockClientError(
             error_response, "PutSecretValue"
@@ -88,7 +94,10 @@ class TestAWSSecretsManagerStorage:
         class MockClientError(Exception):
             def __init__(self, response, operation):
                 self.response = response
-                super().__init__(f"An error occurred ({response['Error']['Code']}) when calling the {operation} operation")
+                super().__init__(
+                    f"An error occurred ({response['Error']['Code']}) "
+                    f"when calling the {operation} operation"
+                )
 
         mock_boto3.get_secret_value.side_effect = MockClientError(
             error_response, "GetSecretValue"
@@ -108,7 +117,10 @@ class TestAWSSecretsManagerStorage:
         class MockClientError(Exception):
             def __init__(self, response, operation):
                 self.response = response
-                super().__init__(f"An error occurred ({response['Error']['Code']}) when calling the {operation} operation")
+                super().__init__(
+                    f"An error occurred ({response['Error']['Code']}) "
+                    f"when calling the {operation} operation"
+                )
 
         mock_boto3.delete_secret.side_effect = MockClientError(
             error_response, "DeleteSecret"
@@ -141,7 +153,10 @@ class TestAWSSecretsManagerStorage:
         class MockClientError(Exception):
             def __init__(self, response, operation):
                 self.response = response
-                super().__init__(f"An error occurred ({response['Error']['Code']}) when calling the {operation} operation")
+                super().__init__(
+                    f"An error occurred ({response['Error']['Code']}) "
+                    f"when calling the {operation} operation"
+                )
 
         mock_boto3.describe_secret.side_effect = MockClientError(
             error_response, "DescribeSecret"
@@ -168,7 +183,10 @@ class TestAWSSecretsManagerStorage:
 class TestOAuth2CredentialRoundTrip:
     @pytest.fixture
     def mock_boto3(self):
-        with patch.dict("sys.modules", {"boto3": MagicMock(), "botocore": MagicMock(), "botocore.exceptions": MagicMock()}):
+        with patch.dict(
+            "sys.modules",
+            {"boto3": MagicMock(), "botocore": MagicMock(), "botocore.exceptions": MagicMock()}
+        ):
             import boto3
             session = MagicMock()
             client = MagicMock()

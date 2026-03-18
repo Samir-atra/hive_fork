@@ -17,7 +17,10 @@ class TestAzureKeyVaultStorage:
     @pytest.fixture
     def mock_azure(self):
         """Mock azure-identity and urllib for testing."""
-        with patch.dict("sys.modules", {"azure": MagicMock(), "azure.identity": MagicMock()}) as sys_modules:
+        with patch.dict(
+            "sys.modules",
+            {"azure": MagicMock(), "azure.identity": MagicMock()}
+        ) as sys_modules:
             mock_cred = sys_modules["azure.identity"].DefaultAzureCredential
             credential_instance = MagicMock()
             mock_token = MagicMock()
@@ -32,7 +35,9 @@ class TestAzureKeyVaultStorage:
                 AzureKeyVaultStorage(vault_url="https://test.vault.azure.net/")
 
     def test_secret_name_construction(self, mock_azure):
-        storage = AzureKeyVaultStorage(vault_url="https://test.vault.azure.net/", secret_prefix="hive")
+        storage = AzureKeyVaultStorage(
+            vault_url="https://test.vault.azure.net/", secret_prefix="hive"
+        )
         assert storage._secret_name("api_key") == "hive-api-key"
 
     def test_secret_name_sanitizes_paths(self, mock_azure):
@@ -63,7 +68,11 @@ class TestAzureKeyVaultStorage:
     def test_load_returns_credential(self, mock_urlopen, mock_azure):
         mock_response = MagicMock()
         mock_response.read.return_value = json.dumps({
-            "value": json.dumps({"_type": "api_key", "keys": {"api_key": {"name": "api_key", "value": "my-secret"}}, "id": "test_api"})
+            "value": json.dumps({
+                "_type": "api_key",
+                "keys": {"api_key": {"name": "api_key", "value": "my-secret"}},
+                "id": "test_api"
+            })
         }).encode("utf-8")
         mock_response.__enter__.return_value = mock_response
         mock_urlopen.return_value = mock_response
