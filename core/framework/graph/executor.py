@@ -151,6 +151,8 @@ class GraphExecutor:
         dynamic_tools_provider: Callable | None = None,
         dynamic_prompt_provider: Callable | None = None,
         iteration_metadata_provider: Callable | None = None,
+        enable_conversation: bool = False,
+        stream: Any = None,  # framework.streaming.stream.ExecutionStream | None
     ):
         """
         Initialize the executor.
@@ -197,6 +199,12 @@ class GraphExecutor:
         self.dynamic_tools_provider = dynamic_tools_provider
         self.dynamic_prompt_provider = dynamic_prompt_provider
         self.iteration_metadata_provider = iteration_metadata_provider
+
+        # Feature flags
+        self.enable_conversation = enable_conversation
+
+        # Streaming
+        self.stream = stream
 
         # Parallel execution settings
         self.enable_parallel_execution = enable_parallel_execution
@@ -465,6 +473,22 @@ class GraphExecutor:
                     "Register tools via ToolRegistry or remove tool declarations from nodes."
                 ),
             )
+
+        if self.stream:
+            from datetime import datetime
+
+            from framework.streaming.events import EventType, ExecutionEvent
+
+            run_id = self._execution_id or graph.id
+            await self.stream.emit(ExecutionEvent(
+                timestamp=datetime.now(),
+                event_type=EventType.RUN_STARTED,
+                run_id=run_id,
+                data={"goal_id": goal.id if goal else None, "input": input_data}
+            ))
+
+        # Track execution error state
+        execution_error = None
 
         # Initialize execution state
         memory = SharedMemory()
@@ -865,6 +889,36 @@ class GraphExecutor:
                     _resume_narrative = build_narrative(memory, path, graph)
 
                 # Build context for node
+                conversation = None
+                if self.enable_conversation:
+                    from framework.graph.conversation import NodeConversation
+                    from framework.storage.conversation_store import FileConversationStore
+
+                    if not self.storage_path:
+                        self.logger.warning(
+                            "enable_conversation is True but storage_path is None. "
+                            "Using in-memory store."
+                        )
+                        store = None
+                    else:
+                        # We use execution_id as run_id if available, fallback to graph.id
+                        run_id = self._execution_id or graph.id
+                        base_path = (
+                            Path(self.storage_path) / "conversations" / run_id / current_node_id
+                        )
+                        store = FileConversationStore(base_path=base_path)
+
+                    # Try to restore
+                    if store:
+                        conversation = await NodeConversation.restore(store=store)
+
+                    if conversation is None:
+                        conversation = NodeConversation(
+                            system_prompt=node_spec.system_prompt or "",
+                            output_keys=node_spec.output_keys,
+                            store=store
+                        )
+
                 ctx = self._build_context(
                     node_spec=node_spec,
                     memory=memory,
@@ -880,6 +934,7 @@ class GraphExecutor:
                     identity_prompt=getattr(graph, "identity_prompt", ""),
                     narrative=_resume_narrative,
                     graph=graph,
+                    conversation=conversation,
                 )
 
                 # Log actual input data being read
@@ -935,9 +990,37 @@ class GraphExecutor:
                         execution_id=self._execution_id,
                     )
 
+                # Emitting node started
+                if self.stream:
+                    from datetime import datetime
+
+                    from framework.streaming.events import EventType, ExecutionEvent
+                    await self.stream.emit(ExecutionEvent(
+                        timestamp=datetime.now(),
+                        event_type=EventType.NODE_STARTED,
+                        run_id=self._execution_id or graph.id,
+                        data={"node_id": current_node_id, "node_type": node_spec.node_type}
+                    ))
+
                 # Execute node
                 self.logger.info("   Executing...")
                 result = await node_impl.execute(ctx)
+
+                # Emitting node completed
+                if self.stream:
+                    from datetime import datetime
+
+                    from framework.streaming.events import EventType, ExecutionEvent
+                    await self.stream.emit(ExecutionEvent(
+                        timestamp=datetime.now(),
+                        event_type=EventType.NODE_COMPLETED,
+                        run_id=self._execution_id or graph.id,
+                        data={
+                            "node_id": current_node_id,
+                            "node_type": node_spec.node_type,
+                            "success": result.success,
+                        }
+                    ))
 
                 # GCU tab cleanup: stop the browser profile after a top-level GCU node
                 # finishes so tabs don't accumulate. Mirrors the subagent cleanup in
@@ -1589,7 +1672,8 @@ class GraphExecutor:
                 },
             )
 
-        except asyncio.CancelledError:
+        except asyncio.CancelledError as e:
+            execution_error = e
             # Handle cancellation (e.g., TUI quit) - save as paused instead of failed
             self.logger.info("⏸ Execution cancelled - saving state for resume")
 
@@ -1662,6 +1746,7 @@ class GraphExecutor:
             )
 
         except Exception as e:
+            execution_error = e
             import traceback
 
             stack_trace = traceback.format_exc()
@@ -1762,6 +1847,43 @@ class GraphExecutor:
             )
 
         finally:
+            if self.stream:
+                try:
+                    from datetime import datetime
+
+                    from framework.streaming.events import EventType, ExecutionEvent
+
+                    run_id = self._execution_id or graph.id
+                    if execution_error is not None:
+                        event = ExecutionEvent(
+                            timestamp=datetime.now(),
+                            event_type=EventType.ERROR,
+                            run_id=run_id,
+                            data={"error": str(execution_error)}
+                        )
+                    else:
+                        event = ExecutionEvent(
+                            timestamp=datetime.now(),
+                            event_type=EventType.RUN_COMPLETED,
+                            run_id=run_id,
+                            data={}
+                        )
+
+                    try:
+                        loop = asyncio.get_running_loop()
+
+                        # Keep a strong reference to the task
+                        if not hasattr(self, "_bg_tasks"):
+                            self._bg_tasks = set()
+
+                        task = loop.create_task(self.stream.emit(event))
+                        self._bg_tasks.add(task)
+                        task.add_done_callback(self._bg_tasks.discard)
+                    except RuntimeError:
+                        pass
+                except Exception as stream_err:
+                    self.logger.warning(f"Failed to emit terminal event to stream: {stream_err}")
+
             if _ctx_token is not None:
                 from framework.runner.tool_registry import ToolRegistry
 
@@ -1783,6 +1905,7 @@ class GraphExecutor:
         narrative: str = "",
         node_registry: dict[str, NodeSpec] | None = None,
         graph: "GraphSpec | None" = None,
+        conversation: Any = None,
     ) -> NodeContext:
         """Build execution context for a node."""
         # Filter tools to those available to this node
@@ -1841,6 +1964,8 @@ class GraphExecutor:
             dynamic_tools_provider=self.dynamic_tools_provider,
             dynamic_prompt_provider=self.dynamic_prompt_provider,
             iteration_metadata_provider=self.iteration_metadata_provider,
+            conversation=conversation,
+            stream=self.stream,
         )
 
     VALID_NODE_TYPES = {

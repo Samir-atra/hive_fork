@@ -286,6 +286,57 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
     open_parser.add_argument("--debug", action="store_true", help="Enable DEBUG log level")
     open_parser.set_defaults(func=cmd_open)
 
+    # monitor command
+    monitor_parser = subparsers.add_parser(
+        "monitor",
+        help="Monitor agent execution in real-time",
+        description="Monitor an agent's execution stream in real-time.",
+    )
+    monitor_parser.add_argument(
+        "run_id",
+        type=str,
+        help="Run ID to monitor",
+    )
+    monitor_parser.add_argument(
+        "--format",
+        type=str,
+        choices=["json", "pretty", "minimal"],
+        default="pretty",
+        help="Output format (default: pretty)",
+    )
+    monitor_parser.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        help="File to write JSONL events to",
+    )
+    monitor_parser.set_defaults(func=cmd_monitor)
+
+    # conversation command (with subcommands)
+    conversation_parser = subparsers.add_parser(
+        "conversation",
+        help="Inspect conversation state",
+        description="Manage and inspect node conversations.",
+    )
+    conversation_subparsers = conversation_parser.add_subparsers(dest="conv_command", required=True)
+
+    inspect_parser = conversation_subparsers.add_parser(
+        "inspect",
+        help="Inspect conversation state for a node"
+    )
+    inspect_parser.add_argument("run_id", type=str, help="Run ID")
+    inspect_parser.add_argument("node_id", type=str, help="Node ID")
+
+    export_parser = conversation_subparsers.add_parser(
+        "export",
+        help="Export conversation state for a node"
+    )
+    export_parser.add_argument("run_id", type=str, help="Run ID")
+    export_parser.add_argument("node_id", type=str, help="Node ID")
+    export_parser.add_argument("--output", "-o", type=str, required=True, help="Output file")
+
+    conversation_parser.set_defaults(func=cmd_conversation)
+
 
 def _load_resume_state(
     agent_path: str, session_id: str, checkpoint_id: str | None = None
@@ -1696,6 +1747,78 @@ def cmd_serve(args: argparse.Namespace) -> int:
         print("\nServer stopped.")
 
     return 0
+
+
+def cmd_monitor(args: argparse.Namespace) -> int:
+    """Monitor execution stream in real-time."""
+    # Since an execution stream is inherently pub-sub within the memory of the running process,
+    # the CLI would need an IPC mechanism (e.g. WebSockets / SSE to the Hive Server) to observe
+    # runs that are executing on the server.
+    # For now, we will add a note explaining that server-side streaming is needed for full support.
+    print(
+        "Monitoring is currently an in-process pub-sub system. To monitor runs from the CLI,",
+        file=sys.stderr,
+    )
+    print("please use the Hive Server SSE endpoints.", file=sys.stderr)
+    return 1
+
+
+def cmd_conversation(args: argparse.Namespace) -> int:
+    """Inspect or export conversation state."""
+    from framework.graph.conversation import NodeConversation
+    from framework.storage.conversation_store import FileConversationStore
+
+    # Try to locate the conversation store across local storage paths
+    agent_work_dir = Path.home() / ".hive" / "agents"
+    found_path = None
+
+    # We must scan for the given run_id
+    if agent_work_dir.exists():
+        for agent_dir in agent_work_dir.iterdir():
+            if not agent_dir.is_dir():
+                continue
+
+            store_path = agent_dir / "storage" / "conversations" / args.run_id / args.node_id
+            if store_path.exists():
+                found_path = store_path
+                break
+
+    if not found_path:
+        print(
+            f"No conversation found for node {args.node_id} in run {args.run_id}",
+            file=sys.stderr
+        )
+        return 1
+
+    store = FileConversationStore(base_path=found_path)
+
+    async def _handle():
+        conversation = await NodeConversation.restore(store=store)
+        if not conversation:
+            print(f"Could not restore conversation for {args.node_id}", file=sys.stderr)
+            return 1
+
+        messages = conversation.to_llm_messages()
+
+        if args.conv_command == "inspect":
+            for idx, msg in enumerate(messages):
+                role = msg.get("role", "unknown")
+                content = msg.get("content", "")
+                if isinstance(content, list):
+                    content = str(content)
+                elif isinstance(content, str):
+                    if len(content) > 100:
+                        content = content[:97] + "..."
+                print(f"[{idx}] {role.upper()}: {content}")
+
+        elif args.conv_command == "export":
+            with open(args.output, "w") as f:
+                json.dump(messages, f, indent=2)
+            print(f"Exported to {args.output}")
+
+        return 0
+
+    return asyncio.run(_handle())
 
 
 def cmd_open(args: argparse.Namespace) -> int:

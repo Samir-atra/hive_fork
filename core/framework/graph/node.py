@@ -496,6 +496,38 @@ class NodeContext:
     memory: SharedMemory
     input_data: dict[str, Any] = field(default_factory=dict)
 
+    # Conversation state
+    conversation: Any = None  # NodeConversation | None — uses Any to avoid circular import
+
+    async def add_user_message(self, content: str) -> None:
+        """Convenience method for adding user messages to the conversation."""
+        if self.conversation:
+            await self.conversation.add_user_message(content)
+            await self._emit_message_event("user", content)
+
+    async def add_assistant_message(self, content: str) -> None:
+        """Convenience method for adding assistant messages to the conversation."""
+        if self.conversation:
+            await self.conversation.add_assistant_message(content)
+            await self._emit_message_event("assistant", content)
+
+    async def _emit_message_event(self, role: str, content: str) -> None:
+        """Emit a message.added event if a stream is attached to the executor context."""
+        if self.stream:
+            from datetime import datetime
+
+            from framework.streaming.events import EventType, ExecutionEvent
+            await self.stream.emit(ExecutionEvent(
+                timestamp=datetime.now(),
+                event_type=EventType.MESSAGE_ADDED,
+                run_id=self.execution_id or self.stream_id,
+                data={
+                    "node_id": self.node_id,
+                    "role": role,
+                    "content": content
+                }
+            ))
+
     # LLM access (if applicable)
     llm: LLMProvider | None = None
     available_tools: list[Tool] = field(default_factory=list)
@@ -516,6 +548,9 @@ class NodeContext:
 
     # Pause control (optional) - asyncio.Event for pause requests
     pause_event: Any = None  # asyncio.Event | None
+
+    # Event Stream (optional)
+    stream: Any = None # ExecutionStream | None
 
     # Continuous conversation mode
     continuous_mode: bool = False  # True when graph has conversation_mode="continuous"
