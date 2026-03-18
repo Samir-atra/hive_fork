@@ -11,12 +11,12 @@ def test_discover_declarative_python_tool(tmp_path):
 
     module_file = module_dir / "my_funcs.py"
     module_file.write_text(
-        "def test_func(text: str, count: int = 1):\n"
-        "    return {'result': text * count}\n"
+        "def test_func(text: str, count: int = 1):\n    return {'result': text * count}\n"
     )
 
     # Add module_dir to sys.path so it can be imported
     import sys
+
     sys.path.insert(0, str(module_dir))
 
     # Create a tools directory
@@ -54,6 +54,7 @@ inputs:
     executor = registry.get_executor()
 
     from framework.llm.provider import ToolResult, ToolUse
+
     tool_use = ToolUse(id="1", name="repeat_text", input={"text": "hello", "count": 2})
     result = executor(tool_use)
 
@@ -76,14 +77,9 @@ def test_discover_declarative_shell_tool(tmp_path):
         "description": "Echoes text",
         "exec": {
             "type": "shell",
-            "command": 'python -c "import os; print(os.environ.get(\'TEXT_TO_ECHO\', \'\'))"'
+            "command": "python -c \"import os; print(os.environ.get('TEXT_TO_ECHO', ''))\"",
         },
-        "inputs": [
-            {
-                "name": "text_to_echo",
-                "type": "str"
-            }
-        ]
+        "inputs": [{"name": "text_to_echo", "type": "str"}],
     }
     (tools_dir / "tool.json").write_text(json.dumps(json_content))
 
@@ -97,12 +93,14 @@ def test_discover_declarative_shell_tool(tmp_path):
     executor = registry.get_executor()
 
     from framework.llm.provider import ToolUse
+
     tool_use = ToolUse(id="1", name="echo_tool", input={"text_to_echo": "hello_world"})
     result = executor(tool_use)
 
     content = json.loads(result.content)
     # The output should contain 'hello_world'
     assert "hello_world" in content["stdout"]
+
 
 def test_discover_declarative_http_tool(tmp_path):
     # Create a tools directory
@@ -135,6 +133,7 @@ exec:
     executor = registry.get_executor()
 
     from framework.llm.provider import ToolResult, ToolUse
+
     tool_use = ToolUse(id="1", name="get_user", input={"user_id": 123})
 
     # Mock urllib.request.urlopen

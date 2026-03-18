@@ -254,6 +254,7 @@ class ToolRegistry:
                         continue
                     try:
                         import importlib
+
                         mod = importlib.import_module(module_name)
                         func = getattr(mod, func_name)
                     except Exception as e:
@@ -269,6 +270,7 @@ class ToolRegistry:
                     def make_python_executor(f: Callable) -> Callable:
                         def _executor(args: dict) -> Any:
                             return f(**args)
+
                         return _executor
 
                     executor = make_python_executor(func)
@@ -303,6 +305,7 @@ class ToolRegistry:
                                 }
                             except Exception as e:
                                 return {"error": str(e)}
+
                         return _executor
 
                     executor = make_shell_executor(command)
@@ -345,6 +348,7 @@ class ToolRegistry:
                                         return {"text": response_data}
                             except Exception as e:
                                 return {"error": str(e)}
+
                         return _executor
 
                     executor = make_http_executor(api_url, method)
