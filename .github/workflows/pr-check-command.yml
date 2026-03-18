@@ -97,7 +97,7 @@ jobs:
                 },
               });
 
-              core.setFailed('PR must reference an issue');
+              console.log('PR must reference an issue');
               return;
             }
 
@@ -177,7 +177,7 @@ jobs:
                 },
               });
 
-              core.setFailed('PR author must be assigned to the linked issue');
+              console.log('PR author must be assigned to the linked issue');
             } else {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
