@@ -797,6 +797,16 @@ class AgentRunner:
         if tools_path.exists():
             self._tool_registry.discover_from_module(tools_path)
 
+        # Auto-discover declarative tools from tools/ directory
+        declarative_tools_path = agent_path / "tools"
+        if declarative_tools_path.exists() and declarative_tools_path.is_dir():
+            # Scan top-level tools/ directory
+            self._tool_registry.discover_from_declarative_dir(declarative_tools_path)
+            # Scan subdirectories e.g., tools/<tool_name>/
+            for subpath in declarative_tools_path.iterdir():
+                if subpath.is_dir():
+                    self._tool_registry.discover_from_declarative_dir(subpath)
+
         # Set environment variables for MCP subprocesses
         # These are inherited by MCP servers (e.g., GCU browser tools)
         os.environ["HIVE_AGENT_NAME"] = agent_path.name

@@ -7,6 +7,10 @@ import inspect
 import json
 import logging
 import os
+import subprocess
+import sys
+import urllib.request
+import urllib.parse
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -137,6 +141,202 @@ class ToolRegistry:
             return func(**inputs)
 
         self.register(tool_name, tool, executor)
+
+    def discover_from_declarative_dir(self, directory: Path) -> int:
+        """
+        Scan a directory for declarative tool definitions in YAML or JSON.
+
+        Args:
+            directory: Directory to scan for .yaml or .json files.
+
+        Returns:
+            Number of tools discovered.
+        """
+        if not directory.exists() or not directory.is_dir():
+            return 0
+
+        count = 0
+        try:
+            import yaml
+        except ImportError:
+            yaml = None
+
+        for filepath in directory.iterdir():
+            if not filepath.is_file():
+                continue
+
+            if filepath.suffix == ".yaml" or filepath.suffix == ".yml":
+                if not yaml:
+                    logger.warning("PyYAML not installed, skipping %s", filepath)
+                    continue
+                try:
+                    with open(filepath, encoding="utf-8") as f:
+                        data = yaml.safe_load(f)
+                except Exception as e:
+                    logger.error("Failed to parse YAML file %s: %s", filepath, e)
+                    continue
+            elif filepath.suffix == ".json":
+                try:
+                    with open(filepath, encoding="utf-8") as f:
+                        data = json.load(f)
+                except Exception as e:
+                    logger.error("Failed to parse JSON file %s: %s", filepath, e)
+                    continue
+            else:
+                continue
+
+            # Process the definition
+            if not isinstance(data, dict):
+                logger.error("Invalid tool definition in %s (must be dict)", filepath)
+                continue
+
+            # Support both a single tool definition or a 'tools' list with a shared 'exec' block
+            tools_list = data.get("tools", [data])
+            exec_config = data.get("exec", {})
+
+            for t in tools_list:
+                name = t.get("name") or t.get("tool")
+                if not name:
+                    logger.error("Tool definition in %s missing 'name' or 'tool'", filepath)
+                    continue
+
+                description = t.get("description", f"Tool {name}")
+                inputs = t.get("inputs", [])
+
+                # Use tool-level exec if present, else fallback to root exec
+                tool_exec = t.get("exec", exec_config)
+                if not tool_exec:
+                    logger.error("Tool %s in %s missing 'exec' config", name, filepath)
+                    continue
+
+                # Build Tool object
+                properties = {}
+                required = []
+                for inp in inputs:
+                    inp_name = inp.get("name")
+                    if not inp_name:
+                        continue
+                    inp_type = inp.get("type", "string")
+                    # Map python types to JSON schema types if needed
+                    if inp_type == "str":
+                        inp_type = "string"
+                    elif inp_type == "int":
+                        inp_type = "integer"
+                    elif inp_type == "float":
+                        inp_type = "number"
+                    elif inp_type == "bool":
+                        inp_type = "boolean"
+                    elif inp_type in ("list", "dict"):
+                        inp_type = "array" if inp_type == "list" else "object"
+
+                    properties[inp_name] = {"type": inp_type}
+                    if "default" in inp:
+                        properties[inp_name]["default"] = inp["default"]
+                    elif inp.get("required", True):
+                        required.append(inp_name)
+
+                tool_obj = Tool(
+                    name=name,
+                    description=description,
+                    parameters={
+                        "type": "object",
+                        "properties": properties,
+                        "required": required,
+                    },
+                )
+
+                # Build executor function
+                exec_type = tool_exec.get("type")
+                if exec_type == "python_function":
+                    module_name = tool_exec.get("module")
+                    func_name = tool_exec.get("function")
+                    if not module_name or not func_name:
+                        logger.error("Tool %s exec missing 'module' or 'function'", name)
+                        continue
+                    try:
+                        import importlib
+                        mod = importlib.import_module(module_name)
+                        func = getattr(mod, func_name)
+                    except Exception as e:
+                        logger.error("Failed to load python_function %s.%s for tool %s: %s", module_name, func_name, name, e)
+                        continue
+
+                    def make_python_executor(f):
+                        def executor(args: dict) -> Any:
+                            return f(**args)
+                        return executor
+                    executor = make_python_executor(func)
+
+                elif exec_type == "shell":
+                    command = tool_exec.get("command")
+                    if not command:
+                        logger.error("Tool %s exec missing 'command'", name)
+                        continue
+
+                    def make_shell_executor(cmd: str):
+                        def executor(args: dict) -> Any:
+                            # Map arguments to environment variables
+                            env = os.environ.copy()
+                            for k, v in args.items():
+                                env[k.upper()] = str(v)
+                            try:
+                                result = subprocess.run(cmd, shell=True, env=env, capture_output=True, text=True, check=True)
+                                return {"stdout": result.stdout, "stderr": result.stderr}
+                            except subprocess.CalledProcessError as e:
+                                return {"error": f"Command failed with exit code {e.returncode}", "stdout": e.stdout, "stderr": e.stderr}
+                            except Exception as e:
+                                return {"error": str(e)}
+                        return executor
+                    executor = make_shell_executor(command)
+
+                elif exec_type == "http":
+                    api_url = tool_exec.get("api") or t.get("api")
+                    if not api_url:
+                        logger.error("Tool %s exec missing 'api'", name)
+                        continue
+                    method = (tool_exec.get("method") or t.get("method") or "GET").upper()
+
+                    def make_http_executor(url: str, meth: str):
+                        def executor(args: dict) -> Any:
+                            # Replace path parameters e.g., /resource/<resource_id>
+                            request_url = url
+                            for k, v in list(args.items()):
+                                placeholder = f"<{k}>"
+                                if placeholder in request_url:
+                                    request_url = request_url.replace(placeholder, urllib.parse.quote(str(v)))
+                                    args.pop(k)
+
+                            data = None
+                            if meth in ("POST", "PUT", "PATCH"):
+                                data = json.dumps(args).encode("utf-8")
+                            elif args and meth in ("GET", "DELETE"):
+                                query = urllib.parse.urlencode(args)
+                                request_url = f"{request_url}?{query}"
+
+                            req = urllib.request.Request(request_url, data=data, method=meth)
+                            if data:
+                                req.add_header("Content-Type", "application/json")
+
+                            try:
+                                with urllib.request.urlopen(req) as response:
+                                    response_data = response.read().decode("utf-8")
+                                    try:
+                                        return json.loads(response_data)
+                                    except json.JSONDecodeError:
+                                        return {"text": response_data}
+                            except Exception as e:
+                                return {"error": str(e)}
+                        return executor
+                    executor = make_http_executor(api_url, method)
+                else:
+                    logger.error("Unsupported exec type '%s' for tool %s", exec_type, name)
+                    continue
+
+                self.register(name, tool_obj, executor)
+                count += 1
+                logger.info("Registered declarative tool '%s' from %s", name, filepath)
+
+        return count
 
     def discover_from_module(self, module_path: Path) -> int:
         """
