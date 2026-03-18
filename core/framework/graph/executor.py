@@ -480,12 +480,14 @@ class GraphExecutor:
             from framework.streaming.events import EventType, ExecutionEvent
 
             run_id = self._execution_id or graph.id
-            await self.stream.emit(ExecutionEvent(
-                timestamp=datetime.now(),
-                event_type=EventType.RUN_STARTED,
-                run_id=run_id,
-                data={"goal_id": goal.id if goal else None, "input": input_data}
-            ))
+            await self.stream.emit(
+                ExecutionEvent(
+                    timestamp=datetime.now(),
+                    event_type=EventType.RUN_STARTED,
+                    run_id=run_id,
+                    data={"goal_id": goal.id if goal else None, "input": input_data},
+                )
+            )
 
         # Track execution error state
         execution_error = None
@@ -916,7 +918,7 @@ class GraphExecutor:
                         conversation = NodeConversation(
                             system_prompt=node_spec.system_prompt or "",
                             output_keys=node_spec.output_keys,
-                            store=store
+                            store=store,
                         )
 
                 ctx = self._build_context(
@@ -995,12 +997,15 @@ class GraphExecutor:
                     from datetime import datetime
 
                     from framework.streaming.events import EventType, ExecutionEvent
-                    await self.stream.emit(ExecutionEvent(
-                        timestamp=datetime.now(),
-                        event_type=EventType.NODE_STARTED,
-                        run_id=self._execution_id or graph.id,
-                        data={"node_id": current_node_id, "node_type": node_spec.node_type}
-                    ))
+
+                    await self.stream.emit(
+                        ExecutionEvent(
+                            timestamp=datetime.now(),
+                            event_type=EventType.NODE_STARTED,
+                            run_id=self._execution_id or graph.id,
+                            data={"node_id": current_node_id, "node_type": node_spec.node_type},
+                        )
+                    )
 
                 # Execute node
                 self.logger.info("   Executing...")
@@ -1011,16 +1016,19 @@ class GraphExecutor:
                     from datetime import datetime
 
                     from framework.streaming.events import EventType, ExecutionEvent
-                    await self.stream.emit(ExecutionEvent(
-                        timestamp=datetime.now(),
-                        event_type=EventType.NODE_COMPLETED,
-                        run_id=self._execution_id or graph.id,
-                        data={
-                            "node_id": current_node_id,
-                            "node_type": node_spec.node_type,
-                            "success": result.success,
-                        }
-                    ))
+
+                    await self.stream.emit(
+                        ExecutionEvent(
+                            timestamp=datetime.now(),
+                            event_type=EventType.NODE_COMPLETED,
+                            run_id=self._execution_id or graph.id,
+                            data={
+                                "node_id": current_node_id,
+                                "node_type": node_spec.node_type,
+                                "success": result.success,
+                            },
+                        )
+                    )
 
                 # GCU tab cleanup: stop the browser profile after a top-level GCU node
                 # finishes so tabs don't accumulate. Mirrors the subagent cleanup in
@@ -1859,14 +1867,14 @@ class GraphExecutor:
                             timestamp=datetime.now(),
                             event_type=EventType.ERROR,
                             run_id=run_id,
-                            data={"error": str(execution_error)}
+                            data={"error": str(execution_error)},
                         )
                     else:
                         event = ExecutionEvent(
                             timestamp=datetime.now(),
                             event_type=EventType.RUN_COMPLETED,
                             run_id=run_id,
-                            data={}
+                            data={},
                         )
 
                     try:

@@ -321,15 +321,13 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
     conversation_subparsers = conversation_parser.add_subparsers(dest="conv_command", required=True)
 
     inspect_parser = conversation_subparsers.add_parser(
-        "inspect",
-        help="Inspect conversation state for a node"
+        "inspect", help="Inspect conversation state for a node"
     )
     inspect_parser.add_argument("run_id", type=str, help="Run ID")
     inspect_parser.add_argument("node_id", type=str, help="Node ID")
 
     export_parser = conversation_subparsers.add_parser(
-        "export",
-        help="Export conversation state for a node"
+        "export", help="Export conversation state for a node"
     )
     export_parser.add_argument("run_id", type=str, help="Run ID")
     export_parser.add_argument("node_id", type=str, help="Node ID")
@@ -1785,8 +1783,7 @@ def cmd_conversation(args: argparse.Namespace) -> int:
 
     if not found_path:
         print(
-            f"No conversation found for node {args.node_id} in run {args.run_id}",
-            file=sys.stderr
+            f"No conversation found for node {args.node_id} in run {args.run_id}", file=sys.stderr
         )
         return 1
 

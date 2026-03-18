@@ -517,16 +517,15 @@ class NodeContext:
             from datetime import datetime
 
             from framework.streaming.events import EventType, ExecutionEvent
-            await self.stream.emit(ExecutionEvent(
-                timestamp=datetime.now(),
-                event_type=EventType.MESSAGE_ADDED,
-                run_id=self.execution_id or self.stream_id,
-                data={
-                    "node_id": self.node_id,
-                    "role": role,
-                    "content": content
-                }
-            ))
+
+            await self.stream.emit(
+                ExecutionEvent(
+                    timestamp=datetime.now(),
+                    event_type=EventType.MESSAGE_ADDED,
+                    run_id=self.execution_id or self.stream_id,
+                    data={"node_id": self.node_id, "role": role, "content": content},
+                )
+            )
 
     # LLM access (if applicable)
     llm: LLMProvider | None = None
@@ -550,7 +549,7 @@ class NodeContext:
     pause_event: Any = None  # asyncio.Event | None
 
     # Event Stream (optional)
-    stream: Any = None # ExecutionStream | None
+    stream: Any = None  # ExecutionStream | None
 
     # Continuous conversation mode
     continuous_mode: bool = False  # True when graph has conversation_mode="continuous"

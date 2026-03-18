@@ -16,6 +16,7 @@ async def test_node_context_emits_message_events():
     # Use dummy runtime and spec
     class DummyRuntime:
         pass
+
     class DummySpec:
         id = "test_node"
         name = "test_node"

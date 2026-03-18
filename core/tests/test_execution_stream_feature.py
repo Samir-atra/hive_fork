@@ -27,26 +27,26 @@ async def test_execution_stream_pubsub():
     await asyncio.sleep(0.01)
 
     # Emit some events
-    await stream.emit(ExecutionEvent(
-        timestamp=datetime.now(),
-        event_type=EventType.RUN_STARTED,
-        run_id="test_run",
-        data={}
-    ))
+    await stream.emit(
+        ExecutionEvent(
+            timestamp=datetime.now(), event_type=EventType.RUN_STARTED, run_id="test_run", data={}
+        )
+    )
 
-    await stream.emit(ExecutionEvent(
-        timestamp=datetime.now(),
-        event_type=EventType.NODE_STARTED,
-        run_id="test_run",
-        data={"node_id": "test_node"}
-    ))
+    await stream.emit(
+        ExecutionEvent(
+            timestamp=datetime.now(),
+            event_type=EventType.NODE_STARTED,
+            run_id="test_run",
+            data={"node_id": "test_node"},
+        )
+    )
 
-    await stream.emit(ExecutionEvent(
-        timestamp=datetime.now(),
-        event_type=EventType.RUN_COMPLETED,
-        run_id="test_run",
-        data={}
-    ))
+    await stream.emit(
+        ExecutionEvent(
+            timestamp=datetime.now(), event_type=EventType.RUN_COMPLETED, run_id="test_run", data={}
+        )
+    )
 
     # Wait for subscriber to finish
     await task
