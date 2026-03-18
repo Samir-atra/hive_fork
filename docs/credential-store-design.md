@@ -61,7 +61,7 @@ This document describes the design for a production-ready credential store for t
 │  ┌─────────────────────────────────────────────────────────────┐   │
 │  │                   Storage Backends                           │   │
 │  │  ┌────────────────┐  ┌────────────────┐  ┌───────────────┐  │   │
-│  │  │EncryptedFile   │  │  EnvVar        │  │HashiCorpVault │  │   │
+│  │  │EncryptedFile   │  │  EnvVar        │  │Vaults/Secrets │  │   │
 │  │  │ (Fernet AES)   │  │  (read-only)   │  │  (external)   │  │   │
 │  │  └────────────────┘  └────────────────┘  └───────────────┘  │   │
 │  └─────────────────────────────────────────────────────────────┘   │
@@ -502,7 +502,7 @@ class StaticProvider(CredentialProvider):
 
 ## Storage Backends
 
-**Location**: `core/framework/credentials/storage.py`
+**Location**: `core/framework/credentials/storage.py` (and cloud-specific modules)
 
 ### CredentialStorage ABC
 

@@ -330,6 +330,32 @@ storage = HashiCorpVaultStorage(
 )
 ```
 
+### AWS Secrets Manager Storage
+
+For enterprise deployments with AWS Secrets Manager. Requires the `boto3` optional dependency.
+
+```python
+from framework.credentials.aws import AWSSecretsManagerStorage
+
+storage = AWSSecretsManagerStorage(
+    secret_prefix="hive/credentials",
+    region_name="us-east-1"
+)
+```
+
+### Azure Key Vault Storage
+
+For enterprise deployments with Azure Key Vault. Requires the `azure-identity` optional dependency.
+
+```python
+from framework.credentials.azure import AzureKeyVaultStorage
+
+storage = AzureKeyVaultStorage(
+    vault_url="https://my-vault.vault.azure.net/",
+    secret_prefix="hive-credentials"
+)
+```
+
 ---
 
 ## Using OAuth2 Provider
