@@ -128,6 +128,28 @@ POST /api/sessions/{session_id}/worker
 DELETE /api/sessions/{session_id}/worker
 ```
 
+### Interventions
+
+Interventions translate technical agent decisions into a business-friendly format with an audit trail. These routes support human-in-the-loop approvals.
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| `GET` | `/api/interventions` | List all interventions |
+| `POST` | `/api/interventions` | Create a new intervention |
+| `GET` | `/api/interventions/{id}` | Get intervention by ID |
+| `POST` | `/api/interventions/{id}/approve` | Approve an intervention |
+| `POST` | `/api/interventions/{id}/reject` | Reject an intervention |
+| `POST` | `/api/interventions/{id}/escalate` | Escalate an intervention |
+
+**Example Approve/Reject:**
+```jsonc
+POST /api/interventions/{id}/approve
+{
+  "actor": "ceo_user",
+  "reason": "Approved based on Q3 budget."
+}
+```
+
 ### Execution Control
 
 | Method | Route | Description |
