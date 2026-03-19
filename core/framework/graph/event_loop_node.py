@@ -398,6 +398,8 @@ class EventLoopNode(NodeProtocol):
         start_time = time.time()
         total_input_tokens = 0
         total_output_tokens = 0
+        total_cost_usd = 0.0
+        used_model = None
         stream_id = ctx.stream_id or ctx.node_id
         node_id = ctx.node_id
         execution_id = ctx.execution_id or ""
@@ -643,6 +645,8 @@ class EventLoopNode(NodeProtocol):
                     tokens_used=total_input_tokens + total_output_tokens,
                     latency_ms=latency_ms,
                     conversation=conversation if _is_continuous else None,
+                    cost_usd=total_cost_usd,
+                    llm_model=used_model,
                 )
 
             # 6b. Drain injection queue
@@ -738,6 +742,9 @@ class EventLoopNode(NodeProtocol):
                     )
                     total_input_tokens += turn_tokens.get("input", 0)
                     total_output_tokens += turn_tokens.get("output", 0)
+                    total_cost_usd += turn_tokens.get("cost_usd", 0.0)
+                    if turn_tokens.get("model"):
+                        used_model = turn_tokens.get("model")
                     await self._publish_llm_turn_complete(
                         stream_id,
                         node_id,
@@ -949,6 +956,8 @@ class EventLoopNode(NodeProtocol):
                         tokens_used=total_input_tokens + total_output_tokens,
                         latency_ms=latency_ms,
                         conversation=conversation if _is_continuous else None,
+                        cost_usd=total_cost_usd,
+                        llm_model=used_model,
                     )
                 elif missing:
                     # Ghost empty stream: LLM returned nothing and outputs
@@ -1081,6 +1090,8 @@ class EventLoopNode(NodeProtocol):
                     tokens_used=total_input_tokens + total_output_tokens,
                     latency_ms=latency_ms,
                     conversation=conversation if _is_continuous else None,
+                    cost_usd=total_cost_usd,
+                    llm_model=used_model,
                 )
 
             # 6f'. Tool doom loop detection
@@ -1284,6 +1295,8 @@ class EventLoopNode(NodeProtocol):
                         tokens_used=total_input_tokens + total_output_tokens,
                         latency_ms=latency_ms,
                         conversation=conversation if _is_continuous else None,
+                        cost_usd=total_cost_usd,
+                        llm_model=used_model,
                     )
 
                 logger.info(
@@ -1357,6 +1370,8 @@ class EventLoopNode(NodeProtocol):
                         tokens_used=total_input_tokens + total_output_tokens,
                         latency_ms=latency_ms,
                         conversation=conversation if _is_continuous else None,
+                        cost_usd=total_cost_usd,
+                        llm_model=used_model,
                     )
 
                 recent_responses.clear()
@@ -1439,6 +1454,8 @@ class EventLoopNode(NodeProtocol):
                         tokens_used=total_input_tokens + total_output_tokens,
                         latency_ms=latency_ms,
                         conversation=conversation if _is_continuous else None,
+                        cost_usd=total_cost_usd,
+                        llm_model=used_model,
                     )
 
                 logger.info("[%s] iter=%d: waiting for queen input...", node_id, iteration)
@@ -1499,6 +1516,8 @@ class EventLoopNode(NodeProtocol):
                         tokens_used=total_input_tokens + total_output_tokens,
                         latency_ms=latency_ms,
                         conversation=conversation if _is_continuous else None,
+                        cost_usd=total_cost_usd,
+                        llm_model=used_model,
                     )
 
                 recent_responses.clear()
@@ -1648,6 +1667,8 @@ class EventLoopNode(NodeProtocol):
                     tokens_used=total_input_tokens + total_output_tokens,
                     latency_ms=latency_ms,
                     conversation=conversation if _is_continuous else None,
+                    cost_usd=total_cost_usd,
+                    llm_model=used_model,
                 )
 
             elif verdict.action == "ESCALATE":
@@ -1693,6 +1714,8 @@ class EventLoopNode(NodeProtocol):
                     tokens_used=total_input_tokens + total_output_tokens,
                     latency_ms=latency_ms,
                     conversation=conversation if _is_continuous else None,
+                    cost_usd=total_cost_usd,
+                    llm_model=used_model,
                 )
 
             elif verdict.action == "RETRY":
@@ -1746,6 +1769,8 @@ class EventLoopNode(NodeProtocol):
             tokens_used=total_input_tokens + total_output_tokens,
             latency_ms=latency_ms,
             conversation=conversation if _is_continuous else None,
+            cost_usd=total_cost_usd,
+            llm_model=used_model,
         )
 
     async def inject_event(self, content: str, *, is_client_input: bool = False) -> None:

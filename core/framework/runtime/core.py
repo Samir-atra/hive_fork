@@ -55,7 +55,7 @@ class Runtime:
         runtime.end_run(success=True, narrative="Qualified 10 leads successfully")
     """
 
-    def __init__(self, storage_path: str | Path):
+    def __init__(self, storage_path: str | Path, workflow_id: str = "unknown"):
         # Validate and create storage path if needed
         path = Path(storage_path) if isinstance(storage_path, str) else storage_path
         if not path.exists():
@@ -63,6 +63,7 @@ class Runtime:
             path.mkdir(parents=True, exist_ok=True)
 
         self.storage = FileStorage(storage_path)
+        self.workflow_id = workflow_id
         self._current_run: Run | None = None
         self._current_node: str = "unknown"
 
@@ -102,6 +103,7 @@ class Runtime:
         self._current_run = Run(
             id=run_id,
             goal_id=goal_id,
+            workflow_id=self.workflow_id,
             goal_description=goal_description,
             input_data=input_data or {},
         )
@@ -233,6 +235,7 @@ class Runtime:
         state_changes: dict[str, Any] | None = None,
         tokens_used: int = 0,
         latency_ms: int = 0,
+        cost_usd: float = 0.0,
     ) -> None:
         """
         Record the outcome of a decision.
@@ -248,6 +251,7 @@ class Runtime:
             state_changes: What state changed as a result
             tokens_used: LLM tokens consumed
             latency_ms: Time taken in milliseconds
+            cost_usd: Cost in USD
         """
         if self._current_run is None:
             # Gracefully handle case where run ended during exception handling
@@ -265,6 +269,7 @@ class Runtime:
             state_changes=state_changes or {},
             tokens_used=tokens_used,
             latency_ms=latency_ms,
+            cost_usd=cost_usd,
         )
 
         self._current_run.record_outcome(decision_id, outcome)

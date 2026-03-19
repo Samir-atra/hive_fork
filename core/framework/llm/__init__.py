@@ -1,5 +1,6 @@
 """LLM provider abstraction."""
 
+from framework.llm.cost import LLMCostCalculator
 from framework.llm.provider import LLMProvider, LLMResponse
 from framework.llm.stream_events import (
     FinishEvent,
@@ -14,6 +15,7 @@ from framework.llm.stream_events import (
 )
 
 __all__ = [
+    "LLMCostCalculator",
     "LLMProvider",
     "LLMResponse",
     "StreamEvent",

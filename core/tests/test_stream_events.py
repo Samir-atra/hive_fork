@@ -242,6 +242,7 @@ class TestEventSerialization:
             "output_tokens": 20,
             "cached_tokens": 0,
             "model": "gpt-4",
+            "cost_usd": 0.0,
         }
 
     @pytest.mark.parametrize("cls", ALL_EVENT_CLASSES, ids=lambda c: c.__name__)

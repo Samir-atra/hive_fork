@@ -23,6 +23,7 @@ except ImportError:
     litellm = None  # type: ignore[assignment]
     RateLimitError = Exception  # type: ignore[assignment, misc]
 
+from framework.llm.cost import LLMCostCalculator
 from framework.llm.provider import LLMProvider, LLMResponse, Tool
 from framework.llm.stream_events import StreamEvent
 
@@ -586,6 +587,7 @@ class LiteLLMProvider(LLMProvider):
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             stop_reason=response.choices[0].finish_reason or "",
+            cost_usd=LLMCostCalculator.calculate(response),
             raw_response=response,
         )
 
@@ -768,6 +770,7 @@ class LiteLLMProvider(LLMProvider):
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             stop_reason=response.choices[0].finish_reason or "",
+            cost_usd=LLMCostCalculator.calculate(response),
             raw_response=response,
         )
 
@@ -1292,5 +1295,6 @@ class LiteLLMProvider(LLMProvider):
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             stop_reason=stop_reason,
+            cost_usd=0.0,
             raw_response={"tool_calls": tool_calls} if tool_calls else None,
         )

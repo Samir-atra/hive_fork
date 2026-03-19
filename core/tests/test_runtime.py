@@ -158,6 +158,7 @@ class TestOutcomeRecording:
             summary="Action completed successfully",
             tokens_used=100,
             latency_ms=50,
+            cost_usd=0.01,
         )
 
         decision = runtime.current_run.decisions[0]
@@ -184,6 +185,7 @@ class TestOutcomeRecording:
             decision_id=decision_id,
             success=False,
             error="API rate limited",
+            cost_usd=0.005,
         )
 
         decision = runtime.current_run.decisions[0]
@@ -206,7 +208,7 @@ class TestOutcomeRecording:
             chosen="a",
             reasoning="Test",
         )
-        runtime.record_outcome(d1, success=True, tokens_used=100)
+        runtime.record_outcome(d1, success=True, tokens_used=100, cost_usd=0.01)
 
         # Failed decision
         d2 = runtime.decide(
@@ -215,13 +217,14 @@ class TestOutcomeRecording:
             chosen="b",
             reasoning="Test",
         )
-        runtime.record_outcome(d2, success=False)
+        runtime.record_outcome(d2, success=False, cost_usd=0.005)
 
         metrics = runtime.current_run.metrics
         assert metrics.total_decisions == 2
         assert metrics.successful_decisions == 1
         assert metrics.failed_decisions == 1
         assert metrics.total_tokens == 100
+        assert metrics.total_cost_usd == 0.015
 
         runtime.end_run(success=False)
 

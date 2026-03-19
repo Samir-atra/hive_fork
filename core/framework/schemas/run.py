@@ -51,6 +51,7 @@ class RunMetrics(BaseModel):
 
     total_tokens: int = 0
     total_latency_ms: int = 0
+    total_cost_usd: float = 0.0
 
     nodes_executed: list[str] = Field(default_factory=list)
     edges_traversed: list[str] = Field(default_factory=list)
@@ -74,6 +75,7 @@ class Run(BaseModel):
 
     id: str
     goal_id: str
+    workflow_id: str = "unknown"
     started_at: datetime = Field(default_factory=datetime.now)
 
     # Status
@@ -128,6 +130,7 @@ class Run(BaseModel):
                     self.metrics.failed_decisions += 1
                 self.metrics.total_tokens += outcome.tokens_used
                 self.metrics.total_latency_ms += outcome.latency_ms
+                self.metrics.total_cost_usd += outcome.cost_usd
                 break
 
     def add_problem(
@@ -198,6 +201,7 @@ class RunSummary(BaseModel):
 
     run_id: str
     goal_id: str
+    workflow_id: str = "unknown"
     status: RunStatus
     duration_ms: int
 
@@ -205,6 +209,7 @@ class RunSummary(BaseModel):
     decision_count: int
     success_rate: float
     problem_count: int
+    total_cost_usd: float = 0.0
 
     # Narrative
     narrative: str
@@ -248,11 +253,13 @@ class RunSummary(BaseModel):
         return cls(
             run_id=run.id,
             goal_id=run.goal_id,
+            workflow_id=run.workflow_id,
             status=run.status,
             duration_ms=run.duration_ms,
             decision_count=run.metrics.total_decisions,
             success_rate=run.metrics.success_rate,
             problem_count=len(run.problems),
+            total_cost_usd=run.metrics.total_cost_usd,
             narrative=run.narrative,
             key_decisions=key_decisions,
             critical_problems=critical,

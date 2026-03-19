@@ -56,6 +56,8 @@ class ExecutionResult:
     steps_executed: int = 0
     total_tokens: int = 0
     total_latency_ms: int = 0
+    total_cost_usd: float = 0.0
+    cost_by_model: dict[str, float] = field(default_factory=dict)
     path: list[str] = field(default_factory=list)  # Node IDs traversed
     paused_at: str | None = None  # Node ID where execution paused for HITL
     session_state: dict[str, Any] = field(default_factory=dict)  # State to resume from
@@ -518,6 +520,8 @@ class GraphExecutor:
         path: list[str] = []
         total_tokens = 0
         total_latency = 0
+        total_cost_usd = 0.0
+        cost_by_model: dict[str, float] = {}
         node_retry_counts: dict[str, int] = {}  # Track retries per node
         node_visit_counts: dict[str, int] = {}  # Track visits for feedback loops
         _is_retry = False  # True when looping back for a retry (not a new visit)
@@ -780,6 +784,10 @@ class GraphExecutor:
                         error="Execution paused by user request",
                         session_state=pause_session_state,
                         node_visit_counts=dict(node_visit_counts),
+                        total_tokens=total_tokens,
+                        total_latency_ms=total_latency,
+                        total_cost_usd=total_cost_usd,
+                        cost_by_model=cost_by_model,
                     )
 
                 # Get current node
@@ -1044,6 +1052,10 @@ class GraphExecutor:
 
                 total_tokens += result.tokens_used
                 total_latency += result.latency_ms
+                total_cost_usd += result.cost_usd
+                if getattr(result, "llm_model", None) and result.cost_usd > 0:
+                    model = result.llm_model
+                    cost_by_model[model] = cost_by_model.get(model, 0.0) + result.cost_usd
 
                 # Handle failure
                 if not result.success:
@@ -1167,6 +1179,8 @@ class GraphExecutor:
                                 steps_executed=steps,
                                 total_tokens=total_tokens,
                                 total_latency_ms=total_latency,
+                                total_cost_usd=total_cost_usd,
+                                cost_by_model=cost_by_model,
                                 path=path,
                                 total_retries=total_retries_count,
                                 nodes_with_failures=nodes_failed,
@@ -1226,6 +1240,8 @@ class GraphExecutor:
                         steps_executed=steps,
                         total_tokens=total_tokens,
                         total_latency_ms=total_latency,
+                        total_cost_usd=total_cost_usd,
+                        cost_by_model=cost_by_model,
                         path=path,
                         paused_at=node_spec.id,
                         session_state=session_state_out,
@@ -1298,6 +1314,8 @@ class GraphExecutor:
                             _branch_results,
                             branch_tokens,
                             branch_latency,
+                            branch_cost,
+                            branch_cost_by_model,
                         ) = await self._execute_parallel_branches(
                             graph=graph,
                             goal=goal,
@@ -1311,6 +1329,9 @@ class GraphExecutor:
 
                         total_tokens += branch_tokens
                         total_latency += branch_latency
+                        total_cost_usd += branch_cost
+                        for m, c in branch_cost_by_model.items():
+                            cost_by_model[m] = cost_by_model.get(m, 0.0) + c
 
                         # Continue from fan-in node
                         if fan_in_node:
@@ -1575,6 +1596,8 @@ class GraphExecutor:
                 steps_executed=steps,
                 total_tokens=total_tokens,
                 total_latency_ms=total_latency,
+                total_cost_usd=total_cost_usd,
+                cost_by_model=cost_by_model,
                 path=path,
                 total_retries=total_retries_count,
                 nodes_with_failures=nodes_failed,
@@ -1650,6 +1673,8 @@ class GraphExecutor:
                 steps_executed=steps,
                 total_tokens=total_tokens,
                 total_latency_ms=total_latency,
+                total_cost_usd=total_cost_usd,
+                cost_by_model=cost_by_model,
                 path=path,
                 paused_at=current_node_id,  # Save where we were
                 session_state=session_state_out,
@@ -1751,6 +1776,10 @@ class GraphExecutor:
                 error=str(e),
                 output=saved_memory,
                 steps_executed=steps,
+                total_tokens=total_tokens,
+                total_latency_ms=total_latency,
+                total_cost_usd=total_cost_usd,
+                cost_by_model=cost_by_model,
                 path=path,
                 total_retries=total_retries_count,
                 nodes_with_failures=nodes_failed,
@@ -2054,7 +2083,7 @@ class GraphExecutor:
         source_node_spec: Any,
         path: list[str],
         node_registry: dict[str, NodeSpec] | None = None,
-    ) -> tuple[dict[str, NodeResult], int, int]:
+    ) -> tuple[dict[str, NodeResult], int, int, float, dict[str, float]]:
         """
         Execute multiple branches in parallel using asyncio.gather.
 
@@ -2227,6 +2256,8 @@ class GraphExecutor:
         # Process results
         total_tokens = 0
         total_latency = 0
+        total_cost_usd = 0.0
+        cost_by_model: dict[str, float] = {}
         branch_results: dict[str, NodeResult] = {}
         failed_branches: list[ParallelBranch] = []
 
@@ -2240,6 +2271,10 @@ class GraphExecutor:
             else:
                 total_tokens += result.tokens_used
                 total_latency += result.latency_ms
+                total_cost_usd += result.cost_usd
+                if getattr(result, "llm_model", None) and result.cost_usd > 0:
+                    model = result.llm_model
+                    cost_by_model[model] = cost_by_model.get(model, 0.0) + result.cost_usd
                 branch_results[branch.branch_id] = result
 
         # Handle failures based on config
@@ -2255,7 +2290,7 @@ class GraphExecutor:
         self.logger.info(
             f"   ⑃ Fan-out complete: {len(branch_results)}/{len(branches)} branches succeeded"
         )
-        return branch_results, total_tokens, total_latency
+        return branch_results, total_tokens, total_latency, total_cost_usd, cost_by_model
 
     def register_node(self, node_id: str, implementation: NodeProtocol) -> None:
         """Register a custom node implementation."""

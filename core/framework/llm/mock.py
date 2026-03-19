@@ -144,6 +144,7 @@ class MockLLMProvider(LLMProvider):
             input_tokens=0,
             output_tokens=0,
             stop_reason="mock_complete",
+            cost_usd=0.0,
         )
 
     async def acomplete(

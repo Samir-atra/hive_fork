@@ -134,6 +134,7 @@ class StreamRuntime:
         run = Run(
             id=run_id,
             goal_id=goal_id,
+            workflow_id=self.stream_id,
             goal_description=goal_description,
             input_data=input_data or {},
         )

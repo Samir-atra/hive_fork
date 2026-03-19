@@ -594,6 +594,8 @@ class NodeResult:
     # Metadata
     tokens_used: int = 0
     latency_ms: int = 0
+    cost_usd: float = 0.0
+    llm_model: str | None = None
 
     # Pydantic validation errors (if any)
     validation_errors: list[str] = field(default_factory=list)

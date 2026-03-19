@@ -84,6 +84,7 @@ class TestRun:
             success=True,
             tokens_used=10,
             latency_ms=100,
+            cost_usd=0.05,
         )
         run.add_decision(decision)
         run.record_outcome(decision.id, outcome)
@@ -93,6 +94,7 @@ class TestRun:
         assert run.metrics.failed_decisions == 0
         assert run.metrics.total_tokens == 10
         assert run.metrics.total_latency_ms == 100
+        assert run.metrics.total_cost_usd == 0.05
 
     def test_add_problem(self):
         run = Run(
@@ -152,6 +154,8 @@ class TestRunSummary:
         assert summary.success_rate == 0.0
         assert summary.problem_count == 0
         assert summary.narrative == "Test narrative"
+        assert summary.workflow_id == "unknown"
+        assert summary.total_cost_usd == 0.0
 
     def test_from_run_with_decisions(self):
         run = Run(
@@ -179,6 +183,7 @@ class TestRunSummary:
             success=True,
             tokens_used=10,
             latency_ms=100,
+            cost_usd=0.01,
             summary="Successfully greeted user",
         )
 
@@ -201,6 +206,7 @@ class TestRunSummary:
             error="Invalid JSON format",
             tokens_used=5,
             latency_ms=50,
+            cost_usd=0.02,
         )
 
         run.add_decision(successful_decision)
@@ -216,6 +222,7 @@ class TestRunSummary:
         assert len(summary.key_decisions) == 1
         assert len(summary.successes) == 1
         assert summary.successes[0] == "Successfully greeted user"
+        assert summary.total_cost_usd == 0.03
 
     def test_from_run_with_problems(self):
         run = Run(

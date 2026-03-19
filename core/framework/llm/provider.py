@@ -17,6 +17,7 @@ class LLMResponse:
     input_tokens: int = 0
     output_tokens: int = 0
     stop_reason: str = ""
+    cost_usd: float = 0.0
     raw_response: Any = None
 
 
@@ -156,6 +157,7 @@ class LLMProvider(ABC):
             input_tokens=response.input_tokens,
             output_tokens=response.output_tokens,
             model=response.model,
+            cost_usd=response.cost_usd,
         )
 
 
