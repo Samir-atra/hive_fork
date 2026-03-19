@@ -626,7 +626,7 @@ class GraphExecutor:
                 )
                 current_node_id = graph.get_entry_point(session_state)
 
-        steps = 0
+        steps = session_state.get("steps_executed", 0) if session_state else 0
 
         # Fresh shared-session execution: clear stale cursor so the entry
         # node doesn't restore a filled OutputAccumulator from the previous
@@ -753,6 +753,7 @@ class GraphExecutor:
                         "memory": saved_memory,  # Include memory for resume
                         "execution_path": list(path),
                         "node_visit_counts": dict(node_visit_counts),
+                        "steps_executed": steps,
                     }
 
                     # Create a pause checkpoint
@@ -1155,6 +1156,7 @@ class GraphExecutor:
                                 "execution_path": list(path),
                                 "node_visit_counts": dict(node_visit_counts),
                                 "resume_from": current_node_id,
+                                "steps_executed": steps,
                             }
 
                             return ExecutionResult(
@@ -1199,6 +1201,7 @@ class GraphExecutor:
                         "execution_path": list(path),
                         "node_visit_counts": dict(node_visit_counts),
                         "next_node": None,  # Will resume from entry point
+                        "steps_executed": steps,
                     }
 
                     self.runtime.end_run(

@@ -5,7 +5,7 @@ Focused on minimal success and failure scenarios.
 
 import pytest
 
-from framework.graph.edge import GraphSpec
+from framework.graph.edge import EdgeSpec, GraphSpec
 from framework.graph.executor import GraphExecutor
 from framework.graph.goal import Goal
 from framework.graph.node import NodeResult, NodeSpec
@@ -245,3 +245,98 @@ async def test_executor_no_events_without_event_bus():
     result = await executor.execute(graph=graph, goal=goal)
 
     assert result.success is True
+
+
+@pytest.mark.asyncio
+async def test_executor_max_steps_resumption():
+    """Test that max_steps correctly tracks steps across session resumption."""
+    # Create graph with a loop to quickly reach max_steps
+    nodes = [
+        NodeSpec(
+            id="start",
+            name="start",
+            description="start node",
+            node_type="event_loop",
+            max_retries=0,
+        ),
+        NodeSpec(
+            id="pause_node",
+            name="pause",
+            description="pause node",
+            node_type="event_loop",
+            max_retries=0,
+        ),
+        NodeSpec(
+            id="step2",
+            name="step2",
+            description="step 2",
+            node_type="event_loop",
+            max_retries=0,
+        ),
+    ]
+    edges = [
+        EdgeSpec(id="e1", source="start", target="pause_node"),
+        EdgeSpec(id="e2", source="pause_node", target="step2"),
+        EdgeSpec(id="e3", source="step2", target="start"),
+    ]
+
+    graph = GraphSpec(
+        id="g1",
+        goal_id="goal1",
+        entry_node="start",
+        nodes=nodes,
+        edges=edges,
+        pause_nodes={"pause_node"},
+    )
+    goal = Goal(id="goal1", name="ResumptionGraph", description="description")
+    # Set max steps very low
+    graph.max_steps = 4
+
+    runtime = DummyRuntime()
+    executor = GraphExecutor(
+        runtime=runtime,
+        node_registry={"start": SuccessNode(), "pause_node": SuccessNode(), "step2": SuccessNode()},
+    )
+
+    # Run first time
+    res = await executor.execute(graph=graph, goal=goal, input_data={}, validate_graph=False)
+
+    # Should hit pause node. Pause nodes return success=True and populated session_state.
+    assert res.success
+    assert res.paused_at == "pause_node"
+    assert res.session_state is not None
+    assert "steps_executed" in res.session_state
+
+    # Resume with state
+    res2 = await executor.execute(
+        graph=graph, goal=goal, input_data={}, session_state=res.session_state, validate_graph=False
+    )
+
+    # The max steps is 4, each execution increments it and pauses again.
+    assert res2.success
+    assert res2.steps_executed == 3
+
+    res3 = await executor.execute(
+        graph=graph,
+        goal=goal,
+        input_data={},
+        session_state=res2.session_state,
+        validate_graph=False,
+    )
+    assert res3.success
+    assert res3.steps_executed == 4
+
+    res4 = await executor.execute(
+        graph=graph,
+        goal=goal,
+        input_data={},
+        session_state=res3.session_state,
+        validate_graph=False,
+    )
+
+    # res4 hits the maximum steps limit when it loops through while steps < graph.max_steps
+    # The while loop breaks when steps == max_steps and the method completes cleanly by returning
+    # an ExecutionResult. It preserves the steps properly so res4 exits.
+    assert res4.success
+    assert res4.steps_executed == 4
+    assert res4.paused_at is None
