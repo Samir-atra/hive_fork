@@ -14,6 +14,11 @@ jobs:
     steps:
       - name: Check PR has linked issue with assignee
         uses: actions/github-script@v7
+<<<<<<< HEAD
+=======
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+>>>>>>> main
         with:
           script: |
             const pr = context.payload.pull_request;
@@ -99,6 +104,7 @@ jobs:
               return;
             }
 
+<<<<<<< HEAD
             // Check if any linked issue has the PR author as assignee
             const prAuthor = pr.user.login;
             let issueWithAuthorAssigned = null;
@@ -200,4 +206,18 @@ jobs:
               }catch (error){
                 //ignore if label doesn't exist
               }
+=======
+            // Skip checking assignee since non-collaborators cannot be assigned easily.
+            // Just verifying that a linked issue exists is enough.
+            console.log(`PR requirements met! Found issues: ${issueNumbers.join(', ')}`);
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                name: "pr-requirements-warning"
+              });
+            } catch (error) {
+              // ignore if label doesn't exist
+>>>>>>> main
             }

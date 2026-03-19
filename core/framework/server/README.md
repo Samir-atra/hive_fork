@@ -128,6 +128,7 @@ POST /api/sessions/{session_id}/worker
 DELETE /api/sessions/{session_id}/worker
 ```
 
+<<<<<<< HEAD
 ### Interventions
 
 Interventions translate technical agent decisions into a business-friendly format with an audit trail. These routes support human-in-the-loop approvals.
@@ -150,6 +151,8 @@ POST /api/interventions/{id}/approve
 }
 ```
 
+=======
+>>>>>>> main
 ### Execution Control
 
 | Method | Route | Description |
