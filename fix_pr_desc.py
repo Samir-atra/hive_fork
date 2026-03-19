@@ -1,4 +1,4 @@
-## Description
+content = """## Description
 
 This PR fixes the Execution Limit Bypass via Session Resumption ("Infinite Gas" Glitch) vulnerability reported in issue 3146 on the main adenhq repo.
 
@@ -45,3 +45,6 @@ Describe the tests you ran to verify your changes:
 - [x] New and existing unit tests pass locally with my changes
 
 ## Screenshots (if applicable)
+"""
+with open('.pr-3146.md', 'w') as f:
+    f.write(content)
