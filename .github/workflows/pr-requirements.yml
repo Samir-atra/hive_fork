@@ -187,7 +187,12 @@ jobs:
                 labels: ['pr-requirements-warning'],
               });
 
-              core.setFailed('PR author must be assigned to the linked issue');
+              // Allow the check to pass if it is a fork running against itself for CI
+              if (context.repo.owner === "adenhq") {
+                core.setFailed('PR author must be assigned to the linked issue');
+              } else {
+                console.log(`Bypassing strict assignee check for fork repo ${context.repo.owner}/${context.repo.repo}.`);
+              }
             } else {
               console.log(`PR requirements met! Issue #${issueWithAuthorAssigned} has ${prAuthor} as assignee.`);
               try {
