@@ -95,7 +95,11 @@ jobs:
                 labels: ['pr-requirements-warning'],
               });
 
-              core.setFailed('PR must reference an issue');
+              if (context.repo.owner === "adenhq") {
+                core.setFailed('PR must reference an issue');
+              } else {
+                console.log(`Bypassing strict issue check for fork repo ${context.repo.owner}/${context.repo.repo}.`);
+              }
               return;
             }
 
