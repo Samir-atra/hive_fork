@@ -171,13 +171,26 @@ class SharedStateManager:
 
         # Check stream-level (unless isolated)
         if isolation != IsolationLevel.ISOLATED:
-            if stream_id in self._stream_state:
-                if key in self._stream_state[stream_id]:
-                    return self._stream_state[stream_id][key]
+            if isolation == IsolationLevel.SYNCHRONIZED:
+                lock = self._get_lock(StateScope.STREAM, key, stream_id)
+                async with lock:
+                    if stream_id in self._stream_state:
+                        if key in self._stream_state[stream_id]:
+                            return self._stream_state[stream_id][key]
+            else:
+                if stream_id in self._stream_state:
+                    if key in self._stream_state[stream_id]:
+                        return self._stream_state[stream_id][key]
 
             # Check global
-            if key in self._global_state:
-                return self._global_state[key]
+            if isolation == IsolationLevel.SYNCHRONIZED:
+                lock = self._get_lock(StateScope.GLOBAL, key, stream_id)
+                async with lock:
+                    if key in self._global_state:
+                        return self._global_state[key]
+            else:
+                if key in self._global_state:
+                    return self._global_state[key]
 
         return None
 
