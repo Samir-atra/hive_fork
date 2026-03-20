@@ -28,7 +28,9 @@ def test_mint_receipt_sync_success(mock_urlopen, monkeypatch):
     mock_responses = [
         MagicMock(read=lambda: json.dumps({"offerId": "offer_123"}).encode("utf-8")),
         MagicMock(read=lambda: json.dumps({"jobId": "job_123"}).encode("utf-8")),
-        MagicMock(read=lambda: json.dumps({"proofUrl": "https://claw2claw.com/proof/123"}).encode("utf-8")),
+        MagicMock(
+            read=lambda: json.dumps({"proofUrl": "https://claw2claw.com/proof/123"}).encode("utf-8")
+        ),
     ]
 
     # Required for context manager simulation
@@ -37,11 +39,7 @@ def test_mint_receipt_sync_success(mock_urlopen, monkeypatch):
 
     mock_urlopen.side_effect = mock_responses
 
-    proof_url = mint_receipt_sync(
-        "Test Agent",
-        "Test Description",
-        {"output": "success"}
-    )
+    proof_url = mint_receipt_sync("Test Agent", "Test Description", {"output": "success"})
 
     assert proof_url == "https://claw2claw.com/proof/123"
     assert mock_urlopen.call_count == 3
@@ -57,17 +55,15 @@ async def test_mint_receipt_async_success(mock_urlopen, monkeypatch):
     mock_responses = [
         MagicMock(read=lambda: json.dumps({"offerId": "offer_123"}).encode("utf-8")),
         MagicMock(read=lambda: json.dumps({"jobId": "job_123"}).encode("utf-8")),
-        MagicMock(read=lambda: json.dumps({"proofUrl": "https://claw2claw.com/proof/123"}).encode("utf-8")),
+        MagicMock(
+            read=lambda: json.dumps({"proofUrl": "https://claw2claw.com/proof/123"}).encode("utf-8")
+        ),
     ]
     for r in mock_responses:
         r.__enter__.return_value = r
     mock_urlopen.side_effect = mock_responses
 
-    proof_url = await mint_receipt_async(
-        "Test Agent",
-        "Test Description",
-        {"output": "success"}
-    )
+    proof_url = await mint_receipt_async("Test Agent", "Test Description", {"output": "success"})
 
     assert proof_url == "https://claw2claw.com/proof/123"
     assert mock_urlopen.call_count == 3
@@ -84,11 +80,7 @@ def test_mint_receipt_sync_failure_no_offer(mock_urlopen, monkeypatch):
     mock_response.__enter__.return_value = mock_response
     mock_urlopen.return_value = mock_response
 
-    proof_url = mint_receipt_sync(
-        "Test Agent",
-        "Test Description",
-        {"output": "success"}
-    )
+    proof_url = mint_receipt_sync("Test Agent", "Test Description", {"output": "success"})
 
     assert proof_url is None
     assert mock_urlopen.call_count == 1
