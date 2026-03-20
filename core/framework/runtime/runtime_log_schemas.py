@@ -16,6 +16,18 @@ from pydantic import BaseModel, Field
 # ---------------------------------------------------------------------------
 
 
+
+class JudgmentLog(BaseModel):
+    """Phase 2 calibration: persist judge verdicts and human overrides."""
+
+    run_id: str
+    node_id: str
+    step_index: int
+    action: str  # "ACCEPT", "RETRY", "ESCALATE", etc.
+    confidence: float = 0.8
+    reasoning: str = ""
+    human_override: str | None = None
+
 class ToolCallLog(BaseModel):
     """A single tool call within a step."""
 
