@@ -342,3 +342,35 @@ async def test_negative_case_condition_false():
         f"Condition 'score > 80' should be False (score=30). "
         f"Path: {result.path}"
     )
+
+
+def test_conditional_edge_missing_expr():
+    from framework.graph.edge import EdgeCondition, EdgeSpec, GraphSpec
+    from framework.graph.node import NodeSpec
+
+    # 1. Test validation
+    node1 = NodeSpec(id="n1", name="n1", description="n1", node_type="event_loop")
+    node2 = NodeSpec(id="n2", name="n2", description="n2", node_type="event_loop")
+    edge = EdgeSpec(
+        id="e1", source="n1", target="n2", condition=EdgeCondition.CONDITIONAL, condition_expr=None
+    )
+    graph = GraphSpec(
+        id="g1",
+        name="test",
+        description="test",
+        goal_id="goal1",
+        entry_node="n1",
+        nodes=[node1, node2],
+        edges=[edge],
+        terminal_nodes=["n2"],
+    )
+
+    # We expect 'errors' list in the returned dict
+    res = graph.validate()
+
+    assert "errors" in res, "Missing 'errors' in validation response"
+    err_msg = f"Validation didn't catch missing expr: {res}"
+    assert any("needs condition_expr" in e for e in res["errors"]), err_msg
+
+    # 2. Test evaluation
+    assert edge._evaluate_condition({}, {}) is False, "_evaluate_condition didn't return False"
