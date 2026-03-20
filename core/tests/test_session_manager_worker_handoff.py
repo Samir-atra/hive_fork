@@ -37,6 +37,7 @@ async def test_worker_handoff_injects_formatted_request_into_queen() -> None:
         execution_id="exec_123",
     )
 
+    await bus.wait_until_idle()
     queen_node.inject_event.assert_awaited_once()
     injected = queen_node.inject_event.await_args.args[0]
     kwargs = queen_node.inject_event.await_args.kwargs
@@ -93,6 +94,7 @@ async def test_worker_handoff_resubscribe_replaces_previous_subscription() -> No
     )
 
     assert old_queen_node.inject_event.await_count == 0
+    await bus.wait_until_idle()
     new_queen_node.inject_event.assert_awaited_once()
 
 
@@ -111,6 +113,7 @@ async def test_stop_session_unsubscribes_worker_handoff() -> None:
         node_id="node_1",
         reason="before stop",
     )
+    await bus.wait_until_idle()
     assert queen_node.inject_event.await_count == 1
 
     stopped = await manager.stop_session(session.id)
@@ -122,4 +125,5 @@ async def test_stop_session_unsubscribes_worker_handoff() -> None:
         node_id="node_1",
         reason="after stop",
     )
+    await bus.wait_until_idle()
     assert queen_node.inject_event.await_count == 1

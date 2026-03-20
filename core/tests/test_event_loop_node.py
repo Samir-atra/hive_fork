@@ -414,13 +414,16 @@ class TestEventBusLifecycle:
         bus = EventBus()
 
         received_events = []
+        async def handler(e):
+            received_events.append(e.type)
+
         bus.subscribe(
             event_types=[
                 EventType.NODE_LOOP_STARTED,
                 EventType.NODE_LOOP_ITERATION,
                 EventType.NODE_LOOP_COMPLETED,
             ],
-            handler=lambda e: received_events.append(e.type),
+            handler=handler,
         )
 
         ctx = build_ctx(runtime, node_spec, memory, llm)
@@ -430,6 +433,7 @@ class TestEventBusLifecycle:
         assert result.success is True
         assert EventType.NODE_LOOP_STARTED in received_events
         assert EventType.NODE_LOOP_ITERATION in received_events
+        await bus.wait_until_idle()
         assert EventType.NODE_LOOP_COMPLETED in received_events
 
     @pytest.mark.asyncio
@@ -804,6 +808,7 @@ class TestEscalate:
         await task
 
         assert result.success is True
+        await bus.wait_until_idle()
         assert len(received) == 1
         assert received[0].type == EventType.ESCALATION_REQUESTED
         assert received[0].data["reason"] == "tool failure"
