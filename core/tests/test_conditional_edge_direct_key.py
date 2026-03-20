@@ -1,3 +1,6 @@
+from framework.graph.edge import EdgeCondition, EdgeSpec, GraphSpec
+from framework.graph.node import NodeSpec
+
 """
 Regression tests for conditional edge direct key access (Issue #3599).
 
@@ -343,18 +346,16 @@ async def test_negative_case_condition_false():
         f"Path: {result.path}"
     )
 
+
 def test_conditional_edge_missing_expr():
     from framework.graph.edge import EdgeCondition, EdgeSpec, GraphSpec
     from framework.graph.node import NodeSpec
+
     # 1. Test validation
     node1 = NodeSpec(id="n1", name="n1", description="n1", node_type="event_loop")
     node2 = NodeSpec(id="n2", name="n2", description="n2", node_type="event_loop")
     edge = EdgeSpec(
-        id="e1",
-        source="n1",
-        target="n2",
-        condition=EdgeCondition.CONDITIONAL,
-        condition_expr=None
+        id="e1", source="n1", target="n2", condition=EdgeCondition.CONDITIONAL, condition_expr=None
     )
     graph = GraphSpec(
         id="g1",
@@ -364,7 +365,7 @@ def test_conditional_edge_missing_expr():
         entry_node="n1",
         nodes=[node1, node2],
         edges=[edge],
-        terminal_nodes=["n2"]
+        terminal_nodes=["n2"],
     )
 
     # We expect 'errors' list in the returned dict

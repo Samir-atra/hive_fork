@@ -570,14 +570,12 @@ class GraphSpec(BaseModel):
                 "Consider adding a termination point where execution ends."
             )
 
-
         # Check edge references
         for edge in self.edges:
             if edge.condition == EdgeCondition.CONDITIONAL and not edge.condition_expr:
                 errors.append(f"Conditional edge '{edge.id}' needs condition_expr")
 
             if not self.get_node(edge.source):
-
                 errors.append(f"Edge '{edge.id}' references missing source '{edge.source}'")
             if not self.get_node(edge.target):
                 errors.append(f"Edge '{edge.id}' references missing target '{edge.target}'")
