@@ -5,6 +5,7 @@ def test_estimate_tokens():
     text = "01234567"
     assert _estimate_tokens(text) == 2
 
+
 def test_record_tool_registration():
     tracker = ContextUsageTracker()
     schema = {"type": "object", "properties": {"a": {"type": "string"}}}
@@ -17,6 +18,7 @@ def test_record_tool_registration():
     # Estimate calculation verification
     # total_str = "my_tool" + "my description" + json.dumps(schema)
     assert tool_usage.registration_tokens > 0
+
 
 def test_record_execution():
     tracker = ContextUsageTracker()
@@ -39,6 +41,7 @@ def test_record_execution():
     assert tool_usage.execution_count == 1
     assert tool_usage.input_tokens > 0
     assert tool_usage.output_tokens == len("hello world") // 4
+
 
 def test_get_summary():
     tracker = ContextUsageTracker()

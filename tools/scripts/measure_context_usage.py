@@ -10,6 +10,7 @@ from aden_tools.tools import register_all_tools
 def _estimate_tokens(text: str) -> int:
     return len(text) // 4
 
+
 async def main():
     print("Measuring tool context usage...")
     mcp = FastMCP("dummy")
@@ -33,20 +34,18 @@ async def main():
         tokens = _estimate_tokens(total_str)
 
         total_tokens += tokens
-        results.append({
-            "name": tool.name,
-            "description_length": len(desc_str),
-            "schema_length": len(schema_str),
-            "tokens": tokens
-        })
+        results.append(
+            {
+                "name": tool.name,
+                "description_length": len(desc_str),
+                "schema_length": len(schema_str),
+                "tokens": tokens,
+            }
+        )
 
     results.sort(key=lambda x: x["tokens"], reverse=True)
 
-    summary = {
-        "total_tools": len(results),
-        "total_tokens": total_tokens,
-        "tools": results
-    }
+    summary = {"total_tools": len(results), "total_tokens": total_tokens, "tools": results}
 
     docs_dir = Path("docs")
     docs_dir.mkdir(exist_ok=True)
@@ -75,6 +74,7 @@ async def main():
     print(f"Done! Evaluated {len(results)} tools.")
     print(f"Total tokens: {total_tokens:,}")
     print(f"Cost per session: ${cost_per_session:.4f}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

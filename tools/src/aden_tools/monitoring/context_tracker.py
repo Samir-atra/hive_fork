@@ -1,4 +1,5 @@
 """Runtime tracker for MCP tool context usage and token costs."""
+
 import functools
 import inspect
 import json
@@ -10,9 +11,11 @@ from typing import Any
 def _estimate_tokens(text: str) -> int:
     return len(text) // 4
 
+
 @dataclass
 class ToolContextUsage:
     """Usage stats for a single tool."""
+
     name: str
     description: str
     registration_tokens: int
@@ -20,8 +23,10 @@ class ToolContextUsage:
     input_tokens: int = 0
     output_tokens: int = 0
 
+
 class ContextUsageTracker:
     """Tracks token usage across the tool lifecycle."""
+
     def __init__(self) -> None:
         self.tools: dict[str, ToolContextUsage] = {}
 
@@ -34,9 +39,7 @@ class ContextUsageTracker:
 
         if name not in self.tools:
             self.tools[name] = ToolContextUsage(
-                name=name,
-                description=desc_str,
-                registration_tokens=tokens
+                name=name, description=desc_str, registration_tokens=tokens
             )
         else:
             self.tools[name].description = desc_str
@@ -89,13 +92,15 @@ class ContextUsageTracker:
         for name, t in sorted(
             self.tools.items(), key=lambda x: x[1].registration_tokens, reverse=True
         ):
-            tools_list.append({
-                "name": name,
-                "registration_tokens": t.registration_tokens,
-                "execution_count": t.execution_count,
-                "input_tokens": t.input_tokens,
-                "output_tokens": t.output_tokens,
-            })
+            tools_list.append(
+                {
+                    "name": name,
+                    "registration_tokens": t.registration_tokens,
+                    "execution_count": t.execution_count,
+                    "input_tokens": t.input_tokens,
+                    "output_tokens": t.output_tokens,
+                }
+            )
 
         return {
             "total_tools_registered": registered,
@@ -104,22 +109,25 @@ class ContextUsageTracker:
             "total_execution_tokens": exec_tokens,
             "wasted_registration_tokens": wasted_tokens,
             "estimated_cost_usd": round(cost, 6),
-            "tools": tools_list
+            "tools": tools_list,
         }
 
 
 # Global singleton instance for the session
 _tracker = ContextUsageTracker()
 
+
 def get_tracker() -> ContextUsageTracker:
     """Get the active context usage tracker."""
     return _tracker
+
 
 def track_tool_execution(tool_name: str, fn: Callable) -> Callable:
     """Decorator to track dynamic execution of an MCP tool function."""
     is_async = inspect.iscoroutinefunction(fn)
 
     if is_async:
+
         @functools.wraps(fn)
         async def async_wrapper(*args, **kwargs):
             # Convert args to string dict representation
@@ -131,8 +139,10 @@ def track_tool_execution(tool_name: str, fn: Callable) -> Callable:
             except Exception as e:
                 _tracker.record_execution(tool_name, input_data, {"error": str(e)})
                 raise
+
         return async_wrapper
     else:
+
         @functools.wraps(fn)
         def sync_wrapper(*args, **kwargs):
             input_data = {"args": args, "kwargs": kwargs}
@@ -143,4 +153,5 @@ def track_tool_execution(tool_name: str, fn: Callable) -> Callable:
             except Exception as e:
                 _tracker.record_execution(tool_name, input_data, {"error": str(e)})
                 raise
+
         return sync_wrapper

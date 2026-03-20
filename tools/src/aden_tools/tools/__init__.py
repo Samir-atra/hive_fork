@@ -342,7 +342,7 @@ def register_all_tools(
                 if not loop.is_running():
                     tools = loop.run_until_complete(tools)
                 else:
-                    tools = {} # If loop is running, we just skip it or log
+                    tools = {}  # If loop is running, we just skip it or log
             except Exception:
                 tools = {}
     elif hasattr(mcp, "_tool_manager"):
@@ -357,11 +357,7 @@ def register_all_tools(
             continue
 
         schema = getattr(tool, "parameters", {})
-        tracker.record_tool_registration(
-            name=name,
-            description=tool.description,
-            schema=schema
-        )
+        tracker.record_tool_registration(name=name, description=tool.description, schema=schema)
 
         # Monkey-patch execution optionally to track dynamic usage
         if hasattr(tool, "fn") and not getattr(tool.fn, "_is_tracked", False):
@@ -370,7 +366,6 @@ def register_all_tools(
             tool.fn = patched_fn
 
     return list(tools_dict.keys())
-
 
 
 __all__ = ["register_all_tools"]
