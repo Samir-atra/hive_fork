@@ -151,7 +151,7 @@ def register_tools(
             return {"error": error}
 
         try:
-            cursor = connection.cursor()
+            cursor = connection.cursor()  # type: ignore
             cursor.execute(query)
 
             # Get column names
@@ -232,20 +232,20 @@ def register_tools(
             return {"error": error}
 
         try:
-            cursor = connection.cursor()
+            cursor = connection.cursor()  # type: ignore
             cursor.execute(query)
 
             affected_rows = cursor.rowcount
 
             if commit:
-                connection.commit()
+                connection.commit()  # type: ignore
                 return {
                     "success": True,
                     "affected_rows": affected_rows,
                     "message": f"Successfully affected {affected_rows} row(s)",
                 }
             else:
-                connection.rollback()
+                connection.rollback()  # type: ignore
                 return {
                     "success": True,
                     "affected_rows": affected_rows,
@@ -304,7 +304,7 @@ def register_tools(
             return {"error": error}
 
         try:
-            cursor = connection.cursor()
+            cursor = connection.cursor()  # type: ignore
 
             if table_name is None:
                 # List all tables
@@ -483,7 +483,7 @@ def register_tools(
             return {"error": error}
 
         try:
-            cursor = connection.cursor()
+            cursor = connection.cursor()  # type: ignore
 
             # Build parameter placeholders
             if parameters:
@@ -520,7 +520,7 @@ def register_tools(
                 if not cursor.nextset():
                     break
 
-            connection.commit()
+            connection.commit()  # type: ignore
 
             return {
                 "success": True,

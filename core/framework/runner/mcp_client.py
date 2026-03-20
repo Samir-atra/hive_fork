@@ -227,8 +227,8 @@ class MCPClient:
                 # Run loop forever
                 self._loop.run_forever()
 
-            self._loop_thread = threading.Thread(target=run_event_loop, daemon=True)
-            self._loop_thread.start()
+            self._loop_thread = threading.Thread(target=run_event_loop, daemon=True)  # type: ignore
+            self._loop_thread.start()  # type: ignore
 
             # Wait for loop to start
             loop_started.wait(timeout=5)

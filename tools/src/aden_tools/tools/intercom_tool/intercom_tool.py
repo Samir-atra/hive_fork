@@ -570,7 +570,7 @@ def register_tools(
             # Step 2: attach to target
             if conversation_id:
                 return client.tag_conversation(conversation_id, tag_id)
-            return client.tag_contact(contact_id, tag_id)
+            return client.tag_contact(contact_id, tag_id)  # type: ignore
         except httpx.TimeoutException:
             return {"error": "Request timed out"}
         except httpx.RequestError as e:

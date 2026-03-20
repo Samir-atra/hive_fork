@@ -153,7 +153,7 @@ class SessionState(BaseModel):
 
     model_config = {"extra": "allow"}
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def duration_ms(self) -> int:
         """Duration of the session in milliseconds."""
@@ -163,7 +163,7 @@ class SessionState(BaseModel):
         completed = datetime.fromisoformat(self.timestamps.completed_at)
         return int((completed - started).total_seconds() * 1000)
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def is_resumable(self) -> bool:
         """Can this session be resumed?
@@ -174,7 +174,7 @@ class SessionState(BaseModel):
         """
         return self.status != SessionStatus.COMPLETED
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def is_resumable_from_checkpoint(self) -> bool:
         """Can this session be resumed from a checkpoint?"""

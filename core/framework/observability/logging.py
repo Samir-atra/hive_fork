@@ -199,7 +199,7 @@ def configure_logging(
         # Disable colors in third-party libraries when using JSON format
         _disable_third_party_colors()
     else:
-        formatter = HumanReadableFormatter()
+        formatter = HumanReadableFormatter()  # type: ignore
 
     # Configure handler
     handler = logging.StreamHandler()

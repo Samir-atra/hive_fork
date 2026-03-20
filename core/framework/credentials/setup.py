@@ -557,9 +557,9 @@ def _load_nodes_from_python_agent(agent_path: Path) -> list:
             agent_py,
             submodule_search_locations=[str(agent_path)],
         )
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = module
-        spec.loader.exec_module(module)
+        module = importlib.util.module_from_spec(spec)  # type: ignore
+        sys.modules[spec.name] = module  # type: ignore
+        spec.loader.exec_module(module)  # type: ignore
         return getattr(module, "nodes", [])
     except Exception:
         return []

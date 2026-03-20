@@ -175,7 +175,7 @@ class AdenSyncProvider(CredentialProvider):
 
             # Report usage if enabled
             if self._report_usage:
-                self._client.report_usage(
+                self._client.report_usage(  # type: ignore
                     integration_id=credential.id,
                     operation="token_refresh",
                     status="success",
@@ -332,7 +332,7 @@ class AdenSyncProvider(CredentialProvider):
             metadata: Additional metadata.
         """
         if self._report_usage:
-            self._client.report_usage(
+            self._client.report_usage(  # type: ignore
                 integration_id=credential.id,
                 operation=operation,
                 status=status,

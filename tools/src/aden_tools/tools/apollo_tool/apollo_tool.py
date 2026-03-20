@@ -359,7 +359,7 @@ class _ApolloClient:
                         "email": m.get("email"),
                         "email_status": m.get("email_status"),
                         "linkedin_url": m.get("linkedin_url"),
-                        "organization_name": (m.get("organization") or {}).get("name"),
+                        "organization_name": (m.get("organization") or {}).get("name"),  # type: ignore
                     }
                 )
             return {"count": len(enriched), "results": enriched}

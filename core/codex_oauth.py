@@ -149,7 +149,7 @@ def save_credentials(token_data: dict, account_id: str) -> None:
         "last_refresh": datetime.now(UTC).isoformat(),
     }
     if "id_token" in token_data:
-        auth_data["tokens"]["id_token"] = token_data["id_token"]
+        auth_data["tokens"]["id_token"] = token_data["id_token"]  # type: ignore
 
     CODEX_AUTH_FILE.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     fd = os.open(CODEX_AUTH_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)

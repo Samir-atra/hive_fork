@@ -146,7 +146,7 @@ def register_tools(
         count = max(1, min(count, 1000))
         try:
             r = _get_client(url)
-            keys = []
+            keys: list[Any] = []
             cursor = 0
             while len(keys) < count:
                 cursor, batch = r.scan(cursor=cursor, match=pattern, count=min(count, 100))

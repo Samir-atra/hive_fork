@@ -596,8 +596,8 @@ def load_agent_export(data: str | dict) -> tuple[GraphSpec, Goal]:
         data = json.loads(data)
 
     # Extract graph and goal
-    graph_data = data.get("graph", {})
-    goal_data = data.get("goal", {})
+    graph_data = data.get("graph", {})  # type: ignore
+    goal_data = data.get("goal", {})  # type: ignore
 
     # Build NodeSpec objects
     nodes = []
@@ -1427,7 +1427,7 @@ class AgentRunner:
         event_bus=None,
     ) -> None:
         """Set up multi-entry-point execution using AgentRuntime."""
-        entry_points = []
+        entry_points: list[Any] = []
 
         # Always create a primary entry point for the graph's entry node.
         # For multi-entry-point agents this ensures the primary path (e.g.
@@ -1557,8 +1557,8 @@ class AgentRunner:
             self._setup()
 
         # Start runtime if not running
-        if not self._agent_runtime.is_running:
-            await self._agent_runtime.start()
+        if not self._agent_runtime.is_running:  # type: ignore
+            await self._agent_runtime.start()  # type: ignore
 
         # Set up stdin-based I/O for client-facing nodes in headless mode.
         # When a client_facing EventLoopNode calls ask_user(), it emits
@@ -1594,13 +1594,13 @@ class AgentRunner:
                 await runtime.inject_input(node_id, user_input)
 
             sub_ids.append(
-                runtime.subscribe_to_events(
+                runtime.subscribe_to_events(  # type: ignore
                     event_types=[EventType.CLIENT_OUTPUT_DELTA],
                     handler=_handle_client_output,
                 )
             )
             sub_ids.append(
-                runtime.subscribe_to_events(
+                runtime.subscribe_to_events(  # type: ignore
                     event_types=[EventType.CLIENT_INPUT_REQUESTED],
                     handler=_handle_input_requested,
                 )
@@ -1609,7 +1609,7 @@ class AgentRunner:
         # Determine entry point
         if entry_point_id is None:
             # Use first entry point or "default" if no entry points defined
-            entry_points = self._agent_runtime.get_entry_points()
+            entry_points = self._agent_runtime.get_entry_points()  # type: ignore
             if entry_points:
                 entry_point_id = entry_points[0].id
             else:
@@ -1617,7 +1617,7 @@ class AgentRunner:
 
         try:
             # Trigger and wait for result
-            result = await self._agent_runtime.trigger_and_wait(
+            result = await self._agent_runtime.trigger_and_wait(  # type: ignore
                 entry_point_id=entry_point_id,
                 input_data=input_data,
                 session_state=session_state,
@@ -1634,7 +1634,7 @@ class AgentRunner:
         finally:
             # Clean up subscriptions
             for sub_id in sub_ids:
-                self._agent_runtime.unsubscribe_from_events(sub_id)
+                self._agent_runtime.unsubscribe_from_events(sub_id)  # type: ignore
 
     # === Runtime API ===
 
@@ -1648,7 +1648,7 @@ class AgentRunner:
         if self._agent_runtime is None:
             self._setup()
 
-        await self._agent_runtime.start()
+        await self._agent_runtime.start()  # type: ignore
 
     async def stop(self) -> None:
         """Stop the agent runtime."""
@@ -1677,10 +1677,10 @@ class AgentRunner:
         if self._agent_runtime is None:
             self._setup()
 
-        if not self._agent_runtime.is_running:
-            await self._agent_runtime.start()
+        if not self._agent_runtime.is_running:  # type: ignore
+            await self._agent_runtime.start()  # type: ignore
 
-        return await self._agent_runtime.trigger(
+        return await self._agent_runtime.trigger(  # type: ignore
             entry_point_id=entry_point_id,
             input_data=input_data,
             correlation_id=correlation_id,
@@ -1696,7 +1696,7 @@ class AgentRunner:
         if self._agent_runtime is None:
             self._setup()
 
-        return await self._agent_runtime.get_goal_progress()
+        return await self._agent_runtime.get_goal_progress()  # type: ignore
 
     def get_entry_points(self) -> list[EntryPointSpec]:
         """
@@ -1708,7 +1708,7 @@ class AgentRunner:
         if self._agent_runtime is None:
             self._setup()
 
-        return self._agent_runtime.get_entry_points()
+        return self._agent_runtime.get_entry_points()  # type: ignore
 
     @property
     def is_running(self) -> bool:

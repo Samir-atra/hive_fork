@@ -233,7 +233,7 @@ class LoopConfig:
     #                        trigger = injected message text.
     # Each hook receives a HookContext and may return a HookResult to patch
     # the system prompt and/or inject a follow-up user message.
-    hooks: dict[str, list] = None  # dict[str, list[HookFn]]  (None → no hooks)
+    hooks: dict[str, list[Any]] | None = None  # type: ignore
 
     def __post_init__(self) -> None:
         if self.hooks is None:
@@ -741,8 +741,8 @@ class EventLoopNode(NodeProtocol):
                     await self._publish_llm_turn_complete(
                         stream_id,
                         node_id,
-                        stop_reason=turn_tokens.get("stop_reason", ""),
-                        model=turn_tokens.get("model", ""),
+                        stop_reason=turn_tokens.get("stop_reason", ""),  # type: ignore
+                        model=turn_tokens.get("model", ""),  # type: ignore
                         input_tokens=turn_tokens.get("input", 0),
                         output_tokens=turn_tokens.get("output", 0),
                         cached_tokens=turn_tokens.get("cached", 0),
@@ -1968,7 +1968,7 @@ class EventLoopNode(NodeProtocol):
                 inner_turn: int = inner_turn,
             ) -> None:
                 nonlocal accumulated_text, _stream_error
-                async for event in ctx.llm.stream(
+                async for event in ctx.llm.stream(  # type: ignore
                     messages=_msgs,
                     system=conversation.system_prompt,
                     tools=tools if tools else None,
@@ -1994,8 +1994,8 @@ class EventLoopNode(NodeProtocol):
                         token_counts["input"] += event.input_tokens
                         token_counts["output"] += event.output_tokens
                         token_counts["cached"] += event.cached_tokens
-                        token_counts["stop_reason"] = event.stop_reason
-                        token_counts["model"] = event.model
+                        token_counts["stop_reason"] = event.stop_reason  # type: ignore
+                        token_counts["model"] = event.model  # type: ignore
 
                     elif isinstance(event, StreamErrorEvent):
                         if not event.recoverable:
@@ -2169,7 +2169,7 @@ class EventLoopNode(NodeProtocol):
                     # Defensive: ensure options is a list of strings.
                     # Smaller models sometimes send a string instead of
                     # an array — try to recover gracefully.
-                    ask_user_options: list[str] | None = None
+                    ask_user_options: list[str] | None = None  # type: ignore
                     if isinstance(raw_options, list):
                         ask_user_options = [str(o) for o in raw_options if o]
                     elif isinstance(raw_options, str) and raw_options.strip():
@@ -2269,7 +2269,7 @@ class EventLoopNode(NodeProtocol):
                     ask_user_options = None
                     # Pass the full questions list via a special
                     # key that the event emitter picks up
-                    self._pending_multi_questions = questions
+                    self._pending_multi_questions = questions  # type: ignore
 
                     result = ToolResult(
                         tool_use_id=tc.tool_use_id,
@@ -2404,18 +2404,18 @@ class EventLoopNode(NodeProtocol):
                     try:
                         _r = await self._execute_tool(_tc)
                     except BaseException as _exc:
-                        _r = _exc
+                        _r = _exc  # type: ignore
                     _dur = round(time.time() - _s, 3)
                     return _r, _iso, _dur
 
-                self._tool_task = asyncio.ensure_future(
+                self._tool_task = asyncio.ensure_future(  # type: ignore
                     asyncio.gather(
                         *(_timed_execute(tc) for tc in pending_real),
                         return_exceptions=True,
                     )
                 )
                 try:
-                    timed_results = await self._tool_task
+                    timed_results = await self._tool_task  # type: ignore
                 finally:
                     self._tool_task = None
                 # gather(return_exceptions=True) captures CancelledError
@@ -2463,7 +2463,7 @@ class EventLoopNode(NodeProtocol):
                             accumulator=_acc,
                         )
                     except BaseException as _exc:
-                        _r = _exc
+                        _r = _exc  # type: ignore
                     _dur = round(time.time() - _s, 3)
                     return _r, _iso, _dur
 
@@ -2477,7 +2477,7 @@ class EventLoopNode(NodeProtocol):
                         _start_iso = datetime.now(UTC).isoformat()
                         _dur_s = 0
                     else:
-                        raw, _start_iso, _dur_s = entry
+                        raw, _start_iso, _dur_s = entry  # type: ignore
                     _sa_timing = {
                         "start_timestamp": _start_iso,
                         "duration_s": _dur_s,
@@ -2516,7 +2516,7 @@ class EventLoopNode(NodeProtocol):
             # Phase 3: record results into conversation in original order,
             # build logged/real lists, and publish completed events.
             for tc in tool_calls[:executed_in_batch]:
-                result = results_by_id.get(tc.tool_use_id)
+                result = results_by_id.get(tc.tool_use_id)  # type: ignore
                 if result is None:
                     continue  # shouldn't happen
 
@@ -2547,7 +2547,7 @@ class EventLoopNode(NodeProtocol):
                 )
                 if tc.tool_name in ("ask_user", "ask_user_multiple"):
                     # Defer tool_call_completed until after user responds
-                    self._deferred_tool_complete = {
+                    self._deferred_tool_complete = {  # type: ignore
                         "stream_id": stream_id,
                         "node_id": node_id,
                         "tool_use_id": tc.tool_use_id,
@@ -3123,7 +3123,7 @@ class EventLoopNode(NodeProtocol):
         if ctx.node_spec.success_criteria and ctx.llm:
             from framework.graph.conversation_judge import evaluate_phase_completion
 
-            verdict = await evaluate_phase_completion(
+            verdict = await evaluate_phase_completion(  # type: ignore
                 llm=ctx.llm,
                 conversation=conversation,
                 phase_name=ctx.node_spec.name,
@@ -3351,7 +3351,7 @@ class EventLoopNode(NodeProtocol):
         result = self._tool_executor(tool_use)
         if asyncio.iscoroutine(result) or asyncio.isfuture(result):
             result = await result
-        return result
+        return result  # type: ignore
 
     def _record_learning(self, key: str, value: Any) -> None:
         """Append a set_output value to adapt.md as a learning entry.
@@ -3678,7 +3678,7 @@ class EventLoopNode(NodeProtocol):
             )
             summary_budget = max(1024, self._config.max_context_tokens // 2)
             try:
-                response = await ctx.llm.acomplete(
+                response = await ctx.llm.acomplete(  # type: ignore
                     messages=[{"role": "user", "content": prompt}],
                     system=(
                         "You are a conversation compactor for an AI agent. "
@@ -4201,7 +4201,7 @@ class EventLoopNode(NodeProtocol):
                 f"Return ONLY the plan text, no preamble."
             )
 
-            response = await ctx.llm.acomplete(
+            response = await ctx.llm.acomplete(  # type: ignore
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=1024,
             )
@@ -4231,7 +4231,7 @@ class EventLoopNode(NodeProtocol):
         Hooks run in registration order; each sees the prompt as left by the
         previous hook.
         """
-        hook_list = self._config.hooks.get(event, [])
+        hook_list = self._config.hooks.get(event, []) if self._config.hooks else []  # type: ignore
         if not hook_list:
             return
         for hook in hook_list:

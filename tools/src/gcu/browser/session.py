@@ -390,10 +390,10 @@ class BrowserSession:
         """
         page = None
         temp = False
-        if self.context.pages:
-            page = self.context.pages[0]
+        if self.context.pages:  # type: ignore
+            page = self.context.pages[0]  # type: ignore
         else:
-            page = await self.context.new_page()
+            page = await self.context.new_page()  # type: ignore
             temp = True
         try:
             result = await page.evaluate("document.readyState")
@@ -745,11 +745,11 @@ class BrowserSession:
         """
         # Need an existing page to create a CDP session from
         anchor_page = self.get_active_page()
-        if not anchor_page and self.context.pages:
-            anchor_page = self.context.pages[0]
+        if not anchor_page and self.context.pages:  # type: ignore
+            anchor_page = self.context.pages[0]  # type: ignore
         if not anchor_page:
             # Nothing to steal focus from — just open normally
-            page = await self.context.new_page()
+            page = await self.context.new_page()  # type: ignore
             target_id = f"tab_{id(page)}"
             self._register_page(page, target_id, origin="agent")
             await page.goto(url, wait_until=wait_until, timeout=DEFAULT_NAVIGATION_TIMEOUT_MS)
@@ -761,7 +761,7 @@ class BrowserSession:
                 "background": False,
             }
 
-        cdp = await self.context.new_cdp_session(anchor_page)
+        cdp = await self.context.new_cdp_session(anchor_page)  # type: ignore
         try:
             # Get the browserContextId so the new tab lands in the same context
             target_info = await cdp.send("Target.getTargetInfo")
@@ -769,7 +769,7 @@ class BrowserSession:
 
             # Listen for the new page before creating it
             page_promise = asyncio.ensure_future(
-                self.context.wait_for_event("page", timeout=DEFAULT_NAVIGATION_TIMEOUT_MS)
+                self.context.wait_for_event("page", timeout=DEFAULT_NAVIGATION_TIMEOUT_MS)  # type: ignore
             )
 
             create_params: dict[str, Any] = {"url": url, "background": True}

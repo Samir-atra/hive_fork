@@ -94,13 +94,13 @@ class SafeEvalVisitor(ast.NodeVisitor):
         op_func = SAFE_OPERATORS.get(type(node.op))
         if op_func is None:
             raise ValueError(f"Operator {type(node.op).__name__} is not allowed")
-        return op_func(self.visit(node.left), self.visit(node.right))
+        return op_func(self.visit(node.left), self.visit(node.right))  # type: ignore
 
     def visit_UnaryOp(self, node: ast.UnaryOp) -> Any:
         op_func = SAFE_OPERATORS.get(type(node.op))
         if op_func is None:
             raise ValueError(f"Operator {type(node.op).__name__} is not allowed")
-        return op_func(self.visit(node.operand))
+        return op_func(self.visit(node.operand))  # type: ignore
 
     def visit_Compare(self, node: ast.Compare) -> Any:
         left = self.visit(node.left)
@@ -109,7 +109,7 @@ class SafeEvalVisitor(ast.NodeVisitor):
             if op_func is None:
                 raise ValueError(f"Operator {type(op).__name__} is not allowed")
             right = self.visit(comparator)
-            if not op_func(left, right):
+            if not op_func(left, right):  # type: ignore
                 return False
             left = right  # Chain comparisons
         return True
@@ -218,7 +218,7 @@ class SafeEvalVisitor(ast.NodeVisitor):
 
     def visit_Index(self, node: ast.Index) -> Any:
         # Python < 3.9
-        return self.visit(node.value)
+        return self.visit(node.value)  # type: ignore
 
 
 def safe_eval(expr: str, context: dict[str, Any] | None = None) -> Any:

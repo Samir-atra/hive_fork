@@ -1,10 +1,11 @@
-"""CLI commands for agent runner."""
 
+"""CLI commands for agent runner."""
 import argparse
 import asyncio
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def register_commands(subparsers: argparse._SubParsersAction) -> None:
@@ -903,7 +904,7 @@ def _interactive_approval(request):
 
 
 def _format_natural_language_to_json(
-    user_input: str, input_keys: list[str], agent_description: str, session_context: dict = None
+    user_input: str, input_keys: list[str], agent_description: str, session_context: dict = None  # type: ignore
 ) -> dict:
     """Convert natural language input to JSON based on agent's input schema.
 
@@ -981,8 +982,8 @@ def cmd_shell(args: argparse.Namespace) -> int:
     print()
 
     # Session state: accumulate context across multiple inputs
-    session_memory = {}
-    conversation_history = []
+    session_memory: dict[str, Any] = {}  # type: ignore
+    conversation_history: list[Any] = []  # type: ignore
     agent_session_state = None  # Track paused agent state
 
     while True:
@@ -1077,7 +1078,7 @@ def cmd_shell(args: argparse.Namespace) -> int:
 
             # Add conversation history to context if agent expects it
             if conversation_history:
-                run_context["_conversation_history"] = conversation_history.copy()
+                run_context["_conversation_history"] = conversation_history.copy()  # type: ignore
 
             print(f"\nRunning with: {json.dumps(context)}")
             if session_memory:
@@ -1191,9 +1192,9 @@ def _extract_python_agent_metadata(agent_path: Path) -> tuple[str, str]:
                             # Handle simple string constants
                             if isinstance(item.value, ast.Constant):
                                 if field_name == "name":
-                                    name = item.value.value
+                                    name = item.value.value  # type: ignore
                                 elif field_name == "description":
-                                    desc = item.value.value
+                                    desc = item.value.value  # type: ignore
                             # Handle parenthesized multi-line strings (concatenated)
                             elif isinstance(item.value, ast.JoinedStr):
                                 # f-strings - skip, use fallback

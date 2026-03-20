@@ -1,3 +1,4 @@
+
 """File-based storage for runtime logs.
 
 Each run gets its own directory under ``runs/``. No shared mutable index —
@@ -28,6 +29,7 @@ import json
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from framework.runtime.runtime_log_schemas import (
     NodeDetail,
@@ -267,7 +269,7 @@ def _read_jsonl_as_models(path: Path, model_cls: type) -> list:
 
     Skips blank lines and corrupt JSON lines (partial writes from crashes).
     """
-    results = []
+    results: list[Any] = []  # type: ignore
     if not path.exists():
         return results
     try:

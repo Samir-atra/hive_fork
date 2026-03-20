@@ -52,7 +52,7 @@ def register_tools(
 
     def _clean_params(params: dict[str, str | int | None]) -> dict[str, str | int]:
         """Remove None/empty values from request params."""
-        return {key: value for key, value in params.items() if value not in (None, "")}
+        return {key: value for key, value in params.items() if value not in (None, "")}  # type: ignore
 
     def _build_date_range(days_back: int) -> tuple[str, str]:
         """Build from/to date strings for the past N days."""
@@ -105,7 +105,7 @@ def register_tools(
             "snippet": snippet,
         }
         if sentiment is not None:
-            payload["sentiment"] = sentiment
+            payload["sentiment"] = sentiment  # type: ignore
         return payload
 
     def _parse_newsdata_results(data: dict) -> list[dict]:

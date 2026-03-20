@@ -160,7 +160,7 @@ def register_tools(
         if owned:
             params["owned"] = "true"
 
-        data = _get(base_url, "/projects", token, params)
+        data = _get(base_url, "/projects", token, params)  # type: ignore
         if isinstance(data, dict) and "error" in data:
             return data
 
@@ -198,7 +198,7 @@ def register_tools(
         if not project_id:
             return {"error": "project_id is required"}
 
-        data = _get(base_url, f"/projects/{project_id}", token, {"statistics": "true"})
+        data = _get(base_url, f"/projects/{project_id}", token, {"statistics": "true"})  # type: ignore
         if isinstance(data, dict) and "error" in data:
             return data
         if not isinstance(data, dict):
@@ -260,7 +260,7 @@ def register_tools(
         if search:
             params["search"] = search
 
-        data = _get(base_url, f"/projects/{project_id}/issues", token, params)
+        data = _get(base_url, f"/projects/{project_id}/issues", token, params)  # type: ignore
         if isinstance(data, dict) and "error" in data:
             return data
 
@@ -300,7 +300,7 @@ def register_tools(
         if not project_id or not issue_iid:
             return {"error": "project_id and issue_iid are required"}
 
-        data = _get(base_url, f"/projects/{project_id}/issues/{issue_iid}", token)
+        data = _get(base_url, f"/projects/{project_id}/issues/{issue_iid}", token)  # type: ignore
         if isinstance(data, dict) and "error" in data:
             return data
         if not isinstance(data, dict):
@@ -360,7 +360,7 @@ def register_tools(
         if assignee_ids:
             body["assignee_ids"] = [int(x.strip()) for x in assignee_ids.split(",") if x.strip()]
 
-        data = _post(base_url, f"/projects/{project_id}/issues", token, json=body)
+        data = _post(base_url, f"/projects/{project_id}/issues", token, json=body)  # type: ignore
         if isinstance(data, dict) and "error" in data:
             return data
         if not isinstance(data, dict):
@@ -404,7 +404,7 @@ def register_tools(
             "page": max(1, page),
         }
 
-        data = _get(base_url, f"/projects/{project_id}/merge_requests", token, params)
+        data = _get(base_url, f"/projects/{project_id}/merge_requests", token, params)  # type: ignore
         if isinstance(data, dict) and "error" in data:
             return data
 
@@ -471,7 +471,7 @@ def register_tools(
         if not body:
             return {"error": "At least one field to update is required"}
 
-        data = _put(base_url, f"/projects/{project_id}/issues/{issue_iid}", token, json=body)
+        data = _put(base_url, f"/projects/{project_id}/issues/{issue_iid}", token, json=body)  # type: ignore
         if isinstance(data, dict) and "error" in data:
             return data
         if not isinstance(data, dict):
@@ -506,7 +506,7 @@ def register_tools(
         if not project_id or not merge_request_iid:
             return {"error": "project_id and merge_request_iid are required"}
 
-        data = _get(base_url, f"/projects/{project_id}/merge_requests/{merge_request_iid}", token)
+        data = _get(base_url, f"/projects/{project_id}/merge_requests/{merge_request_iid}", token)  # type: ignore
         if isinstance(data, dict) and "error" in data:
             return data
         if not isinstance(data, dict):
@@ -555,7 +555,7 @@ def register_tools(
             return {"error": "project_id, merge_request_iid, and body are required"}
 
         data = _post(
-            base_url,
+            base_url,  # type: ignore
             f"/projects/{project_id}/merge_requests/{merge_request_iid}/notes",
             token,
             json={"body": body},

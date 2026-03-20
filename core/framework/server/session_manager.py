@@ -381,7 +381,7 @@ class SessionManager:
             import ctypes
 
             # PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
-            kernel32 = ctypes.windll.kernel32
+            kernel32 = ctypes.windll.kernel32  # type: ignore
             handle = kernel32.OpenProcess(0x1000, False, pid)
             if not handle:
                 # 5 is ERROR_ACCESS_DENIED, meaning the process exists but is protected
@@ -804,7 +804,7 @@ class SessionManager:
         if node is None or not hasattr(node, "inject_event"):
             return
 
-        profile = build_worker_profile(session.worker_runtime, agent_path=session.worker_path)
+        profile = build_worker_profile(session.worker_runtime, agent_path=session.worker_path)  # type: ignore
 
         # Append available trigger info so the queen knows what's schedulable
         trigger_lines = ""

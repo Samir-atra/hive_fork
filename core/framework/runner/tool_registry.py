@@ -672,7 +672,7 @@ class ToolRegistry:
     def _snapshot_credentials(self) -> set[str]:
         """Return the set of credential filenames currently on disk."""
         try:
-            return set(self._CREDENTIAL_DIR.iterdir()) if self._CREDENTIAL_DIR.is_dir() else set()
+            return set(self._CREDENTIAL_DIR.iterdir()) if self._CREDENTIAL_DIR.is_dir() else set()  # type: ignore
         except OSError:
             return set()
 
@@ -754,7 +754,7 @@ def tool(
     """
 
     def decorator(func: Callable) -> Callable:
-        func._tool_metadata = {
+        func._tool_metadata = {  # type: ignore
             "name": name or func.__name__,
             "description": description or func.__doc__,
         }

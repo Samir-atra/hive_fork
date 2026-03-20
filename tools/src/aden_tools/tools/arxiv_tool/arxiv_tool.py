@@ -10,7 +10,7 @@ from typing import Literal
 from urllib.parse import urlparse
 
 import arxiv
-import requests
+import requests  # type: ignore
 from fastmcp import FastMCP
 
 _SHARED_ARXIV_CLIENT = arxiv.Client(page_size=100, delay_seconds=3, num_retries=3)

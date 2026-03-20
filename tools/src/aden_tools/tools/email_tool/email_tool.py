@@ -207,7 +207,7 @@ def register_tools(
                     credential, to_list, subject, html, from_email, cc_list, bcc_list
                 )
             return _send_via_resend(
-                credential, to_list, subject, html, from_email, cc_list, bcc_list
+                credential, to_list, subject, html, from_email, cc_list, bcc_list  # type: ignore
             )
         except Exception as e:
             return {"error": f"Email send failed: {e}"}

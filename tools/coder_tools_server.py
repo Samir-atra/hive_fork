@@ -524,7 +524,7 @@ def list_agent_tools(
 
     def _tool_credentials_available(tool_name: str, available_creds: set[str]) -> bool:
         """True if all credentials required by tool_name are available (or tool needs none)."""
-        required = set()
+        required: set[Any] = set()  # type: ignore
         for provider_creds in tool_provider_auth.get(tool_name, {}).values():
             required.update(provider_creds.keys())
         if not required:

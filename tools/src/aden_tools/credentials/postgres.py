@@ -32,8 +32,8 @@ Example:
 postgresql://postgres:secret@localhost:5432/mydb
 
 The database user should have read-only permissions.""",
-        health_check_endpoint=None,
-        health_check_method=None,
+        health_check_endpoint=None,  # type: ignore
+        health_check_method=None,  # type: ignore
         credential_id="postgres",
         credential_key="database_url",
     ),

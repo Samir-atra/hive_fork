@@ -110,7 +110,7 @@ def register_tools(mcp: FastMCP) -> None:
         # 3. Categorize and validate ops
         splices = []  # (start_0idx, end_0idx, new_lines, op_index)
         replaces = []  # (old_content, new_content, op_index, allow_multiple)
-        cleanup_actions = []
+        cleanup_actions: list[Any] = []  # type: ignore
 
         for i, op in enumerate(edit_ops):
             if not isinstance(op, dict):
@@ -248,7 +248,7 @@ def register_tools(mcp: FastMCP) -> None:
 
                 case "replace":
                     old_content = op.get("old_content")
-                    new_content = op.get("new_content")
+                    new_content = op.get("new_content")  # type: ignore
                     if old_content is None:
                         return {"error": f"Edit #{i + 1} (replace): missing old_content"}
                     if not isinstance(old_content, str):
@@ -267,7 +267,7 @@ def register_tools(mcp: FastMCP) -> None:
                     replaces.append((old_content, new_content, i, allow_multiple))
 
                 case "append":
-                    new_content = op.get("content")
+                    new_content = op.get("content")  # type: ignore
                     if new_content is None:
                         return {"error": f"Edit #{i + 1} (append): missing content"}
                     if not isinstance(new_content, str):

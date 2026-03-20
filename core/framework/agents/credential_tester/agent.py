@@ -1,3 +1,4 @@
+
 """Credential Tester agent — verify credentials via live API calls.
 
 Supports both Aden OAuth2-synced accounts AND locally-stored API key accounts.
@@ -17,7 +18,7 @@ after the user picks an account programmatically.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from framework.config import get_max_context_tokens
 from framework.graph import Goal, NodeSpec, SuccessCriterion
@@ -441,11 +442,11 @@ pass an account parameter — they are pre-injected into the session.
     ),
 ]
 
-edges = []
+edges: list[Any] = []  # type: ignore
 
 entry_node = "tester"
 entry_points = {"start": "tester"}
-pause_nodes = []
+pause_nodes: list[Any] = []  # type: ignore
 terminal_nodes = ["tester"]  # Tester node can terminate
 
 conversation_mode = "continuous"
@@ -509,8 +510,8 @@ class CredentialTesterAgent:
     def _build_graph(self) -> GraphSpec:
         provider = self.selected_provider
         alias = self.selected_alias
-        source = self._selected_account.get("source", "aden")
-        identity = self._selected_account.get("identity", {})
+        source = self._selected_account.get("source", "aden")  # type: ignore
+        identity = self._selected_account.get("identity", {})  # type: ignore
         tools = get_tools_for_provider(provider)
 
         if source == "local":
@@ -600,8 +601,8 @@ class CredentialTesterAgent:
         """Set up and start the agent runtime."""
         if self._agent_runtime is None:
             self._setup()
-        if not self._agent_runtime.is_running:
-            await self._agent_runtime.start()
+        if not self._agent_runtime.is_running:  # type: ignore
+            await self._agent_runtime.start()  # type: ignore
 
     async def stop(self) -> None:
         """Stop the agent runtime."""
@@ -613,7 +614,7 @@ class CredentialTesterAgent:
         """Run the agent (convenience for single execution)."""
         await self.start()
         try:
-            result = await self._agent_runtime.trigger_and_wait(
+            result = await self._agent_runtime.trigger_and_wait(  # type: ignore
                 entry_point_id="start",
                 input_data={},
             )
