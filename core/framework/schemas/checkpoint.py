@@ -41,6 +41,7 @@ class Checkpoint(BaseModel):
 
     # Metadata
     is_clean: bool = True  # True if no failures/retries before this checkpoint
+    is_starred: bool = False  # True if manually starred by user
     description: str = ""  # Human-readable checkpoint description
 
     model_config = {"extra": "allow"}
@@ -58,6 +59,7 @@ class Checkpoint(BaseModel):
         metrics_snapshot: dict[str, Any] | None = None,
         is_clean: bool = True,
         description: str = "",
+        is_starred: bool = False,
     ) -> "Checkpoint":
         """
         Create a new checkpoint with generated ID and timestamp.
@@ -96,6 +98,7 @@ class Checkpoint(BaseModel):
             metrics_snapshot=metrics_snapshot or {},
             is_clean=is_clean,
             description=description,
+            is_starred=is_starred,
         )
 
 
@@ -114,6 +117,7 @@ class CheckpointSummary(BaseModel):
     next_node: str | None = None
     is_clean: bool = True
     description: str = ""
+    is_starred: bool = False
 
     model_config = {"extra": "allow"}
 
@@ -128,6 +132,7 @@ class CheckpointSummary(BaseModel):
             next_node=checkpoint.next_node,
             is_clean=checkpoint.is_clean,
             description=checkpoint.description,
+            is_starred=checkpoint.is_starred,
         )
 
 

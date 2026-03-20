@@ -111,4 +111,10 @@ export const sessionsApi = {
     api.post<{ execution_id: string }>(
       `/sessions/${sessionId}/worker-sessions/${wsId}/checkpoints/${checkpointId}/restore`,
     ),
+
+  updateStar: (sessionId: string, wsId: string, checkpointId: string, isStarred: boolean) =>
+    api.put<{ success: boolean }>(
+      `/sessions/${sessionId}/worker-sessions/${wsId}/checkpoints/${checkpointId}/star`,
+      { is_starred: isStarred }
+    ),
 };

@@ -14,7 +14,7 @@ import { executionApi } from "@/api/execution";
 import { graphsApi } from "@/api/graphs";
 import { sessionsApi } from "@/api/sessions";
 import { useMultiSSE } from "@/hooks/use-sse";
-import type { LiveSession, AgentEvent, DiscoverEntry, NodeSpec, DraftGraph as DraftGraphData } from "@/api/types";
+import type { LiveSession, AgentEvent, DiscoverEntry, NodeSpec, DraftGraph as DraftGraphData, Checkpoint } from "@/api/types";
 import { sseEventToChatMessage, formatAgentDisplayName } from "@/lib/chat-helpers";
 import { topologyToGraphNodes } from "@/lib/graph-converter";
 import { ApiError } from "@/api/client";
@@ -557,6 +557,10 @@ export default function Workspace() {
   const [triggerTaskSaving, setTriggerTaskSaving] = useState(false);
   const [newTabOpen, setNewTabOpen] = useState(false);
   const newTabBtnRef = useRef<HTMLButtonElement>(null);
+
+  // -- Checkpoints State --
+  const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
+
 
   // Ref mirror of sessionsByAgent so SSE callback can read current graph
   // state without adding sessionsByAgent to its dependency array.
@@ -2847,6 +2851,9 @@ export default function Workspace() {
                 runState={activeAgentState?.workerRunState ?? "idle"}
                 building={activeAgentState?.queenBuilding ?? false}
                 queenPhase={activeAgentState?.queenPhase ?? "building"}
+                checkpoints={checkpoints}
+                onStarCheckpoint={handleStarCheckpoint}
+                onRestoreCheckpoint={handleRestoreCheckpoint}
               />
             )}
           </div>

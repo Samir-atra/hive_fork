@@ -241,6 +241,9 @@ def sample_session(tmp_agent_dir):
     cp_dir.mkdir()
     cp_data = {
         "checkpoint_id": "cp_node_complete_node_a_001",
+        "checkpoint_type": "node_complete",
+        "session_id": "session_20260220_120000_abc12345",
+        "created_at": "2026-02-20T12:01:00",
         "current_node": "node_a",
         "next_node": "node_b",
         "is_clean": True,
@@ -915,6 +918,31 @@ class TestWorkerSessions:
                 f"/api/sessions/test_agent/worker-sessions/{session_id}/checkpoints/nonexistent_cp/restore"
             )
             assert resp.status == 404
+
+    @pytest.mark.asyncio
+    async def test_star_checkpoint(self, sample_session, tmp_agent_dir):
+        session_id, session_dir, state = sample_session
+        tmp_path, agent_name, base = tmp_agent_dir
+
+        session = _make_session(tmp_dir=tmp_path / ".hive" / "agents" / agent_name)
+        app = _make_app_with_session(session)
+
+        async with TestClient(TestServer(app)) as client:
+            resp = await client.put(
+                f"/api/sessions/test_agent/worker-sessions/{session_id}/checkpoints/cp_node_complete_node_a_001/star",
+                json={"is_starred": True},
+            )
+            assert resp.status == 200
+            data = await resp.json()
+            assert data["success"] is True
+
+            # Verify it is starred in the list
+            resp = await client.get(
+                f"/api/sessions/test_agent/worker-sessions/{session_id}/checkpoints"
+            )
+            data = await resp.json()
+            cp = data["checkpoints"][0]
+            assert cp["is_starred"] is True
 
 
 class TestMessages:

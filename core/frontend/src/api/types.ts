@@ -128,6 +128,7 @@ export interface Checkpoint {
   current_node: string | null;
   next_node: string | null;
   is_clean: boolean;
+  is_starred?: boolean;
   timestamp: string | null;
   error?: string;
 }
