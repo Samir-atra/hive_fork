@@ -390,6 +390,7 @@ async def test_event_loop_with_event_bus():
 
     assert result.success
 
+    await bus.wait_until_idle()
     event_types = [e.type for e in recorded]
     assert EventType.NODE_LOOP_STARTED in event_types
     assert EventType.NODE_LOOP_ITERATION in event_types
@@ -948,6 +949,7 @@ async def test_client_facing_node_streams_output():
 
     assert result.success
 
+    await bus.wait_until_idle()
     event_types = [e.type for e in recorded]
     assert EventType.CLIENT_OUTPUT_DELTA in event_types
     # Should NOT have LLM_TEXT_DELTA (that's for internal nodes)
@@ -984,6 +986,7 @@ async def test_internal_node_no_client_output():
 
     assert result.success
 
+    await bus.wait_until_idle()
     event_types = [e.type for e in recorded]
     assert EventType.LLM_TEXT_DELTA in event_types
     assert EventType.CLIENT_OUTPUT_DELTA not in event_types

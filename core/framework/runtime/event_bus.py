@@ -264,6 +264,8 @@ class EventBus:
         # Accumulator for client_output_delta snapshots — flushed on llm_turn_complete.
         # Key: (stream_id, node_id, execution_id, iteration, inner_turn) → latest AgentEvent
         self._pending_output_snapshots: dict[tuple, AgentEvent] = {}
+        # Background tasks for fire-and-forget handler execution
+        self._background_tasks: set[asyncio.Task] = set()
 
     def set_session_log(self, path: Path, *, iteration_offset: int = 0) -> None:
         """Enable per-session event persistence to a JSONL file.
@@ -438,9 +440,13 @@ class EventBus:
             return True
         return False
 
-    async def publish(self, event: AgentEvent) -> None:
+    async def publish(self, event: AgentEvent, *, _wait_for_handlers: bool = False) -> None:
         """
-        Publish an event to all matching subscribers.
+        Publish an event to all matching subscribers. This is a fire-and-forget
+        operation that returns immediately so that slow subscribers do not
+        deadlock or block the execution loop.
+
+        _wait_for_handlers: If True, wait for the background handlers to complete (used in tests).
 
         Args:
             event: Event to publish
@@ -494,9 +500,19 @@ class EventBus:
             if self._matches(subscription, event):
                 matching_handlers.append(subscription.handler)
 
-        # Execute handlers concurrently
+        # Execute handlers concurrently as a fire-and-forget task
         if matching_handlers:
-            await self._execute_handlers(event, matching_handlers)
+            task = asyncio.create_task(self._execute_handlers(event, matching_handlers))
+            self._background_tasks.add(task)
+            task.add_done_callback(self._background_tasks.discard)
+            if _wait_for_handlers:
+                await task
+
+    async def wait_until_idle(self) -> None:
+        """Wait until all background event handlers have completed."""
+        while self._background_tasks:
+            tasks = list(self._background_tasks)
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     def _matches(self, subscription: Subscription, event: AgentEvent) -> bool:
         """Check if a subscription matches an event."""
@@ -1275,7 +1291,7 @@ class EventBus:
 
     def get_stats(self) -> dict:
         """Get event bus statistics."""
-        type_counts = {}
+        type_counts: dict[str, int] = {}
         for event in self._event_history:
             type_counts[event.type.value] = type_counts.get(event.type.value, 0) + 1
 

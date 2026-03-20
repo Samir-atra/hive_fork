@@ -545,6 +545,7 @@ class TestWP2NodeLevelRouting:
             )
         )
 
+        await bus.wait_until_idle()
         assert len(received) == 1
         assert received[0].node_id == "node-A"
         assert received[0].data["content"] == "hello"
@@ -609,6 +610,7 @@ class TestWP2NodeLevelRouting:
             )
         )
 
+        await bus.wait_until_idle()
         assert len(received) == 3
 
     @pytest.mark.asyncio
@@ -668,6 +670,7 @@ class TestWP2NodeLevelRouting:
             )
         )
 
+        await bus.wait_until_idle()
         assert len(node_a_events) == 2
         assert len(node_b_events) == 2
         assert node_a_events[0].data["content"] == "Dear Jo"
@@ -715,6 +718,7 @@ class TestWP2NodeLevelRouting:
             )
         )
 
+        await bus.wait_until_idle()
         assert len(received) == 1
         assert received[0].stream_id == "webhook"
         assert received[0].node_id == "search_node"
@@ -808,6 +812,7 @@ class TestWP2ConveniencePublishers:
             max_iterations=10,
         )
 
+        await bus.wait_until_idle()
         assert len(received) == 1
         assert received[0].node_id == "n1"
         assert received[0].data["max_iterations"] == 10
@@ -826,6 +831,7 @@ class TestWP2ConveniencePublishers:
             iteration=3,
         )
 
+        await bus.wait_until_idle()
         assert len(received) == 1
         assert received[0].data["iteration"] == 3
 
@@ -843,6 +849,7 @@ class TestWP2ConveniencePublishers:
             iterations=5,
         )
 
+        await bus.wait_until_idle()
         assert len(received) == 1
         assert received[0].data["iterations"] == 5
 
@@ -861,6 +868,7 @@ class TestWP2ConveniencePublishers:
             snapshot="hello world",
         )
 
+        await bus.wait_until_idle()
         assert len(received) == 1
         assert received[0].data["content"] == "hello"
         assert received[0].data["snapshot"] == "hello world"
@@ -881,6 +889,7 @@ class TestWP2ConveniencePublishers:
             tool_input={"query": "test"},
         )
 
+        await bus.wait_until_idle()
         assert len(received) == 1
         assert received[0].data["tool_name"] == "web_search"
         assert received[0].data["tool_input"] == {"query": "test"}
@@ -901,6 +910,7 @@ class TestWP2ConveniencePublishers:
             result="3 results found",
         )
 
+        await bus.wait_until_idle()
         assert len(received) == 1
         assert received[0].data["result"] == "3 results found"
         assert received[0].data["is_error"] is False
@@ -920,6 +930,7 @@ class TestWP2ConveniencePublishers:
             snapshot="full chunk",
         )
 
+        await bus.wait_until_idle()
         assert len(received) == 1
         assert received[0].data["content"] == "chunk"
 
@@ -937,6 +948,7 @@ class TestWP2ConveniencePublishers:
             reason="no progress after 10 iterations",
         )
 
+        await bus.wait_until_idle()
         assert len(received) == 1
         assert received[0].data["reason"] == "no progress after 10 iterations"
 
@@ -974,5 +986,6 @@ class TestWP2ConveniencePublishers:
             snapshot="bye",
         )
 
+        await bus.wait_until_idle()
         assert len(received) == 2
         assert all(e.node_id == "my_node" for e in received)
