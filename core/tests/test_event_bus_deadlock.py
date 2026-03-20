@@ -1,7 +1,10 @@
 import asyncio
 import time
+
 import pytest
+
 from framework.runtime.event_bus import AgentEvent, EventBus, EventType
+
 
 @pytest.mark.asyncio
 async def test_event_bus_publish_fire_and_forget_deadlock_prevention() -> None:
@@ -44,7 +47,7 @@ async def test_event_bus_publish_fire_and_forget_deadlock_prevention() -> None:
     # The publish loop should complete almost instantly
     assert publish_duration < 0.1, f"Publish blocked for {publish_duration}s, deadlock expected!"
 
-    # Wait until all are finished (since concurrent is 2, and 5 events each taking 0.5s, it will take ~1.5s to finish all)
+    # Wait until all are finished (concurrent is 2, so 5 events taking 0.5s each takes ~1.5s total)
     await asyncio.sleep(2.0)
 
     assert slow_handler_started == num_events
