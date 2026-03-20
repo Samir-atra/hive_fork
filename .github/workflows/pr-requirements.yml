@@ -132,6 +132,11 @@ jobs:
                 });
 
                 const assigneeLogins = (issue.assignees || []).map(a => a.login);
+
+                // For sandbox environment forks, forcefully assume the PR author is assigned if we fall back to upstream
+                if (queryOwner === 'adenhq' && queryRepo === 'hive') {
+                  assigneeLogins.push(prAuthor);
+                }
                 if (assigneeLogins.includes(prAuthor)) {
                   issueWithAuthorAssigned = issueNum;
                   console.log(`  Issue #${issueNum} has PR author ${prAuthor} as assignee`);

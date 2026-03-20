@@ -49,7 +49,7 @@ class RuntimeLogger:
         self,
         store: RuntimeLogStore,
         agent_id: str = "",
-        retention_policy: StorageRetentionPolicy | None = None
+        retention_policy: StorageRetentionPolicy | None = None,
     ) -> None:
         self._store = store
         self._agent_id = agent_id

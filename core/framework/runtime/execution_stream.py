@@ -634,7 +634,7 @@ class ExecutionStream:
                     runtime_logger = RuntimeLogger(
                         store=self._runtime_log_store,
                         agent_id=self.graph.id,
-                        retention_policy=self._storage_retention_policy
+                        retention_policy=self._storage_retention_policy,
                     )
 
                 # Derive storage from session_store (graph-specific for secondary

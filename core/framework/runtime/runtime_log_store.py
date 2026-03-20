@@ -182,12 +182,14 @@ class RuntimeLogStore:
             if policy.max_disk_mb:
                 size_mb = await asyncio.to_thread(_get_dir_size_mb, run_dir)
 
-            runs_meta.append({
-                "run_id": run_id,
-                "dir": run_dir,
-                "dt": dt,
-                "size_mb": size_mb,
-            })
+            runs_meta.append(
+                {
+                    "run_id": run_id,
+                    "dir": run_dir,
+                    "dt": dt,
+                    "size_mb": size_mb,
+                }
+            )
 
         runs_meta.sort(key=lambda x: x["dt"], reverse=True)  # Newest first
         to_delete = []
@@ -202,9 +204,9 @@ class RuntimeLogStore:
 
         # 2. Prune by max_runs
         if policy.max_runs and len(runs_meta) > policy.max_runs:
-            excess = runs_meta[policy.max_runs:]
+            excess = runs_meta[policy.max_runs :]
             to_delete.extend(excess)
-            runs_meta = runs_meta[:policy.max_runs]
+            runs_meta = runs_meta[: policy.max_runs]
 
         # 3. Prune by max_disk_mb
         if policy.max_disk_mb:
@@ -221,7 +223,6 @@ class RuntimeLogStore:
                 logger.info("Pruned old runtime log directory: %s", meta["run_id"])
             except Exception as e:
                 logger.warning("Failed to prune directory %s: %s", meta["dir"], e)
-
 
     async def list_runs(
         self,
@@ -354,6 +355,7 @@ def _get_dir_size_mb(path: Path) -> float:
     except Exception as e:
         logger.warning("Failed to calculate directory size for %s: %s", path, e)
     return total_bytes / (1024 * 1024)
+
 
 def _read_jsonl_as_models(path: Path, model_cls: type) -> list:
     """Parse a JSONL file into a list of Pydantic model instances.
