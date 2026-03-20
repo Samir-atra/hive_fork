@@ -1427,7 +1427,7 @@ class AgentRunner:
         event_bus=None,
     ) -> None:
         """Set up multi-entry-point execution using AgentRuntime."""
-        entry_points = []  # type: ignore
+        entry_points: list[Any] = []
 
         # Always create a primary entry point for the graph's entry node.
         # For multi-entry-point agents this ensures the primary path (e.g.

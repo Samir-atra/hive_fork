@@ -110,7 +110,7 @@ def register_tools(mcp: FastMCP) -> None:
         # 3. Categorize and validate ops
         splices = []  # (start_0idx, end_0idx, new_lines, op_index)
         replaces = []  # (old_content, new_content, op_index, allow_multiple)
-        cleanup_actions = []  # type: ignore
+        cleanup_actions: list[Any] = []  # type: ignore
 
         for i, op in enumerate(edit_ops):
             if not isinstance(op, dict):

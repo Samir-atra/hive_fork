@@ -55,7 +55,7 @@ def register_tools(mcp: FastMCP) -> None:
                 columns = list(reader.fieldnames)
 
                 # Apply offset and limit
-                rows = []  # type: ignore
+                rows: list[Any] = []  # type: ignore
                 for i, row in enumerate(reader):
                     if i < offset:
                         continue

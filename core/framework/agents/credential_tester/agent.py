@@ -1,3 +1,4 @@
+
 """Credential Tester agent — verify credentials via live API calls.
 
 Supports both Aden OAuth2-synced accounts AND locally-stored API key accounts.
@@ -17,7 +18,7 @@ after the user picks an account programmatically.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from framework.config import get_max_context_tokens
 from framework.graph import Goal, NodeSpec, SuccessCriterion
@@ -441,11 +442,11 @@ pass an account parameter — they are pre-injected into the session.
     ),
 ]
 
-edges = []  # type: ignore
+edges: list[Any] = []  # type: ignore
 
 entry_node = "tester"
 entry_points = {"start": "tester"}
-pause_nodes = []  # type: ignore
+pause_nodes: list[Any] = []  # type: ignore
 terminal_nodes = ["tester"]  # Tester node can terminate
 
 conversation_mode = "continuous"

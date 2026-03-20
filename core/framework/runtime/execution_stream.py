@@ -814,8 +814,8 @@ class ExecutionStream:
 
                 # Check if we have a result (executor completed and returned)
                 try:
-                    _ = result  # type: ignore
-                    has_result = True
+                    _ = locals().get("result", None)  # type: ignore
+                    _ = locals().get("result", None)
                 except NameError:
                     has_result = False
                     result = ExecutionResult(
@@ -1173,7 +1173,7 @@ class ExecutionStream:
 
     def get_stats(self) -> dict:
         """Get stream statistics."""
-        statuses = {}  # type: ignore
+        statuses: dict[str, Any] = {}
         for ctx in self._active_executions.values():
             statuses[ctx.status] = statuses.get(ctx.status, 0) + 1
 

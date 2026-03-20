@@ -449,8 +449,8 @@ def validate_agent_credentials(
                                     store.save_credential(cred_obj)
                             except Exception:
                                 pass  # Identity persistence is best-effort
-                except Exception as exc:
-                    logger.debug("Health check for %s failed: %s", status.credential_name, exc)
+                except Exception as e:
+                    logger.debug("Health check for %s failed: %s", status.credential_name, str(e))
 
     validation_result = CredentialValidationResult(
         credentials=all_credentials,
@@ -461,9 +461,9 @@ def validate_agent_credentials(
         from framework.credentials.models import CredentialError
 
         err = CredentialError(validation_result.format_error_message())  # type: ignore
-        err.validation_result = validation_result  # type: ignore[attr-defined]
-        err.failed_cred_names = validation_result.failed_cred_names  # type: ignore[attr-defined]
-        raise err  # type: ignore
+        err.validation_result = validation_result  # type: ignore[attr-defined,misc]
+        err.failed_cred_names = validation_result.failed_cred_names  # type: ignore[attr-defined,misc]
+        raise err  # type: ignore[misc]
 
     return validation_result
 

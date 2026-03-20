@@ -4231,7 +4231,7 @@ class EventLoopNode(NodeProtocol):
         Hooks run in registration order; each sees the prompt as left by the
         previous hook.
         """
-        hook_list = self._config.hooks.get(event, [])  # type: ignore
+        hook_list = self._config.hooks.get(event, []) if self._config.hooks else []  # type: ignore
         if not hook_list:
             return
         for hook in hook_list:

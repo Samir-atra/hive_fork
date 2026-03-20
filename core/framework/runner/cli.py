@@ -1,10 +1,11 @@
-"""CLI commands for agent runner."""
 
+"""CLI commands for agent runner."""
 import argparse
 import asyncio
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def register_commands(subparsers: argparse._SubParsersAction) -> None:
@@ -981,8 +982,8 @@ def cmd_shell(args: argparse.Namespace) -> int:
     print()
 
     # Session state: accumulate context across multiple inputs
-    session_memory = {}  # type: ignore
-    conversation_history = []  # type: ignore
+    session_memory: dict[str, Any] = {}  # type: ignore
+    conversation_history: list[Any] = []  # type: ignore
     agent_session_state = None  # Track paused agent state
 
     while True:

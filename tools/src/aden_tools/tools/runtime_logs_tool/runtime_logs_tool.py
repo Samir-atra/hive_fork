@@ -27,7 +27,7 @@ def _read_jsonl(path: Path) -> list[dict]:
 
     Skips blank lines and corrupt JSON lines (partial writes from crashes).
     """
-    results = []  # type: ignore
+    results: list[Any] = []  # type: ignore
     if not path.exists():
         return results
     try:

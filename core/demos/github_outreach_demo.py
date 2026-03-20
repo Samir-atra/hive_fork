@@ -856,7 +856,7 @@ def send_emails(approved_emails: str = "") -> str:
     from_email = os.getenv("EMAIL_FROM", "noreply@example.com")
     has_resend = bool(CREDENTIALS.get("resend") or os.getenv("RESEND_API_KEY"))
 
-    results = []  # type: ignore
+    results: list[Any] = []
     for email in emails:
         recipient = email.get("recipient", "unknown")
         subject = email.get("subject", "")
