@@ -1,6 +1,9 @@
-import pytest
 import asyncio
-from framework.runtime.shared_state import SharedStateManager, IsolationLevel, StateScope
+
+import pytest
+
+from framework.runtime.shared_state import IsolationLevel, SharedStateManager, StateScope
+
 
 @pytest.mark.asyncio
 async def test_shared_state_synchronized_read_blocks():
@@ -13,7 +16,7 @@ async def test_shared_state_synchronized_read_blocks():
         execution_id="exec_1",
         stream_id="stream_1",
         isolation=IsolationLevel.SYNCHRONIZED,
-        scope=StateScope.STREAM
+        scope=StateScope.STREAM,
     )
 
     events = []
@@ -27,13 +30,13 @@ async def test_shared_state_synchronized_read_blocks():
             events.append("writer_released")
 
     async def reader():
-        await asyncio.sleep(0.01) # Give writer time to acquire lock
+        await asyncio.sleep(0.01)  # Give writer time to acquire lock
         events.append("reader_waiting")
         val = await manager.read(
             key="counter",
             execution_id="exec_2",
             stream_id="stream_1",
-            isolation=IsolationLevel.SYNCHRONIZED
+            isolation=IsolationLevel.SYNCHRONIZED,
         )
         events.append("reader_read")
         return val
@@ -45,10 +48,5 @@ async def test_shared_state_synchronized_read_blocks():
     results = await asyncio.gather(writer_task, reader_task)
     val = results[1]
 
-    assert events == [
-        "writer_acquired",
-        "reader_waiting",
-        "writer_released",
-        "reader_read"
-    ]
+    assert events == ["writer_acquired", "reader_waiting", "writer_released", "reader_read"]
     assert val == 1
