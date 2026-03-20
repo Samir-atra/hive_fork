@@ -1,6 +1,6 @@
 import re
 
-title = "feat: add payment reconciliation agent template"
+title = "feat: add payment reconciliation agent template closes #6603"
 body = """## Description
 
 Add a Payment Reconciliation Agent template to demonstrate how Hive can automate business-critical financial operations. This template includes a four-node pipeline that extracts transaction data from internal and gateway systems, reconciles the transactions, resolves discrepancies (e.g., retrying failed transactions or processing refunds), and generates a structured report.
@@ -15,8 +15,7 @@ Add a Payment Reconciliation Agent template to demonstrate how Hive can automate
 
 ## Related Issues
 
-resolves #6603
-fixes #6603
+Fixes #6603
 
 ## Changes Made
 

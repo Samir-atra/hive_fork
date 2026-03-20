@@ -1,4 +1,6 @@
-## Description
+const issuePattern = /(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)?\s*#(\d+)/gi;
+const title = 'feat: add payment reconciliation agent template closes #6603';
+const body = `## Description
 
 Add a Payment Reconciliation Agent template to demonstrate how Hive can automate business-critical financial operations. This template includes a four-node pipeline that extracts transaction data from internal and gateway systems, reconciles the transactions, resolves discrepancies (e.g., retrying failed transactions or processing refunds), and generates a structured report.
 
@@ -16,19 +18,19 @@ Fixes #6603
 
 ## Changes Made
 
-- Created `examples/templates/payment_reconciliation_agent/` directory with agent logic and configuration.
-- Added simulation tools (`fetch_internal_transactions`, `fetch_gateway_transactions`, `process_refund`, `retry_failed_transaction`) in `tools/payment_tools.py`.
-- Defined four nodes (`extract_node`, `reconcile_node`, `resolve_node`, `report_node`) in `nodes/__init__.py`.
-- Wired the nodes together in `agent.py` to create the agent workflow.
-- Added basic test for agent initialization in `tests/test_agent.py`.
+- Created examples/templates/payment_reconciliation_agent/ directory with agent logic and configuration.
+- Added simulation tools (fetch_internal_transactions, fetch_gateway_transactions, process_refund, retry_failed_transaction) in tools/payment_tools.py.
+- Defined four nodes (extract_node, reconcile_node, resolve_node, report_node) in nodes/__init__.py.
+- Wired the nodes together in agent.py to create the agent workflow.
+- Added basic test for agent initialization in tests/test_agent.py.
 - Add agent.json and README.md with instructions to run.
 
 ## Testing
 
 Describe the tests you ran to verify your changes:
 
-- [x] Unit tests pass (`cd core && pytest ../examples/templates/payment_reconciliation_agent/tests/`)
-- [x] Lint passes (`cd core && ruff check ../examples/templates/payment_reconciliation_agent/`)
+- [x] Unit tests pass (cd core && pytest ../examples/templates/payment_reconciliation_agent/tests/)
+- [x] Lint passes (cd core && ruff check ../examples/templates/payment_reconciliation_agent/)
 - [x] Manual testing performed
 
 ## Checklist
@@ -43,4 +45,10 @@ Describe the tests you ran to verify your changes:
 
 ## Screenshots (if applicable)
 
-N/A
+N/A`;
+
+const allText = `${title} ${body}`;
+const matches = [...allText.matchAll(issuePattern)];
+const issueNumbers = [...new Set(matches.map(m => parseInt(m[1], 10)))];
+
+console.log('Found issue references:', issueNumbers);
