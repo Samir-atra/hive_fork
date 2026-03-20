@@ -1,6 +1,3 @@
-from framework.graph.edge import EdgeCondition, EdgeSpec, GraphSpec
-from framework.graph.node import NodeSpec
-
 """
 Regression tests for conditional edge direct key access (Issue #3599).
 
