@@ -2319,6 +2319,17 @@ export default function Workspace() {
     });
 
   // --- handleSend ---
+  const handleFileUpload = async (file: File) => {
+    if (!activeSession) return null;
+    try {
+      const result = await executionApi.uploadFile(activeSession.id, file);
+      return result;
+    } catch (err) {
+      console.error("Failed to upload image", err);
+      return null;
+    }
+  };
+
   const handleSend = useCallback((text: string, thread: string) => {
     if (!activeSession) return;
     const state = agentStates[activeWorker];
@@ -2908,6 +2919,7 @@ export default function Workspace() {
               <ChatPanel
                 messages={activeSession.messages}
                 onSend={handleSend}
+                onFileUpload={handleFileUpload}
                 onCancel={handleCancelQueen}
                 activeThread={activeWorker}
                 isWaiting={(activeAgentState?.queenIsTyping && !activeAgentState?.isStreaming) ?? false}

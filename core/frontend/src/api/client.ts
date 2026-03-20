@@ -32,11 +32,31 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   get: <T>(path: string) => request<T>(path),
-  post: <T>(path: string, body?: unknown) =>
-    request<T>(path, {
+  post: <T>(path: string, body?: unknown, options?: RequestInit) => {
+    let finalBody: BodyInit | undefined;
+    let headers: Record<string, string> = { "Content-Type": "application/json" };
+
+    if (body instanceof FormData) {
+      finalBody = body;
+      headers = {}; // Let browser set Content-Type for FormData
+    } else if (body) {
+      finalBody = JSON.stringify(body);
+    }
+
+    if (options?.headers) {
+      Object.assign(headers, options.headers);
+      if (headers["Content-Type"] === "multipart/form-data") {
+        delete headers["Content-Type"]; // Allow browser boundary
+      }
+    }
+
+    return request<T>(path, {
+      ...options,
       method: "POST",
-      body: body ? JSON.stringify(body) : undefined,
-    }),
+      body: finalBody,
+      headers
+    });
+  },
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, {
