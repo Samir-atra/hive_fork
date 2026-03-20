@@ -5,6 +5,7 @@ Run with:
     pytest tests/test_orchestrator.py -v
 """
 
+import asyncio
 from unittest.mock import Mock, patch
 
 import pytest
@@ -113,37 +114,44 @@ async def test_llm_route_timeout():
     mock_llm = Mock(spec=LLMProvider)
 
     async def slow_acomplete(*args, **kwargs):
-        raise TimeoutError()
+        # We use a mocked wait_for instead of real sleep to speed up the test
+        await asyncio.sleep(40.0)
+        return Mock()
 
     mock_llm.acomplete = slow_acomplete
 
     orchestrator = AgentOrchestrator(llm=mock_llm)
 
-    request = {"test": "data"}
-    intent = "test intent"
-    capable = [
-        (
-            "agent_a",
-            CapabilityResponse(
-                agent_name="agent_a",
-                level=CapabilityLevel.BEST_FIT,
-                confidence=0.9,
-                reasoning="Good fit",
-            ),
-        ),
-        (
-            "agent_b",
-            CapabilityResponse(
-                agent_name="agent_b",
-                level=CapabilityLevel.CAN_HANDLE,
-                confidence=0.8,
-                reasoning="Can do it",
-            ),
-        ),
-    ]
+    # Mock asyncio.wait_for to raise TimeoutError immediately so we don't have to wait 30s
+    async def mock_wait_for(coro, timeout):
+        raise TimeoutError()
 
-    # Run _llm_route, should timeout and fallback to highest confidence agent
-    decision = await orchestrator._llm_route(request, intent, capable)
+    with patch("asyncio.wait_for", new=mock_wait_for):
+        request = {"test": "data"}
+        intent = "test intent"
+        capable = [
+            (
+                "agent_a",
+                CapabilityResponse(
+                    agent_name="agent_a",
+                    level=CapabilityLevel.BEST_FIT,
+                    confidence=0.9,
+                    reasoning="Good fit",
+                ),
+            ),
+            (
+                "agent_b",
+                CapabilityResponse(
+                    agent_name="agent_b",
+                    level=CapabilityLevel.CAN_HANDLE,
+                    confidence=0.8,
+                    reasoning="Can do it",
+                ),
+            ),
+        ]
 
-    assert decision.selected_agents == ["agent_a"]
-    assert decision.confidence == 0.9
+        # Run _llm_route, should timeout and fallback to highest confidence agent
+        decision = await orchestrator._llm_route(request, intent, capable)
+
+        assert decision.selected_agents == ["agent_a"]
+        assert decision.confidence == 0.9

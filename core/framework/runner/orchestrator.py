@@ -462,8 +462,6 @@ Respond with JSON only:
 }}"""
 
         try:
-            import asyncio
-
             response = await asyncio.wait_for(
                 self._llm.acomplete(
                     messages=[{"role": "user", "content": prompt}],
