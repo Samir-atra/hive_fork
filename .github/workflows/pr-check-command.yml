@@ -105,6 +105,15 @@ jobs:
             let issueWithAuthorAssigned = null;
             let issuesWithoutAuthor = [];
 
+            let targetOwner = context.repo.owner;
+            let targetRepo = context.repo.repo;
+
+            if (context.payload.repository && context.payload.repository.fork && context.payload.repository.parent) {
+                targetOwner = context.payload.repository.parent.owner.login;
+                targetRepo = context.payload.repository.parent.name;
+                console.log(`Repository is a fork, checking parent repository ${targetOwner}/${targetRepo} for issues`);
+            }
+
             for (const issueNum of issueNumbers) {
               let issue = null;
               try {
@@ -115,16 +124,17 @@ jobs:
                 });
                 issue = response.data;
               } catch (error) {
-                console.log(`  Issue #${issueNum} not found in current repo, checking adenhq/hive`);
+                console.log(`  Issue #${issueNum} not found in current repo, checking fallback repo ${targetOwner}/${targetRepo}`);
                 try {
                   const fallbackResponse = await github.rest.issues.get({
-                    owner: 'adenhq',
-                    repo: 'hive',
+                    owner: targetOwner,
+                    repo: targetRepo,
                     issue_number: issueNum,
                   });
                   issue = fallbackResponse.data;
+                  console.log(`  Found Issue #${issueNum} in ${targetOwner}/${targetRepo}`);
                 } catch (fallbackError) {
-                  console.log(`  Issue #${issueNum} not found or inaccessible in adenhq/hive either`);
+                  console.log(`  Issue #${issueNum} not found or inaccessible in ${targetOwner}/${targetRepo} either`);
                 }
               }
 
