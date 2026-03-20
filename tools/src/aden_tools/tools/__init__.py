@@ -46,6 +46,7 @@ from .calendar_tool import register_tools as register_calendar
 from .calendly_tool import register_tools as register_calendly
 from .cloudinary_tool import register_tools as register_cloudinary
 from .confluence_tool import register_tools as register_confluence
+from .context_tracking_tool import register_tools as register_context_usage
 from .csv_tool import register_tools as register_csv
 from .databricks_tool import register_tools as register_databricks
 from .discord_tool import register_tools as register_discord
@@ -156,6 +157,7 @@ def _register_verified(
     register_runtime_logs(mcp)
     register_wikipedia(mcp)
     register_arxiv(mcp)
+    register_context_usage(mcp)
 
     # Tools that need credentials (pass credentials if provided)
     # web_search supports multiple providers (Google, Brave) with auto-detection
@@ -324,7 +326,51 @@ def register_all_tools(
     if include_unverified:
         _register_unverified(mcp, credentials=credentials)
 
-    return list(mcp._tool_manager._tools.keys())
+    # Track tool context usage statically and dynamically
+    import asyncio
+
+    from aden_tools.monitoring.context_tracker import get_tracker, track_tool_execution
+
+    tracker = get_tracker()
+
+    # Safely get tools avoiding missing methods
+    if hasattr(mcp, "get_tools"):
+        tools = mcp.get_tools()
+        if asyncio.iscoroutine(tools):
+            try:
+                loop = asyncio.get_event_loop()
+                if not loop.is_running():
+                    tools = loop.run_until_complete(tools)
+                else:
+                    tools = {} # If loop is running, we just skip it or log
+            except Exception:
+                tools = {}
+    elif hasattr(mcp, "_tool_manager"):
+        tools = getattr(mcp._tool_manager, "_tools", {})
+    else:
+        tools = {}
+
+    tools_dict = tools if isinstance(tools, dict) else {getattr(t, "name", ""): t for t in tools}
+
+    for name, tool in tools_dict.items():
+        if not name:
+            continue
+
+        schema = getattr(tool, "parameters", {})
+        tracker.record_tool_registration(
+            name=name,
+            description=tool.description,
+            schema=schema
+        )
+
+        # Monkey-patch execution optionally to track dynamic usage
+        if hasattr(tool, "fn") and not getattr(tool.fn, "_is_tracked", False):
+            patched_fn = track_tool_execution(name, tool.fn)
+            patched_fn._is_tracked = True
+            tool.fn = patched_fn
+
+    return list(tools_dict.keys())
+
 
 
 __all__ = ["register_all_tools"]
