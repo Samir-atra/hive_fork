@@ -559,6 +559,30 @@ def cmd_run(args: argparse.Namespace) -> int:
             elif result.error:
                 print(f"\nError: {result.error}")
 
+            if getattr(result, "total_cost", 0.0) > 0:
+                print()
+                print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                print(f"💰 COST BREAKDOWN{' ' * 40}TOTAL: ${result.total_cost:.2f}")
+                print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                print()
+                print("🪜 COSTS: BY STEPS")
+                if hasattr(result, "cost_breakdown"):
+                    for _node_id, _cost in result.cost_breakdown.items():
+                        pct = (_cost / result.total_cost) * 100 if result.total_cost > 0 else 0
+                        print(f"    {_node_id:<20} ${_cost:.2f}  ({pct:.0f}%)")
+                print()
+                print("🧠 COST OF MODELS USED:")
+                if hasattr(result, "models_used"):
+                    for _model, _cost in result.models_used.items():
+                        print(f"    {_model:<18} ${_cost:.2f}")
+                print()
+
+            if getattr(result, "total_tokens", 0) > 0:
+                print("🪙 TOKENS:")
+                # We do not have input/output breakdown in ExecutionResult at the moment, only total
+                print(f"    Total:  {result.total_tokens:,}")
+                print()
+
     runner.cleanup()
     return 0 if result.success else 1
 
@@ -1116,9 +1140,29 @@ def cmd_shell(args: argparse.Namespace) -> int:
         if result.error:
             print(f"\nError: {result.error}")
 
-        if result.total_tokens > 0:
-            print(f"\nTokens used: {result.total_tokens}")
-            print(f"Latency: {result.total_latency_ms}ms")
+        if getattr(result, "total_cost", 0.0) > 0:
+            print()
+            print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            print(f"💰 COST BREAKDOWN{' ' * 40}TOTAL: ${result.total_cost:.2f}")
+            print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            print()
+            print("🪜 COSTS: BY STEPS")
+            if hasattr(result, "cost_breakdown"):
+                for _node_id, _cost in result.cost_breakdown.items():
+                    pct = (_cost / result.total_cost) * 100 if result.total_cost > 0 else 0
+                    print(f"    {_node_id:<20} ${_cost:.2f}  ({pct:.0f}%)")
+            print()
+            print("🧠 COST OF MODELS USED:")
+            if hasattr(result, "models_used"):
+                for _model, _cost in result.models_used.items():
+                    print(f"    {_model:<18} ${_cost:.2f}")
+            print()
+
+        if getattr(result, "total_tokens", 0) > 0:
+            print("🪙 TOKENS:")
+            print(f"     Total:  {result.total_tokens:,}")
+            print(f"    Latency:  {result.total_latency_ms}ms")
+            print()
 
         # Update agent session state if paused
         if result.paused_at:
