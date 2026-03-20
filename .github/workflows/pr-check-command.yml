@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Check PR requirements
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const prNumber = context.payload.issue.number;
@@ -105,14 +105,40 @@ jobs:
             let issueWithAuthorAssigned = null;
             let issuesWithoutAuthor = [];
 
+            let targetOwner = context.repo.owner;
+            let targetRepo = context.repo.repo;
+
+            if (context.payload.repository && context.payload.repository.fork && context.payload.repository.parent) {
+                targetOwner = context.payload.repository.parent.owner.login;
+                targetRepo = context.payload.repository.parent.name;
+                console.log(`Repository is a fork, checking parent repository ${targetOwner}/${targetRepo} for issues`);
+            }
+
             for (const issueNum of issueNumbers) {
+              let issue = null;
               try {
-                const { data: issue } = await github.rest.issues.get({
+                const response = await github.rest.issues.get({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: issueNum,
                 });
+                issue = response.data;
+              } catch (error) {
+                console.log(`  Issue #${issueNum} not found in current repo, checking fallback repo ${targetOwner}/${targetRepo}`);
+                try {
+                  const fallbackResponse = await github.rest.issues.get({
+                    owner: targetOwner,
+                    repo: targetRepo,
+                    issue_number: issueNum,
+                  });
+                  issue = fallbackResponse.data;
+                  console.log(`  Found Issue #${issueNum} in ${targetOwner}/${targetRepo}`);
+                } catch (fallbackError) {
+                  console.log(`  Issue #${issueNum} not found or inaccessible in ${targetOwner}/${targetRepo} either`);
+                }
+              }
 
+              if (issue) {
                 const assigneeLogins = (issue.assignees || []).map(a => a.login);
                 if (assigneeLogins.includes(prAuthor)) {
                   issueWithAuthorAssigned = issueNum;
@@ -125,8 +151,6 @@ jobs:
                   });
                   console.log(`  Issue #${issueNum} assignees: ${assigneeLogins.length > 0 ? assigneeLogins.join(', ') : 'none'}`);
                 }
-              } catch (error) {
-                console.log(`  Issue #${issueNum} not found`);
               }
             }
 

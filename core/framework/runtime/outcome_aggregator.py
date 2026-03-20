@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from framework.schemas.decision import Decision, Outcome
+from framework.schemas.kpi import KPICalculationMethod, KPIEvaluationResult, KPIMetric
 
 if TYPE_CHECKING:
     from framework.graph.goal import Goal
@@ -104,6 +105,9 @@ class OutcomeAggregator:
 
         # Constraint tracking
         self._constraint_violations: list[ConstraintCheck] = []
+
+        # KPI tracking
+        self._kpi_metrics: list[KPIMetric] = []
 
         # Metrics
         self._total_decisions = 0
@@ -294,6 +298,10 @@ class OutcomeAggregator:
                 "executions_total": len({(d.stream_id, d.execution_id) for d in self._decisions}),
             }
 
+            # Add KPI evaluations
+            kpi_evals = self._evaluate_kpis_locked()
+            result["kpi_evaluations"] = [e.model_dump(mode="json") for e in kpi_evals]
+
             # Determine recommendation
             result["recommendation"] = self._get_recommendation(result)
 
@@ -408,6 +416,103 @@ class OutcomeAggregator:
                 return constraint.constraint_type == "hard"
         return False
 
+    # === KPI OPERATIONS ===
+
+    def record_kpi_metric(
+        self,
+        kpi_id: str,
+        value: float,
+        source: str,
+        context: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Record a metric reading for a KPI.
+
+        Args:
+            kpi_id: The ID of the KPI this metric relates to.
+            value: The numeric value of the reading.
+            source: Source of the metric (e.g., node_id, execution_id, tool_name).
+            context: Additional context for the reading.
+        """
+        metric = KPIMetric(
+            kpi_id=kpi_id,
+            value=value,
+            source=source,
+            context=context or {},
+        )
+        self._kpi_metrics.append(metric)
+        logger.debug(f"Recorded KPI metric: {kpi_id} = {value} from {source}")
+
+    def _evaluate_kpis_locked(self) -> list[KPIEvaluationResult]:
+        """Internal: evaluate KPIs without acquiring the lock."""
+        results = []
+        if not hasattr(self.goal, "kpis") or not self.goal.kpis:
+            return results
+
+        for kpi in self.goal.kpis:
+            relevant_metrics = [m for m in self._kpi_metrics if m.kpi_id == kpi.id]
+
+            if not relevant_metrics:
+                continue
+
+            values = [m.value for m in relevant_metrics]
+
+            # Calculate current value based on the specified method
+            current_value = 0.0
+            if kpi.calculation_method == KPICalculationMethod.SUM:
+                current_value = sum(values)
+            elif kpi.calculation_method == KPICalculationMethod.AVERAGE:
+                current_value = sum(values) / len(values)
+            elif kpi.calculation_method == KPICalculationMethod.COUNT:
+                current_value = float(len(values))
+            elif kpi.calculation_method == KPICalculationMethod.LATEST:
+                # Sort by timestamp to get the latest
+                latest_metric = max(relevant_metrics, key=lambda m: m.timestamp)
+                current_value = latest_metric.value
+            else:  # CUSTOM
+                # For custom calculation, we might just default to latest for now
+                # or allow passing a custom evaluator function.
+                latest_metric = max(relevant_metrics, key=lambda m: m.timestamp)
+                current_value = latest_metric.value
+
+            is_meeting_target = None
+            if kpi.target is not None:
+                is_meeting_target = current_value >= kpi.target
+
+            trend = None
+            if len(values) >= 2:
+                # Simple trend based on the first and last values
+                sorted_metrics = sorted(relevant_metrics, key=lambda m: m.timestamp)
+                first_val = sorted_metrics[0].value
+                last_val = sorted_metrics[-1].value
+                if last_val > first_val:
+                    trend = "up"
+                elif last_val < first_val:
+                    trend = "down"
+                else:
+                    trend = "stable"
+
+            eval_result = KPIEvaluationResult(
+                kpi_id=kpi.id,
+                current_value=current_value,
+                target=kpi.target,
+                is_meeting_target=is_meeting_target,
+                trend=trend,
+            )
+            results.append(eval_result)
+
+        return results
+
+    async def evaluate_kpis(self) -> list[KPIEvaluationResult]:
+        """
+        Evaluate all defined KPIs based on recorded metrics.
+
+        Returns:
+            A list of KPIEvaluationResult representing current progress.
+        """
+        async with self._lock:
+            return self._evaluate_kpis_locked()
+
     # === QUERY OPERATIONS ===
 
     def get_decisions_by_stream(self, stream_id: str) -> list[DecisionRecord]:
@@ -443,6 +548,7 @@ class OutcomeAggregator:
             "constraint_violations": len(self._constraint_violations),
             "criteria_tracked": len(self._criterion_status),
             "streams_seen": len({d.stream_id for d in self._decisions}),
+            "kpi_metrics_recorded": len(self._kpi_metrics),
         }
 
     # === RESET OPERATIONS ===
@@ -452,6 +558,7 @@ class OutcomeAggregator:
         self._decisions.clear()
         self._decisions_by_id.clear()
         self._constraint_violations.clear()
+        self._kpi_metrics.clear()
         self._total_decisions = 0
         self._successful_outcomes = 0
         self._failed_outcomes = 0
