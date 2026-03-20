@@ -12,6 +12,7 @@ The CredentialStore is the primary interface for credential management, providin
 from __future__ import annotations
 
 import logging
+import re
 import threading
 from datetime import UTC, datetime
 from typing import Any
@@ -292,6 +293,39 @@ class CredentialStore:
         """
         return self._resolver.resolve_params(params)
 
+    def _contextualize_template(self, template: Any, credential_id: str) -> Any:
+        """
+        Contextualize a template by prefixing it with credential ID if needed.
+        """
+        if not isinstance(template, str):
+            return template
+
+        def replace_match(match: re.Match) -> str:
+            cred_id = match.group(1)
+            key_name = match.group(2)
+
+            if key_name:
+                return match.group(0)
+
+            if cred_id == credential_id:
+                return match.group(0)
+
+            return f"{{{{{credential_id}.{cred_id}}}}}"
+
+        from framework.credentials.template import TemplateResolver
+
+        return TemplateResolver.TEMPLATE_PATTERN.sub(replace_match, template)
+
+    def _contextualize_dict(
+        self, templates: dict[str, str] | None, credential_id: str
+    ) -> dict[str, str]:
+        """
+        Contextualize a dictionary of templates.
+        """
+        if not templates:
+            return {}
+        return {k: self._contextualize_template(v, credential_id) for k, v in templates.items()}
+
     def resolve_for_usage(self, credential_id: str) -> dict[str, Any]:
         """
         Get resolved request kwargs for a registered usage spec.
@@ -312,13 +346,18 @@ class CredentialStore:
         result: dict[str, Any] = {}
 
         if spec.headers:
-            result["headers"] = self.resolve_headers(spec.headers)
+            contextualized_headers = self._contextualize_dict(spec.headers, credential_id)
+            result["headers"] = self.resolve_headers(contextualized_headers)
 
         if spec.query_params:
-            result["params"] = self.resolve_params(spec.query_params)
+            contextualized_params = self._contextualize_dict(spec.query_params, credential_id)
+            result["params"] = self.resolve_params(contextualized_params)
 
         if spec.body_fields:
-            result["data"] = {key: self.resolve(value) for key, value in spec.body_fields.items()}
+            result["data"] = {
+                key: self.resolve(self._contextualize_template(value, credential_id))
+                for key, value in spec.body_fields.items()
+            }
 
         return result
 
