@@ -13,7 +13,11 @@ jobs:
 
     steps:
       - name: Check PR has linked issue with assignee
+<<<<<<< HEAD
         uses: actions/github-script@v7
+=======
+        uses: actions/github-script@v8
+>>>>>>> 02d96ca (feat: implement goal constraint and success criteria evaluation - closes #3596)
         with:
           script: |
             const pr = context.payload.pull_request;
@@ -106,11 +110,31 @@ jobs:
 
             for (const issueNum of issueNumbers) {
               try {
+<<<<<<< HEAD
                 const { data: issue } = await github.rest.issues.get({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: issueNum,
                 });
+=======
+                let issue;
+                try {
+                  const res = await github.rest.issues.get({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNum,
+                  });
+                  issue = res.data;
+                } catch (e) {
+                  // Fallback for fork PRs where issue exists upstream
+                  const res = await github.rest.issues.get({
+                    owner: 'adenhq',
+                    repo: 'hive',
+                    issue_number: issueNum,
+                  });
+                  issue = res.data;
+                }
+>>>>>>> 02d96ca (feat: implement goal constraint and success criteria evaluation - closes #3596)
 
                 const assigneeLogins = (issue.assignees || []).map(a => a.login);
                 if (assigneeLogins.includes(prAuthor)) {

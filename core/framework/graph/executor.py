@@ -67,11 +67,14 @@ class ExecutionResult:
     had_partial_failures: bool = False  # True if any node failed but eventually succeeded
     execution_quality: str = "clean"  # "clean", "degraded", or "failed"
 
+<<<<<<< HEAD
+=======
     # Goal evaluation metrics
     constraint_violations: list[str] = field(default_factory=list)
     success_criteria_met: dict[str, bool] = field(default_factory=dict)
     goal_achieved: bool = False
 
+>>>>>>> 02d96ca (feat: implement goal constraint and success criteria evaluation - closes #3596)
     # Visit tracking (for feedback/callback edges)
     node_visit_counts: dict[str, int] = field(default_factory=dict)  # {node_id: visit_count}
 
@@ -213,6 +216,8 @@ class GraphExecutor:
         # Track the currently executing node for external injection routing
         self.current_node_id: str | None = None
 
+<<<<<<< HEAD
+=======
     def _evaluate_constraint(self, constraint: Any, memory_data: dict[str, Any]) -> bool:
         """Evaluate a single constraint against the current memory."""
         if not constraint.check:
@@ -245,6 +250,7 @@ class GraphExecutor:
         # If not implemented or llm_judge, default to True for now
         return True
 
+>>>>>>> 02d96ca (feat: implement goal constraint and success criteria evaluation - closes #3596)
     def _write_progress(
         self,
         current_node: str,
@@ -558,7 +564,10 @@ class GraphExecutor:
         node_retry_counts: dict[str, int] = {}  # Track retries per node
         node_visit_counts: dict[str, int] = {}  # Track visits for feedback loops
         _is_retry = False  # True when looping back for a retry (not a new visit)
+<<<<<<< HEAD
+=======
         constraint_violations: list[str] = []
+>>>>>>> 02d96ca (feat: implement goal constraint and success criteria evaluation - closes #3596)
 
         # Restore node_visit_counts from session state if available
         if session_state and "node_visit_counts" in session_state:
@@ -818,7 +827,10 @@ class GraphExecutor:
                         error="Execution paused by user request",
                         session_state=pause_session_state,
                         node_visit_counts=dict(node_visit_counts),
+<<<<<<< HEAD
+=======
                         constraint_violations=constraint_violations,
+>>>>>>> 02d96ca (feat: implement goal constraint and success criteria evaluation - closes #3596)
                     )
 
                 # Get current node
@@ -1078,6 +1090,8 @@ class GraphExecutor:
                     if result.output:
                         for key, value in result.output.items():
                             memory.write(key, value, validate=False)
+<<<<<<< HEAD
+=======
 
                     # Evaluate constraints after node execution
                     for constraint in goal.constraints:
@@ -1143,6 +1157,7 @@ class GraphExecutor:
                                         "node_visit_counts": dict(node_visit_counts),
                                     },
                                 )
+>>>>>>> 02d96ca (feat: implement goal constraint and success criteria evaluation - closes #3596)
                 else:
                     self.logger.error(f"   ✗ Failed: {result.error}")
 
@@ -1278,7 +1293,10 @@ class GraphExecutor:
                                 had_partial_failures=len(nodes_failed) > 0,
                                 execution_quality="failed",
                                 node_visit_counts=dict(node_visit_counts),
+<<<<<<< HEAD
+=======
                                 constraint_violations=constraint_violations,
+>>>>>>> 02d96ca (feat: implement goal constraint and success criteria evaluation - closes #3596)
                                 session_state=failure_session_state,
                             )
 
@@ -1340,7 +1358,10 @@ class GraphExecutor:
                         had_partial_failures=len(nodes_failed) > 0,
                         execution_quality=exec_quality,
                         node_visit_counts=dict(node_visit_counts),
+<<<<<<< HEAD
+=======
                         constraint_violations=constraint_violations,
+>>>>>>> 02d96ca (feat: implement goal constraint and success criteria evaluation - closes #3596)
                     )
 
                 # Check if this is a terminal node - if so, we're done
@@ -1641,6 +1662,8 @@ class GraphExecutor:
             # Collect output
             output = memory.read_all()
 
+<<<<<<< HEAD
+=======
             # Evaluate success criteria
             success_criteria_met = {}
             for criterion in goal.success_criteria:
@@ -1653,14 +1676,18 @@ class GraphExecutor:
                 # If no criteria specified, completing the graph is considered success
                 goal_achieved = True
 
+>>>>>>> 02d96ca (feat: implement goal constraint and success criteria evaluation - closes #3596)
             self.logger.info("\n✓ Execution complete!")
             self.logger.info(f"   Steps: {steps}")
             self.logger.info(f"   Path: {' → '.join(path)}")
             self.logger.info(f"   Total tokens: {total_tokens}")
             self.logger.info(f"   Total latency: {total_latency}ms")
+<<<<<<< HEAD
+=======
             if constraint_violations:
                 self.logger.info(f"   Constraint violations: {len(constraint_violations)}")
             self.logger.info(f"   Goal achieved: {goal_achieved}")
+>>>>>>> 02d96ca (feat: implement goal constraint and success criteria evaluation - closes #3596)
 
             # Calculate execution quality metrics
             total_retries_count = sum(node_retry_counts.values())
@@ -1703,9 +1730,12 @@ class GraphExecutor:
                 had_partial_failures=len(nodes_failed) > 0,
                 execution_quality=exec_quality,
                 node_visit_counts=dict(node_visit_counts),
+<<<<<<< HEAD
+=======
                 constraint_violations=constraint_violations,
                 success_criteria_met=success_criteria_met,
                 goal_achieved=goal_achieved,
+>>>>>>> 02d96ca (feat: implement goal constraint and success criteria evaluation - closes #3596)
                 session_state={
                     "memory": output,  # output IS memory.read_all()
                     "execution_path": list(path),
@@ -1783,7 +1813,10 @@ class GraphExecutor:
                 had_partial_failures=len(nodes_failed) > 0,
                 execution_quality=exec_quality,
                 node_visit_counts=dict(node_visit_counts),
+<<<<<<< HEAD
+=======
                 constraint_violations=constraint_violations,
+>>>>>>> 02d96ca (feat: implement goal constraint and success criteria evaluation - closes #3596)
             )
 
         except Exception as e:
@@ -1883,7 +1916,10 @@ class GraphExecutor:
                 had_partial_failures=len(nodes_failed) > 0,
                 execution_quality="failed",
                 node_visit_counts=dict(node_visit_counts),
+<<<<<<< HEAD
+=======
                 constraint_violations=constraint_violations,
+>>>>>>> 02d96ca (feat: implement goal constraint and success criteria evaluation - closes #3596)
                 session_state=session_state_out,
             )
 

@@ -13,7 +13,11 @@ jobs:
       issues: write
     steps:
       - name: Close PRs still failing requirements
+<<<<<<< HEAD
         uses: actions/github-script@v7
+=======
+        uses: actions/github-script@v8
+>>>>>>> 02d96ca (feat: implement goal constraint and success criteria evaluation - closes #3596)
         with:
           script: |
             const { owner, repo } = context.repo;
