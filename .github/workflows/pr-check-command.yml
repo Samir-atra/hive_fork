@@ -108,13 +108,24 @@ jobs:
 
             for (const issueNum of issueNumbers) {
               try {
-                const { data: issue } = await github.rest.issues.get({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issueNum,
-                });
+                let issue;
+                try {
+                  const { data } = await github.rest.issues.get({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNum,
+                  });
+                  issue = data;
+                } catch (err) {
+                  console.log(`  Issue #${issueNum} not found in ${context.repo.owner}/${context.repo.repo}. Trying adenhq/hive...`);
+                  const { data } = await github.rest.issues.get({
+                    owner: 'adenhq',
+                    repo: 'hive',
+                    issue_number: issueNum,
+                  });
+                  issue = data;
+                }
 
-                accessibleIssuesFound = true;
                 const assigneeLogins = (issue.assignees || []).map(a => a.login);
                 if (assigneeLogins.includes(prAuthor)) {
                   issueWithAuthorAssigned = issueNum;
@@ -132,29 +143,7 @@ jobs:
               }
             }
 
-            if (!accessibleIssuesFound) {
-              console.log("No linked issues were accessible in this repository. Bypassing author assignment check.");
-
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: prNumber,
-                body: `✅ PR requirements met! (Linked issues not found locally, bypassed author check)`,
-              });
-
-              await github.rest.checks.update({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                check_run_id: checkRun.id,
-                status: 'completed',
-                conclusion: 'success',
-                completed_at: new Date().toISOString(),
-                output: {
-                  title: 'Requirements met',
-                  summary: `Linked issues bypassed as they are inaccessible.`,
-                },
-              });
-            } else if (!issueWithAuthorAssigned) {
+            if (!issueWithAuthorAssigned) {
               const issueList = issuesWithoutAuthor.map(i =>
                 `#${i.number} (assignees: ${i.assignees.length > 0 ? i.assignees.join(', ') : 'none'})`
               ).join(', ');

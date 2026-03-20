@@ -107,13 +107,24 @@ jobs:
 
             for (const issueNum of issueNumbers) {
               try {
-                const { data: issue } = await github.rest.issues.get({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issueNum,
-                });
+                let issue;
+                try {
+                  const { data } = await github.rest.issues.get({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNum,
+                  });
+                  issue = data;
+                } catch (err) {
+                  console.log(`  Issue #${issueNum} not found in ${context.repo.owner}/${context.repo.repo}. Trying adenhq/hive...`);
+                  const { data } = await github.rest.issues.get({
+                    owner: 'adenhq',
+                    repo: 'hive',
+                    issue_number: issueNum,
+                  });
+                  issue = data;
+                }
 
-                accessibleIssuesFound = true;
                 const assigneeLogins = (issue.assignees || []).map(a => a.login);
                 if (assigneeLogins.includes(prAuthor)) {
                   issueWithAuthorAssigned = issueNum;
@@ -131,9 +142,7 @@ jobs:
               }
             }
 
-            if (!accessibleIssuesFound) {
-              console.log("No linked issues were accessible in this repository. Bypassing author assignment check.");
-            } else if (!issueWithAuthorAssigned) {
+            if (!issueWithAuthorAssigned) {
               const issueList = issuesWithoutAuthor.map(i =>
                 `#${i.number} (assignees: ${i.assignees.length > 0 ? i.assignees.join(', ') : 'none'})`
               ).join(', ');
