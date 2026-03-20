@@ -10,6 +10,7 @@ The executor:
 """
 
 import asyncio
+import inspect
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -2258,7 +2259,25 @@ class GraphExecutor:
         return branch_results, total_tokens, total_latency
 
     def register_node(self, node_id: str, implementation: NodeProtocol) -> None:
-        """Register a custom node implementation."""
+        """Register a custom node implementation.
+
+        Args:
+            node_id: The ID of the node.
+            implementation: The node implementation.
+
+        Raises:
+            ValueError: If the implementation is None or invalid.
+        """
+        if implementation is None:
+            raise ValueError("Cannot register None as node")
+
+        if not isinstance(implementation, NodeProtocol):
+            raise ValueError("Node must implement NodeProtocol with async execute() method")
+
+        execute_method = getattr(implementation, "execute", None)
+        if not execute_method or not inspect.iscoroutinefunction(execute_method):
+            raise ValueError("Node must implement NodeProtocol with async execute() method")
+
         self.node_registry[node_id] = implementation
 
     def request_pause(self) -> None:
