@@ -972,6 +972,51 @@ class TestClientFacingExpectingWork:
         assert llm._call_index >= 3
 
     @pytest.mark.asyncio
+    async def test_auto_block_emits_explicit_prompt(self, runtime, memory):
+        """Auto-blocking should emit CLIENT_INPUT_REQUESTED with an explicit prompt."""
+        spec = NodeSpec(
+            id="queen",
+            name="Queen",
+            description="orchestrator",
+            node_type="event_loop",
+            output_keys=[],
+            client_facing=True,
+        )
+        llm = MockStreamingLLM(
+            scenarios=[
+                text_scenario("I will proceed automatically..."),
+            ]
+        )
+        bus = EventBus()
+        received = []
+
+        async def capture(e):
+            received.append(e)
+
+        bus.subscribe(
+            event_types=[EventType.CLIENT_INPUT_REQUESTED],
+            handler=capture,
+        )
+
+        node = EventLoopNode(event_bus=bus, config=LoopConfig(max_iterations=10))
+        ctx = build_ctx(runtime, spec, memory, llm)
+        ctx.stream_id = "queen"
+
+        async def respond():
+            await asyncio.sleep(0.05)
+            await node.inject_event("OK")
+            node.signal_shutdown()
+
+        task = asyncio.create_task(respond())
+        await node.execute(ctx)
+        await task
+
+        assert len(received) > 0
+        event = received[0]
+        assert event.type == EventType.CLIENT_INPUT_REQUESTED
+        assert event.data["prompt"] == "[System: Paused until user responds]"
+
+    @pytest.mark.asyncio
     async def test_auto_block_without_missing_outputs(self, runtime, memory):
         """Text-only with no missing outputs should still auto-block (queen monitoring).
 
