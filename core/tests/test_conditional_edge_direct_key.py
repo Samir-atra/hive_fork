@@ -344,7 +344,7 @@ async def test_negative_case_condition_false():
     )
 
 def test_conditional_edge_missing_expr():
-    from framework.graph.edge import EdgeSpec, EdgeCondition, GraphSpec
+    from framework.graph.edge import EdgeCondition, EdgeSpec, GraphSpec
     from framework.graph.node import NodeSpec
     # 1. Test validation
     node1 = NodeSpec(id="n1", name="n1", description="n1", node_type="event_loop")
@@ -371,7 +371,8 @@ def test_conditional_edge_missing_expr():
     res = graph.validate()
 
     assert "errors" in res, "Missing 'errors' in validation response"
-    assert any("needs condition_expr" in e for e in res["errors"]), f"Validation didn't catch missing expr: {res}"
+    err_msg = f"Validation didn't catch missing expr: {res}"
+    assert any("needs condition_expr" in e for e in res["errors"]), err_msg
 
     # 2. Test evaluation
     assert edge._evaluate_condition({}, {}) is False, "_evaluate_condition didn't return False"
