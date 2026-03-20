@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from aiohttp import web
+from litellm import atranscription
 
 from framework.credentials.validation import validate_agent_credentials
 from framework.server.app import resolve_session, safe_path_segment, sessions_dir
@@ -503,6 +504,46 @@ async def handle_cancel_queen(request: web.Request) -> web.Response:
     return web.json_response({"cancelled": True})
 
 
+async def handle_transcribe(request: web.Request) -> web.Response:
+    """POST /api/sessions/{session_id}/transcribe — transcribe audio via STT."""
+    session, err = resolve_session(request)
+    if err:
+        return err
+
+    try:
+        reader = await request.multipart()
+        field = await reader.next()
+        if field is None or field.name != "file":
+            return web.json_response({"error": "No file field found"}, status=400)
+
+        import os
+        import tempfile
+
+        # Save uploaded audio to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
+            while True:
+                chunk = await field.read_chunk()  # 8192 bytes by default
+                if not chunk:
+                    break
+                tmp.write(chunk)
+            tmp_path = tmp.name
+
+        try:
+            # litellm expects a file object for the transcription call
+            with open(tmp_path, "rb") as audio_file:
+                # Use litellm transcription endpoint
+                response = await atranscription(model="whisper-1", file=audio_file)
+            # litellm returns a ModelResponse object that has a text attribute or dict mapping
+            text = response.text if hasattr(response, "text") else response.get("text", "")
+            return web.json_response({"text": text})
+        finally:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+    except Exception as e:
+        logger.error(f"Transcription error: {e}")
+        return web.json_response({"error": str(e)}, status=500)
+
+
 def register_routes(app: web.Application) -> None:
     """Register execution control routes."""
     # Session-primary routes
@@ -516,4 +557,5 @@ def register_routes(app: web.Application) -> None:
     app.router.add_post("/api/sessions/{session_id}/stop", handle_stop)
     app.router.add_post("/api/sessions/{session_id}/cancel-queen", handle_cancel_queen)
     app.router.add_post("/api/sessions/{session_id}/replay", handle_replay)
+    app.router.add_post("/api/sessions/{session_id}/transcribe", handle_transcribe)
     app.router.add_get("/api/sessions/{session_id}/goal-progress", handle_goal_progress)
