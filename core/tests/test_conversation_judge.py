@@ -192,25 +192,81 @@ class TestEvaluatePhaseCompletion:
         assert "1 source" in verdict.feedback
 
     @pytest.mark.asyncio
-    async def test_llm_failure_defaults_to_accept(self):
-        """When LLM fails, Level 2 should not block (Level 0 already passed)."""
+    async def test_llm_failure_retries_then_accepts(self):
+        """When LLM fails, Level 2 should retry on first failure, then accept degraded on second."""
         llm = MockStreamingLLM()
-        # Make complete() raise an exception
         llm.complete = MagicMock(side_effect=RuntimeError("LLM unavailable"))
 
         conv = NodeConversation(system_prompt="test")
         await conv.add_assistant_message("Done.")
 
-        verdict = await evaluate_phase_completion(
+        # First failure -> RETRY
+        verdict1 = await evaluate_phase_completion(
             llm=llm,
             conversation=conv,
             phase_name="Test",
             phase_description="Test phase",
             success_criteria="Do the thing",
             accumulator_state={"result": "done"},
+            _judge_failure_count=0,
+            max_judge_failures=2,
         )
-        assert verdict.action == "ACCEPT"
-        assert verdict.confidence == 0.5
+        assert verdict1.action == "RETRY"
+        assert verdict1.confidence == 0.0
+        assert "RuntimeError" in verdict1.feedback
+
+        # Second failure -> ACCEPT degraded
+        verdict2 = await evaluate_phase_completion(
+            llm=llm,
+            conversation=conv,
+            phase_name="Test",
+            phase_description="Test phase",
+            success_criteria="Do the thing",
+            accumulator_state={"result": "done"},
+            _judge_failure_count=1,
+            max_judge_failures=2,
+        )
+        assert verdict2.action == "ACCEPT"
+        assert verdict2.confidence == 0.0
+        assert "[SYSTEM]" in verdict2.feedback
+        assert "RuntimeError" in verdict2.feedback
+
+    @pytest.mark.asyncio
+    async def test_empty_response_retries_then_accepts(self):
+        """When LLM returns an empty response, Level 2 should retry then accept degraded."""
+        llm = MockStreamingLLM(complete_response="   \n  ")
+        conv = NodeConversation(system_prompt="test")
+        await conv.add_assistant_message("Done.")
+
+        # First failure -> RETRY
+        verdict1 = await evaluate_phase_completion(
+            llm=llm,
+            conversation=conv,
+            phase_name="Test",
+            phase_description="Test phase",
+            success_criteria="Do the thing",
+            accumulator_state={"result": "done"},
+            _judge_failure_count=0,
+            max_judge_failures=2,
+        )
+        assert verdict1.action == "RETRY"
+        assert verdict1.confidence == 0.0
+        assert "empty LLM response" in verdict1.feedback
+
+        # Second failure -> ACCEPT degraded
+        verdict2 = await evaluate_phase_completion(
+            llm=llm,
+            conversation=conv,
+            phase_name="Test",
+            phase_description="Test phase",
+            success_criteria="Do the thing",
+            accumulator_state={"result": "done"},
+            _judge_failure_count=1,
+            max_judge_failures=2,
+        )
+        assert verdict2.action == "ACCEPT"
+        assert verdict2.confidence == 0.0
+        assert "empty LLM response" in verdict2.feedback
 
 
 # ===========================================================================
