@@ -1,4 +1,7 @@
-## Description
+import re
+
+title = "feat: add payment reconciliation agent template"
+body = """## Description
 
 Add a Payment Reconciliation Agent template to demonstrate how Hive can automate business-critical financial operations. This template includes a four-node pipeline that extracts transaction data from internal and gateway systems, reconciles the transactions, resolves discrepancies (e.g., retrying failed transactions or processing refunds), and generates a structured report.
 
@@ -45,3 +48,13 @@ Describe the tests you ran to verify your changes:
 ## Screenshots (if applicable)
 
 N/A
+"""
+
+# Extract issue numbers from body and title
+# Matches: fixes #123, closes #123, resolves #123, or plain #123
+issuePattern = r"(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)?\s*#(\d+)"
+allText = f"{title} {body}"
+matches = re.finditer(issuePattern, allText, re.IGNORECASE)
+issueNumbers = list(set([int(m.group(1)) for m in matches]))
+
+print(f"Found issue references: {', '.join(map(str, issueNumbers)) if issueNumbers else 'none'}")
