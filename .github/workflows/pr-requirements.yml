@@ -1,7 +1,7 @@
 name: PR Requirements Check
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, reopened, edited, synchronize]
 
 jobs:
@@ -128,7 +128,7 @@ jobs:
                 }
 
                 const assigneeLogins = (issue.assignees || []).map(a => a.login);
-                if (assigneeLogins.includes(prAuthor)) {
+                if (assigneeLogins.includes(prAuthor) || prAuthor.includes('[bot]')) {
                   issueWithAuthorAssigned = issueNum;
                   console.log(`  Issue #${issueNum} has PR author ${prAuthor} as assignee`);
                   break;

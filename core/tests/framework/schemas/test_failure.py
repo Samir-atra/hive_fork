@@ -9,7 +9,7 @@ def test_failure_instantiation():
         id="test_id_1",
         failure_type=FailureType.EXECUTION,
         source="node_1",
-        message="An execution error occurred."
+        message="An execution error occurred.",
     )
     assert failure.id == "test_id_1"
     assert failure.failure_type == FailureType.EXECUTION
@@ -32,7 +32,7 @@ def test_failure_with_all_fields():
         metadata={"status_code": 429},
         retryable=True,
         timestamp=now,
-        run_id="run_abc"
+        run_id="run_abc",
     )
     assert failure.id == "test_id_2"
     assert failure.failure_type == FailureType.TOOL
@@ -50,7 +50,7 @@ def test_failure_serialization():
         id="test_id_3",
         failure_type=FailureType.CONSTRAINT,
         source="evaluation_node",
-        message="Output too long."
+        message="Output too long.",
     )
     dumped = failure.model_dump()
     assert dumped["id"] == "test_id_3"
