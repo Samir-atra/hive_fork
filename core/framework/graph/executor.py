@@ -58,6 +58,7 @@ class ExecutionResult:
     total_latency_ms: int = 0
     path: list[str] = field(default_factory=list)  # Node IDs traversed
     paused_at: str | None = None  # Node ID where execution paused for HITL
+    proof_url: str | None = None  # Optional verifiable receipt link (proof-of-delivery)
     session_state: dict[str, Any] = field(default_factory=dict)  # State to resume from
 
     # Execution quality metrics

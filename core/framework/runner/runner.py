@@ -1538,11 +1538,24 @@ class AgentRunner:
                 error=error_msg,
             )
 
-        return await self._run_with_agent_runtime(
+        result = await self._run_with_agent_runtime(
             input_data=input_data or {},
             entry_point_id=entry_point_id,
             session_state=session_state,
         )
+
+        # Optional verifiable receipt (proof-of-delivery)
+        from framework.runner.receipts import is_receipt_configured, mint_receipt_async
+
+        if is_receipt_configured() and result.success:
+            proof_url = await mint_receipt_async(
+                agent_name=self.info().name,
+                agent_description=self.info().goal_name,
+                output_data=result.output,
+            )
+            result.proof_url = proof_url
+
+        return result
 
     async def _run_with_agent_runtime(
         self,
