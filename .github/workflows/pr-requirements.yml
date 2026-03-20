@@ -116,15 +116,6 @@ jobs:
                   queryRepo = 'hive';
                 }
 
-                let queryOwner = context.repo.owner;
-                let queryRepo = context.repo.repo;
-
-                // If it's a fork, the issue doesn't exist on the fork, so fallback to upstream
-                if (queryOwner !== 'adenhq' || queryRepo !== 'hive') {
-                  queryOwner = 'adenhq';
-                  queryRepo = 'hive';
-                }
-
                 const { data: issue } = await github.rest.issues.get({
                   owner: queryOwner,
                   repo: queryRepo,
