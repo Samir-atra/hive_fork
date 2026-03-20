@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from framework.graph.edge import DEFAULT_MAX_TOKENS
+from framework.runtime.runtime_log_schemas import StorageRetentionPolicy
 
 # ---------------------------------------------------------------------------
 # Low-level config file access
@@ -141,6 +142,18 @@ def get_api_base() -> str | None:
     return llm.get("api_base")
 
 
+def get_storage_retention_policy() -> StorageRetentionPolicy | None:
+    """Return the storage retention policy from config."""
+    policy_cfg = get_hive_config().get("storage_retention_policy", {})
+    if policy_cfg:
+        return StorageRetentionPolicy(
+            max_runs=policy_cfg.get("max_runs"),
+            max_age_days=policy_cfg.get("max_age_days"),
+            max_disk_mb=policy_cfg.get("max_disk_mb"),
+        )
+    return None
+
+
 def get_llm_extra_kwargs() -> dict[str, Any]:
     """Return extra kwargs for LiteLLMProvider (e.g. OAuth headers).
 
@@ -198,3 +211,6 @@ class RuntimeConfig:
     api_key: str | None = field(default_factory=get_api_key)
     api_base: str | None = field(default_factory=get_api_base)
     extra_kwargs: dict[str, Any] = field(default_factory=get_llm_extra_kwargs)
+    storage_retention_policy: StorageRetentionPolicy | None = field(
+        default_factory=get_storage_retention_policy
+    )

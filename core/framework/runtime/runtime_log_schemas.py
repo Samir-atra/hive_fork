@@ -142,3 +142,16 @@ class RunToolLogs(BaseModel):
 
     run_id: str
     steps: list[NodeStepLog] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Storage Retention Policy
+# ---------------------------------------------------------------------------
+
+
+class StorageRetentionPolicy(BaseModel):
+    """Policy for pruning old or excess runtime logs from storage."""
+
+    max_runs: int | None = None
+    max_age_days: int | None = None
+    max_disk_mb: int | None = None

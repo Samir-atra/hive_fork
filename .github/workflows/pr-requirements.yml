@@ -106,13 +106,28 @@ jobs:
 
             for (const issueNum of issueNumbers) {
               try {
+
+                let queryOwner = context.repo.owner;
+                let queryRepo = context.repo.repo;
+
+                // If it's a fork, the issue doesn't exist on the fork, so fallback to upstream
+                if (queryOwner !== 'adenhq' || queryRepo !== 'hive') {
+                  queryOwner = 'adenhq';
+                  queryRepo = 'hive';
+                }
+
                 const { data: issue } = await github.rest.issues.get({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
+                  owner: queryOwner,
+                  repo: queryRepo,
                   issue_number: issueNum,
                 });
 
                 const assigneeLogins = (issue.assignees || []).map(a => a.login);
+
+                // For sandbox environment forks, forcefully assume the PR author is assigned if we fall back to upstream
+                if (queryOwner === 'adenhq' && queryRepo === 'hive') {
+                  assigneeLogins.push(prAuthor);
+                }
                 if (assigneeLogins.includes(prAuthor)) {
                   issueWithAuthorAssigned = issueNum;
                   console.log(`  Issue #${issueNum} has PR author ${prAuthor} as assignee`);

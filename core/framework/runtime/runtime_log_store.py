@@ -26,7 +26,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import UTC, datetime
+import shutil
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from framework.runtime.runtime_log_schemas import (
@@ -35,6 +36,7 @@ from framework.runtime.runtime_log_schemas import (
     RunDetailsLog,
     RunSummaryLog,
     RunToolLogs,
+    StorageRetentionPolicy,
 )
 
 logger = logging.getLogger(__name__)
@@ -140,6 +142,87 @@ class RuntimeLogStore:
             return RunToolLogs(run_id=run_id, steps=steps)
 
         return await asyncio.to_thread(_read)
+
+    async def prune(self, policy: StorageRetentionPolicy) -> None:
+        """Prune old run directories based on the retention policy."""
+        if not policy.max_runs and not policy.max_age_days and not policy.max_disk_mb:
+            return
+
+        entries = await asyncio.to_thread(self._scan_run_dirs)
+        if not entries:
+            return
+
+        # Load summaries to get started_at
+        runs_meta = []
+        for run_id in entries:
+            run_dir = self._get_run_dir(run_id)
+            if not run_dir.exists():
+                continue
+
+            summary = await self.load_summary(run_id)
+            if summary and summary.started_at:
+                try:
+                    dt = datetime.fromisoformat(summary.started_at)
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=UTC)
+                except ValueError:
+                    dt = datetime.min.replace(tzinfo=UTC)
+            else:
+                started_at_str = _infer_started_at(run_id)
+                if started_at_str:
+                    try:
+                        dt = datetime.fromisoformat(started_at_str)
+                    except ValueError:
+                        dt = datetime.min.replace(tzinfo=UTC)
+                else:
+                    dt = datetime.min.replace(tzinfo=UTC)
+
+            # Calculate size if needed
+            size_mb = 0.0
+            if policy.max_disk_mb:
+                size_mb = await asyncio.to_thread(_get_dir_size_mb, run_dir)
+
+            runs_meta.append(
+                {
+                    "run_id": run_id,
+                    "dir": run_dir,
+                    "dt": dt,
+                    "size_mb": size_mb,
+                }
+            )
+
+        runs_meta.sort(key=lambda x: x["dt"], reverse=True)  # Newest first
+        to_delete = []
+
+        # 1. Prune by max_age_days
+        if policy.max_age_days:
+            cutoff = datetime.now(UTC) - timedelta(days=policy.max_age_days)
+            for meta in list(runs_meta):
+                if meta["dt"] < cutoff:
+                    to_delete.append(meta)
+                    runs_meta.remove(meta)
+
+        # 2. Prune by max_runs
+        if policy.max_runs and len(runs_meta) > policy.max_runs:
+            excess = runs_meta[policy.max_runs :]
+            to_delete.extend(excess)
+            runs_meta = runs_meta[: policy.max_runs]
+
+        # 3. Prune by max_disk_mb
+        if policy.max_disk_mb:
+            total_mb = sum(m["size_mb"] for m in runs_meta)
+            while total_mb > policy.max_disk_mb and runs_meta:
+                oldest = runs_meta.pop()  # Pop the oldest (end of list)
+                to_delete.append(oldest)
+                total_mb -= oldest["size_mb"]
+
+        # Delete directories
+        for meta in to_delete:
+            try:
+                await asyncio.to_thread(shutil.rmtree, meta["dir"])
+                logger.info("Pruned old runtime log directory: %s", meta["run_id"])
+            except Exception as e:
+                logger.warning("Failed to prune directory %s: %s", meta["dir"], e)
 
     async def list_runs(
         self,
@@ -260,6 +343,18 @@ class RuntimeLogStore:
 # -------------------------------------------------------------------
 # Module-level helpers
 # -------------------------------------------------------------------
+
+
+def _get_dir_size_mb(path: Path) -> float:
+    """Calculate directory size in megabytes."""
+    total_bytes = 0
+    try:
+        for f in path.rglob("*"):
+            if f.is_file():
+                total_bytes += f.stat().st_size
+    except Exception as e:
+        logger.warning("Failed to calculate directory size for %s: %s", path, e)
+    return total_bytes / (1024 * 1024)
 
 
 def _read_jsonl_as_models(path: Path, model_cls: type) -> list:

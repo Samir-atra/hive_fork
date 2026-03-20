@@ -625,6 +625,44 @@ For migrating existing old logs to new format, see:
 
 **Optimization:** Use filters (node_id, step_index) to reduce data read
 
+### Storage Retention Policy
+
+To prevent unbounded disk growth in long-running deployments, you can configure a `StorageRetentionPolicy` on the `AgentRuntimeConfig`.
+
+```python
+from framework.runtime.runtime_log_schemas import StorageRetentionPolicy
+
+# Keep at most the last 10 runs
+policy = StorageRetentionPolicy(max_runs=10)
+
+# Or, keep runs for at most 7 days
+# policy = StorageRetentionPolicy(max_age_days=7)
+
+# Or, prune oldest runs when logs exceed 500 MB
+# policy = StorageRetentionPolicy(max_disk_mb=500)
+```
+
+The `RuntimeLogStore.prune(policy)` logic automatically runs at the end of each graph execution (`RuntimeLogger.end_run()`), ensuring that the constraints are respected.
+
+### Storage Retention Policy
+
+To prevent unbounded disk growth in long-running deployments, you can configure a `StorageRetentionPolicy` on the `AgentRuntimeConfig` (or pass it directly to the runtime logger setup depending on how you initialize the agent).
+
+```python
+from framework.runtime.runtime_log_schemas import StorageRetentionPolicy
+
+# Keep at most the last 10 runs
+policy = StorageRetentionPolicy(max_runs=10)
+
+# Or, keep runs for at most 7 days
+# policy = StorageRetentionPolicy(max_age_days=7)
+
+# Or, prune oldest runs when logs exceed 500 MB
+# policy = StorageRetentionPolicy(max_disk_mb=500)
+```
+
+The `RuntimeLogStore.prune(policy)` logic automatically runs at the end of each graph execution (`RuntimeLogger.end_run()`), ensuring that the constraints are respected.
+
 ### Storage Size
 
 Typical session with 5 nodes, 20 steps:
@@ -696,3 +734,111 @@ rm -rf session_2025*
 - `core/framework/schemas/session_state.py` - Session state schema
 - `core/framework/storage/session_store.py` - Session state storage
 - `core/framework/graph/executor.py` - GraphExecutor integration
+
+## Storage Retention Policy
+
+To prevent unbounded disk growth in long-running deployments, you can configure a `StorageRetentionPolicy` on the `AgentRuntimeConfig`.
+
+```python
+from framework.runtime.runtime_log_schemas import StorageRetentionPolicy
+
+# Keep at most the last 10 runs
+policy = StorageRetentionPolicy(max_runs=10)
+
+# Or, keep runs for at most 7 days
+# policy = StorageRetentionPolicy(max_age_days=7)
+
+# Or, prune oldest runs when logs exceed 500 MB
+# policy = StorageRetentionPolicy(max_disk_mb=500)
+```
+
+The `RuntimeLogStore.prune(policy)` logic automatically runs at the end of each graph execution (`RuntimeLogger.end_run()`), ensuring that the constraints are respected.
+
+Test
+
+## Storage Retention Policy
+
+To prevent unbounded disk growth in long-running deployments, you can configure a `StorageRetentionPolicy` on the `AgentRuntimeConfig`.
+
+```python
+from framework.runtime.runtime_log_schemas import StorageRetentionPolicy
+
+# Keep at most the last 10 runs
+policy = StorageRetentionPolicy(max_runs=10)
+
+# Or, keep runs for at most 7 days
+# policy = StorageRetentionPolicy(max_age_days=7)
+
+# Or, prune oldest runs when logs exceed 500 MB
+# policy = StorageRetentionPolicy(max_disk_mb=500)
+```
+
+The `RuntimeLogStore.prune(policy)` logic automatically runs at the end of each graph execution (`RuntimeLogger.end_run()`), ensuring that the constraints are respected.
+
+## Storage Retention Policy
+
+To prevent unbounded disk growth in long-running deployments, you can configure a `StorageRetentionPolicy` on the `AgentRuntimeConfig`.
+
+```python
+from framework.runtime.runtime_log_schemas import StorageRetentionPolicy
+
+# Keep at most the last 10 runs
+policy = StorageRetentionPolicy(max_runs=10)
+
+# Or, keep runs for at most 7 days
+# policy = StorageRetentionPolicy(max_age_days=7)
+
+# Or, prune oldest runs when logs exceed 500 MB
+# policy = StorageRetentionPolicy(max_disk_mb=500)
+```
+
+The `RuntimeLogStore.prune(policy)` logic automatically runs at the end of each graph execution (`RuntimeLogger.end_run()`), ensuring that the constraints are respected.
+
+## Storage Retention Policy
+
+To prevent unbounded disk growth in long-running deployments, you can configure a `StorageRetentionPolicy` on the `AgentRuntimeConfig`.
+
+```python
+from framework.runtime.runtime_log_schemas import StorageRetentionPolicy
+
+# Keep at most the last 10 runs
+policy = StorageRetentionPolicy(max_runs=10)
+
+# Or, keep runs for at most 7 days
+# policy = StorageRetentionPolicy(max_age_days=7)
+
+# Or, prune oldest runs when logs exceed 500 MB
+# policy = StorageRetentionPolicy(max_disk_mb=500)
+```
+
+The `RuntimeLogStore.prune(policy)` logic automatically runs at the end of each graph execution (`RuntimeLogger.end_run()`), ensuring that the constraints are respected.
+
+## Storage Retention Policy
+
+To prevent unbounded disk growth in long-running deployments, you can configure a `StorageRetentionPolicy` on the `AgentRuntimeConfig` or in your global `~/.hive/configuration.json` under `storage_retention_policy`.
+
+```json
+{
+  "storage_retention_policy": {
+    "max_runs": 10,
+    "max_age_days": 7,
+    "max_disk_mb": 500
+  }
+}
+```
+
+Or via code:
+```python
+from framework.runtime.runtime_log_schemas import StorageRetentionPolicy
+
+# Keep at most the last 10 runs
+policy = StorageRetentionPolicy(max_runs=10)
+
+# Or, keep runs for at most 7 days
+# policy = StorageRetentionPolicy(max_age_days=7)
+
+# Or, prune oldest runs when logs exceed 500 MB
+# policy = StorageRetentionPolicy(max_disk_mb=500)
+```
+
+The `RuntimeLogStore.prune(policy)` logic automatically runs at the end of each graph execution (`RuntimeLogger.end_run()`), ensuring that the constraints are respected.
