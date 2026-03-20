@@ -779,6 +779,7 @@ Write-Step -Number "4" -Text "Step 4: Verifying Claude Code skills..."
 $ProviderMap = [ordered]@{
     ANTHROPIC_API_KEY = @{ Name = "Anthropic (Claude)"; Id = "anthropic" }
     OPENAI_API_KEY    = @{ Name = "OpenAI (GPT)";       Id = "openai" }
+    MINIMAX_API_KEY   = @{ Name = "MiniMax";            Id = "minimax" }
     GEMINI_API_KEY    = @{ Name = "Google Gemini";       Id = "gemini" }
     GOOGLE_API_KEY    = @{ Name = "Google AI";           Id = "google" }
     GROQ_API_KEY      = @{ Name = "Groq";               Id = "groq" }
@@ -791,6 +792,7 @@ $ProviderMap = [ordered]@{
 $DefaultModels = @{
     anthropic   = "claude-haiku-4-5-20251001"
     openai      = "gpt-5-mini"
+    minimax     = "MiniMax-M2.5"
     gemini      = "gemini-3-flash-preview"
     groq        = "moonshotai/kimi-k2-instruct-0905"
     cerebras    = "zai-glm-4.7"
@@ -806,6 +808,9 @@ $ModelChoices = @{
         @{ Id = "claude-sonnet-4-20250514";   Label = "Sonnet 4 - Fast + capable";              MaxTokens = 8192;  MaxContextTokens = 180000 },
         @{ Id = "claude-sonnet-4-5-20250929"; Label = "Sonnet 4.5 - Best balance";              MaxTokens = 16384; MaxContextTokens = 180000 },
         @{ Id = "claude-opus-4-6";            Label = "Opus 4.6 - Most capable";                MaxTokens = 32768; MaxContextTokens = 180000 }
+    )
+    minimax = @(
+        @{ Id = "MiniMax-M2.5"; Label = "MiniMax-M2.5 - Frontier reasoning (recommended)"; MaxTokens = 8192; MaxContextTokens = 900000 }
     )
     openai = @(
         @{ Id = "gpt-5-mini"; Label = "GPT-5 Mini - Fast + cheap (recommended)"; MaxTokens = 16384; MaxContextTokens = 120000 },
@@ -904,6 +909,11 @@ $zaiKey = [System.Environment]::GetEnvironmentVariable("ZAI_API_KEY", "User")
 if (-not $zaiKey) { $zaiKey = $env:ZAI_API_KEY }
 if ($zaiKey) { $ZaiCredDetected = $true }
 
+$MinimaxCredDetected = $false
+$minimaxKey = [System.Environment]::GetEnvironmentVariable("MINIMAX_API_KEY", "User")
+if (-not $minimaxKey) { $minimaxKey = $env:MINIMAX_API_KEY }
+if ($minimaxKey) { $MinimaxCredDetected = $true }
+
 $KimiCredDetected = $false
 $kimiConfigPath = Join-Path $env:USERPROFILE ".kimi\config.toml"
 if (Test-Path $kimiConfigPath) { $KimiCredDetected = $true }
@@ -940,6 +950,7 @@ if (Test-Path $HiveConfigFile) {
             elseif ($prevLlm.use_codex_subscription) { $PrevSubMode = "codex" }
             elseif ($prevLlm.use_kimi_code_subscription) { $PrevSubMode = "kimi_code" }
             elseif ($prevLlm.api_base -and $prevLlm.api_base -like "*api.z.ai*") { $PrevSubMode = "zai_code" }
+            elseif ($prevLlm.provider -eq "minimax" -or ($prevLlm.api_base -and $prevLlm.api_base -like "*api.minimax.io*")) { $PrevSubMode = "minimax_code" }
             elseif ($prevLlm.api_base -and $prevLlm.api_base -like "*api.kimi.com*") { $PrevSubMode = "kimi_code" }
         }
     } catch { }
@@ -953,6 +964,7 @@ if ($PrevSubMode -or $PrevProvider) {
         "claude_code" { if ($ClaudeCredDetected) { $prevCredValid = $true } }
         "zai_code"    { if ($ZaiCredDetected)    { $prevCredValid = $true } }
         "codex"       { if ($CodexCredDetected)  { $prevCredValid = $true } }
+        "minimax_code" { if ($MinimaxCredDetected) { $prevCredValid = $true } }
         "kimi_code"   { if ($KimiCredDetected)   { $prevCredValid = $true } }
         default {
             if ($PrevEnvVar) {
@@ -967,16 +979,18 @@ if ($PrevSubMode -or $PrevProvider) {
             "claude_code" { $DefaultChoice = "1" }
             "zai_code"    { $DefaultChoice = "2" }
             "codex"       { $DefaultChoice = "3" }
-            "kimi_code"   { $DefaultChoice = "4" }
+            "minimax_code" { $DefaultChoice = "4" }
+            "kimi_code"   { $DefaultChoice = "5" }
         }
         if (-not $DefaultChoice) {
             switch ($PrevProvider) {
-                "anthropic" { $DefaultChoice = "5" }
-                "openai"    { $DefaultChoice = "6" }
-                "gemini"    { $DefaultChoice = "7" }
-                "groq"      { $DefaultChoice = "8" }
-                "cerebras"  { $DefaultChoice = "9" }
-                "kimi"      { $DefaultChoice = "4" }
+                "anthropic" { $DefaultChoice = "6" }
+                "openai"    { $DefaultChoice = "7" }
+                "gemini"    { $DefaultChoice = "8" }
+                "groq"      { $DefaultChoice = "9" }
+                "cerebras"  { $DefaultChoice = "10" }
+                "minimax"   { $DefaultChoice = "4" }
+                "kimi"      { $DefaultChoice = "5" }
             }
         }
     }
@@ -1008,9 +1022,16 @@ Write-Host ") OpenAI Codex Subscription  " -NoNewline
 Write-Color -Text "(use your Codex/ChatGPT Plus plan)" -Color DarkGray -NoNewline
 if ($CodexCredDetected) { Write-Color -Text "  (credential detected)" -Color Green } else { Write-Host "" }
 
-# 4) Kimi Code
+# 4) MiniMax Coding Key
 Write-Host "  " -NoNewline
 Write-Color -Text "4" -Color Cyan -NoNewline
+Write-Host ") MiniMax Coding Key     " -NoNewline
+Write-Color -Text "(use your MiniMax coding key)" -Color DarkGray -NoNewline
+if ($MinimaxCredDetected) { Write-Color -Text "  (credential detected)" -Color Green } else { Write-Host "" }
+
+# 5) Kimi Code
+Write-Host "  " -NoNewline
+Write-Color -Text "5" -Color Cyan -NoNewline
 Write-Host ") Kimi Code Subscription     " -NoNewline
 Write-Color -Text "(use your Kimi Code plan)" -Color DarkGray -NoNewline
 if ($KimiCredDetected) { Write-Color -Text "  (credential detected)" -Color Green } else { Write-Host "" }
@@ -1018,9 +1039,9 @@ if ($KimiCredDetected) { Write-Color -Text "  (credential detected)" -Color Gree
 Write-Host ""
 Write-Color -Text "  API key providers:" -Color Cyan
 
-# 5-9) API key providers
+# 6-10) API key providers
 for ($idx = 0; $idx -lt $ProviderMenuEnvVars.Count; $idx++) {
-    $num = $idx + 5
+    $num = $idx + 6
     $envVal = [System.Environment]::GetEnvironmentVariable($ProviderMenuEnvVars[$idx], "Process")
     if (-not $envVal) { $envVal = [System.Environment]::GetEnvironmentVariable($ProviderMenuEnvVars[$idx], "User") }
     Write-Host "  " -NoNewline
@@ -1030,7 +1051,7 @@ for ($idx = 0; $idx -lt $ProviderMenuEnvVars.Count; $idx++) {
 }
 
 Write-Host "  " -NoNewline
-Write-Color -Text "10" -Color Cyan -NoNewline
+Write-Color -Text "11" -Color Cyan -NoNewline
 Write-Host ") Skip for now"
 Write-Host ""
 
@@ -1041,14 +1062,14 @@ if ($DefaultChoice) {
 
 while ($true) {
     if ($DefaultChoice) {
-        $raw = Read-Host "Enter choice (1-10) [$DefaultChoice]"
+        $raw = Read-Host "Enter choice (1-11) [$DefaultChoice]"
         if ([string]::IsNullOrWhiteSpace($raw)) { $raw = $DefaultChoice }
     } else {
-        $raw = Read-Host "Enter choice (1-10)"
+        $raw = Read-Host "Enter choice (1-11)"
     }
     if ($raw -match '^\d+$') {
         $num = [int]$raw
-        if ($num -ge 1 -and $num -le 10) { break }
+        if ($num -ge 1 -and $num -le 11) { break }
     }
     Write-Color -Text "Invalid choice. Please enter 1-10" -Color Red
 }
@@ -1118,6 +1139,18 @@ switch ($num) {
         }
     }
     4 {
+        # MiniMax Coding Key
+        $SubscriptionMode        = "minimax_code"
+        $SelectedProviderId      = "minimax"
+        $SelectedEnvVar          = "MINIMAX_API_KEY"
+        $SelectedModel           = "MiniMax-M2.5"
+        $SelectedMaxTokens       = 32768
+        $SelectedMaxContextTokens = 900000
+        Write-Host ""
+        Write-Ok "Using MiniMax coding key"
+        Write-Color -Text "  Model: MiniMax-M2.5 | API: api.minimax.io" -Color DarkGray
+    }
+    5 {
         # Kimi Code Subscription
         $SubscriptionMode        = "kimi_code"
         $SelectedProviderId      = "kimi"
@@ -1129,9 +1162,9 @@ switch ($num) {
         Write-Ok "Using Kimi Code subscription"
         Write-Color -Text "  Model: kimi-k2.5 | API: api.kimi.com/coding" -Color DarkGray
     }
-    { $_ -ge 5 -and $_ -le 9 } {
+    { $_ -ge 6 -and $_ -le 10 } {
         # API key providers
-        $provIdx = $num - 5
+        $provIdx = $num - 6
         $SelectedEnvVar     = $ProviderMenuEnvVars[$provIdx]
         $SelectedProviderId = $ProviderMenuIds[$provIdx]
         $providerName       = $ProviderMenuNames[$provIdx] -replace ' - .*', ''  # strip description
@@ -1202,7 +1235,7 @@ switch ($num) {
             }
         }
     }
-    10 {
+    11 {
         Write-Host ""
         Write-Warn "Skipped. An LLM API key is required to test and use worker agents."
         Write-Host "  Add your API key later by running:"
@@ -1274,6 +1307,70 @@ if ($SubscriptionMode -eq "zai_code") {
             break
         } else {
             # User pressed Enter with existing key — keep it
+            break
+        }
+    }
+}
+
+# For MiniMax Code subscription: prompt for API key with verification + retry
+if ($SubscriptionMode -eq "minimax_code") {
+    while ($true) {
+        $existingMinimax = [System.Environment]::GetEnvironmentVariable("MINIMAX_API_KEY", "User")
+        if (-not $existingMinimax) { $existingMinimax = $env:MINIMAX_API_KEY }
+
+        if ($existingMinimax) {
+            $masked = $existingMinimax.Substring(0, [Math]::Min(4, $existingMinimax.Length)) + "..." + $existingMinimax.Substring([Math]::Max(0, $existingMinimax.Length - 4))
+            Write-Host ""
+            Write-Color -Text "  $([char]0x2B22) Current MiniMax key: $masked" -Color Green
+            $apiKey = Read-Host "  Press Enter to keep, or paste a new key to replace"
+        } else {
+            Write-Host ""
+            Write-Host "Get your API key from: " -NoNewline
+            Write-Color -Text "https://platform.minimax.io/user-center/basic-information/interface-key" -Color Cyan
+            Write-Host ""
+            $apiKey = Read-Host "Paste your MiniMax API key (or press Enter to skip)"
+        }
+
+        if ($apiKey) {
+            [System.Environment]::SetEnvironmentVariable("MINIMAX_API_KEY", $apiKey, "User")
+            $env:MINIMAX_API_KEY = $apiKey
+            Write-Host ""
+            Write-Ok "MiniMax API key saved as User environment variable"
+
+            # Health check the new key
+            Write-Host "  Verifying MiniMax API key... " -NoNewline
+            try {
+                $hcResult = & uv run python (Join-Path $ScriptDir "scripts/check_llm_key.py") "minimax" $apiKey "https://api.minimax.io/v1" 2>$null
+                $hcJson = $hcResult | ConvertFrom-Json
+                if ($hcJson.valid -eq $true) {
+                    Write-Color -Text "ok" -Color Green
+                    break
+                } elseif ($hcJson.valid -eq $false) {
+                    Write-Color -Text "failed" -Color Red
+                    Write-Warn $hcJson.message
+                    [System.Environment]::SetEnvironmentVariable("MINIMAX_API_KEY", $null, "User")
+                    Remove-Item -Path "Env:\MINIMAX_API_KEY" -ErrorAction SilentlyContinue
+                    Write-Host ""
+                    Read-Host "  Press Enter to try again"
+                } else {
+                    Write-Color -Text "--" -Color Yellow
+                    Write-Color -Text "  Could not verify key (network issue). The key has been saved." -Color DarkGray
+                    break
+                }
+            } catch {
+                Write-Color -Text "--" -Color Yellow
+                Write-Color -Text "  Could not verify key (network issue). The key has been saved." -Color DarkGray
+                break
+            }
+        } elseif (-not $existingMinimax) {
+            Write-Host ""
+            Write-Warn "Skipped. Add your MiniMax API key later:"
+            Write-Color -Text "  [System.Environment]::SetEnvironmentVariable('MINIMAX_API_KEY', 'your-key', 'User')" -Color Cyan
+            $SelectedEnvVar     = ""
+            $SelectedProviderId = ""
+            $SubscriptionMode   = ""
+            break
+        } else {
             break
         }
     }
@@ -1377,6 +1474,9 @@ if ($SelectedProviderId) {
         $config.llm["use_claude_code_subscription"] = $true
     } elseif ($SubscriptionMode -eq "codex") {
         $config.llm["use_codex_subscription"] = $true
+    } elseif ($SubscriptionMode -eq "minimax_code") {
+        $config.llm["api_base"] = "https://api.minimax.io/v1"
+        $config.llm["api_key_env_var"] = $SelectedEnvVar
     } elseif ($SubscriptionMode -eq "zai_code") {
         $config.llm["api_base"] = "https://api.z.ai/api/coding/paas/v4"
         $config.llm["api_key_env_var"] = $SelectedEnvVar
@@ -1677,6 +1777,9 @@ if ($SelectedProviderId) {
     if ($SubscriptionMode -eq "claude_code") {
         Write-Ok "Claude Code Subscription -> $SelectedModel"
         Write-Color -Text "  Token auto-refresh from ~/.claude/.credentials.json" -Color DarkGray
+    } elseif ($SubscriptionMode -eq "minimax_code") {
+        Write-Ok "MiniMax Coding Key -> $SelectedModel"
+        Write-Color -Text "  API: api.minimax.io/v1 (OpenAI-compatible)" -Color DarkGray
     } elseif ($SubscriptionMode -eq "zai_code") {
         Write-Ok "ZAI Code Subscription -> $SelectedModel"
         Write-Color -Text "  API: api.z.ai (OpenAI-compatible)" -Color DarkGray
