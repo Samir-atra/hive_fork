@@ -1,11 +1,9 @@
 import pytest
-from pydantic import BaseModel
-from framework.graph.node import NodeSpec
-from framework.graph.edge import EdgeSpec
-from framework.graph.edge import GraphSpec
-from framework.graph.goal import Goal
+
+from framework.graph.edge import EdgeSpec, GraphSpec
 from framework.graph.executor import GraphExecutor
-from framework.graph.node import NodeProtocol, NodeResult, NodeContext
+from framework.graph.goal import Goal
+from framework.graph.node import NodeContext, NodeProtocol, NodeResult, NodeSpec
 from framework.runtime.core import Runtime
 
 
@@ -33,7 +31,10 @@ async def test_checkpointing_recovery_on_failure(tmp_path):
     goal = Goal(
         id="test-checkpoint-recovery",
         name="Test Checkpoint Recovery",
-        description="Verify that an agent can resume from the last successful node instead of the entry point",
+        description=(
+            "Verify that an agent can resume from the "
+            "last successful node instead of the entry point"
+        ),
     )
 
     nodes = [
