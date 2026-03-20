@@ -77,6 +77,32 @@ class RuntimeLogger:
         self._store.ensure_run_dir(self._run_id)
         return self._run_id
 
+    def log_judgment(
+        self,
+        node_id: str,
+        step_index: int,
+        action: str,
+        confidence: float,
+        reasoning: str,
+        human_override: str | None = None,
+    ) -> None:
+        """Record a judge judgment for Phase 2 calibration."""
+        if not self._run_id:
+            return
+
+        from framework.runtime.runtime_log_schemas import JudgmentLog
+
+        judgment = JudgmentLog(
+            run_id=self._run_id,
+            node_id=node_id,
+            step_index=step_index,
+            action=action,
+            confidence=confidence,
+            reasoning=reasoning,
+            human_override=human_override,
+        )
+        self._store.append_judgment(self._run_id, judgment)
+
     def log_step(
         self,
         node_id: str,

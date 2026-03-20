@@ -121,6 +121,7 @@ class JudgeVerdict:
     # ""    = evaluated but no feedback; logged with default text.
     # "..." = evaluated with feedback; logged as-is.
     feedback: str | None = None
+    confidence: float = 0.8
 
 
 @runtime_checkable
@@ -1613,6 +1614,13 @@ class EventLoopNode(NodeProtocol):
                 latency_ms = int((time.time() - start_time) * 1000)
                 _accept_count += 1
                 if ctx.runtime_logger:
+                    ctx.runtime_logger.log_judgment(
+                        node_id=node_id,
+                        step_index=iteration,
+                        action="ACCEPT",
+                        confidence=getattr(verdict, "confidence", 1.0),
+                        reasoning=verdict.feedback or "",
+                    )
                     iter_latency_ms = int((time.time() - iter_start) * 1000)
                     ctx.runtime_logger.log_step(
                         node_id=node_id,
@@ -1656,6 +1664,13 @@ class EventLoopNode(NodeProtocol):
                 latency_ms = int((time.time() - start_time) * 1000)
                 _escalate_count += 1
                 if ctx.runtime_logger:
+                    ctx.runtime_logger.log_judgment(
+                        node_id=node_id,
+                        step_index=iteration,
+                        action="ESCALATE",
+                        confidence=getattr(verdict, "confidence", 1.0),
+                        reasoning=verdict.feedback or "",
+                    )
                     iter_latency_ms = int((time.time() - iter_start) * 1000)
                     ctx.runtime_logger.log_step(
                         node_id=node_id,
@@ -1698,6 +1713,13 @@ class EventLoopNode(NodeProtocol):
             elif verdict.action == "RETRY":
                 _retry_count += 1
                 if ctx.runtime_logger:
+                    ctx.runtime_logger.log_judgment(
+                        node_id=node_id,
+                        step_index=iteration,
+                        action="RETRY",
+                        confidence=getattr(verdict, "confidence", 1.0),
+                        reasoning=verdict.feedback or "",
+                    )
                     iter_latency_ms = int((time.time() - iter_start) * 1000)
                     ctx.runtime_logger.log_step(
                         node_id=node_id,
@@ -3043,10 +3065,10 @@ class EventLoopNode(NodeProtocol):
         # --- Level 0: short-circuits (no evaluation) -----------------------
 
         if self._mark_complete_flag:
-            return JudgeVerdict(action="ACCEPT")
+            return JudgeVerdict(action="ACCEPT", confidence=1.0)
 
         if ctx.node_spec.skip_judge:
-            return JudgeVerdict(action="RETRY")  # feedback=None → not logged
+            return JudgeVerdict(action="RETRY", confidence=1.0)  # feedback=None → not logged
 
         # --- Level 1: custom judge -----------------------------------------
 
@@ -3073,7 +3095,7 @@ class EventLoopNode(NodeProtocol):
 
         # Real tool calls were made — let the agent keep working.
         if tool_results:
-            return JudgeVerdict(action="RETRY")  # feedback=None → not logged
+            return JudgeVerdict(action="RETRY", confidence=1.0)  # feedback=None → not logged
 
         missing = self._get_missing_output_keys(
             accumulator, ctx.node_spec.output_keys, ctx.node_spec.nullable_output_keys
@@ -3136,9 +3158,10 @@ class EventLoopNode(NodeProtocol):
                 return JudgeVerdict(
                     action=verdict.action,
                     feedback=verdict.feedback or "Phase criteria not met.",
+                    confidence=verdict.confidence,
                 )
 
-        return JudgeVerdict(action="ACCEPT", feedback="")
+        return JudgeVerdict(action="ACCEPT", feedback="", confidence=1.0)
 
     # -------------------------------------------------------------------
     # Helpers
