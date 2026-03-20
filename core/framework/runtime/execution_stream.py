@@ -181,6 +181,7 @@ class ExecutionStream:
         result_retention_ttl_seconds: float | None = None,
         runtime_log_store: Any = None,
         session_store: "SessionStore | None" = None,
+        storage_retention_policy: Any = None,
         checkpoint_config: CheckpointConfig | None = None,
         graph_id: str | None = None,
         accounts_prompt: str = "",
@@ -227,6 +228,7 @@ class ExecutionStream:
         self._runtime_log_store = runtime_log_store
         self._checkpoint_config = checkpoint_config
         self._session_store = session_store
+        self._storage_retention_policy = storage_retention_policy
         self._accounts_prompt = accounts_prompt
         self._accounts_data = accounts_data
         self._tool_provider_map = tool_provider_map
@@ -630,7 +632,9 @@ class ExecutionStream:
                     from framework.runtime.runtime_logger import RuntimeLogger
 
                     runtime_logger = RuntimeLogger(
-                        store=self._runtime_log_store, agent_id=self.graph.id
+                        store=self._runtime_log_store,
+                        agent_id=self.graph.id,
+                        retention_policy=self._storage_retention_policy
                     )
 
                 # Derive storage from session_store (graph-specific for secondary

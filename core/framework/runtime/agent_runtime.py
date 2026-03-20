@@ -1,3 +1,4 @@
+
 """
 Agent Runtime - Top-level orchestrator for multi-entry-point agents.
 
@@ -20,6 +21,7 @@ from framework.graph.executor import ExecutionResult
 from framework.runtime.event_bus import EventBus
 from framework.runtime.execution_stream import EntryPointSpec, ExecutionStream
 from framework.runtime.outcome_aggregator import OutcomeAggregator
+from framework.runtime.runtime_log_schemas import StorageRetentionPolicy
 from framework.runtime.runtime_log_store import RuntimeLogStore
 from framework.runtime.shared_state import SharedStateManager
 from framework.storage.concurrent import ConcurrentStorage
@@ -38,6 +40,7 @@ class AgentRuntimeConfig:
     """Configuration for AgentRuntime."""
 
     max_concurrent_executions: int = 100
+    storage_retention_policy: StorageRetentionPolicy | None = None
     cache_ttl: float = 60.0
     batch_interval: float = 0.1
     max_history: int = 1000
@@ -288,6 +291,7 @@ class AgentRuntime:
                     result_retention_ttl_seconds=self._config.execution_result_ttl_seconds,
                     runtime_log_store=self._runtime_log_store,
                     session_store=self._session_store,
+                    storage_retention_policy=self._config.storage_retention_policy,
                     checkpoint_config=self._checkpoint_config,
                     graph_id=self._graph_id,
                     accounts_prompt=self._accounts_prompt,
@@ -916,6 +920,7 @@ class AgentRuntime:
                 result_retention_ttl_seconds=self._config.execution_result_ttl_seconds,
                 runtime_log_store=graph_log_store,
                 session_store=graph_session_store,
+                storage_retention_policy=self._config.storage_retention_policy,
                 checkpoint_config=self._checkpoint_config,
                 graph_id=graph_id,
                 accounts_prompt=self._accounts_prompt,

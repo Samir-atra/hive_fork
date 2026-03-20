@@ -31,6 +31,7 @@ from framework.runtime.runtime_log_schemas import (
     NodeDetail,
     NodeStepLog,
     RunSummaryLog,
+    StorageRetentionPolicy,
     ToolCallLog,
 )
 from framework.runtime.runtime_log_store import RuntimeLogStore
@@ -44,9 +45,15 @@ class RuntimeLogger:
     Thread-safe: uses a lock around file appends for parallel node safety.
     """
 
-    def __init__(self, store: RuntimeLogStore, agent_id: str = "") -> None:
+    def __init__(
+        self,
+        store: RuntimeLogStore,
+        agent_id: str = "",
+        retention_policy: StorageRetentionPolicy | None = None
+    ) -> None:
         self._store = store
         self._agent_id = agent_id
+        self._retention_policy = retention_policy
         self._run_id = ""
         self._goal_id = ""
         self._started_at = ""
@@ -321,6 +328,9 @@ class RuntimeLogger:
                 status,
                 len(node_details),
             )
+
+            if self._retention_policy:
+                await self._store.prune(self._retention_policy)
         except Exception:
             logger.exception(
                 "Failed to save runtime logs for run_id=%s (non-fatal)",
