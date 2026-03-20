@@ -815,7 +815,7 @@ class ExecutionStream:
                 # Check if we have a result (executor completed and returned)
                 try:
                     _ = locals().get("result", None)  # type: ignore
-                    _ = locals().get("result", None)
+                    _ = result  # type: ignore
                 except NameError:
                     has_result = False
                     result = ExecutionResult(

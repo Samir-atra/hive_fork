@@ -1109,7 +1109,7 @@ class GraphExecutor:
                             goal=goal,
                             current_node_id=current_node_id,
                             current_node_spec=node_spec,
-                            result=result,  # type: ignore
+                            result=NodeResult(output=[], success=False),  # type: ignore
                             memory=memory,
                         )
 
@@ -1266,7 +1266,7 @@ class GraphExecutor:
                         goal=goal,
                         current_node_id=current_node_id,
                         current_node_spec=node_spec,
-                            result=result,  # type: ignore
+                        result=result,  # type: ignore
                         memory=memory,
                     )
 
