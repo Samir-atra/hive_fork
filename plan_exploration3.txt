@@ -1,0 +1,94 @@
+So wait. If we just add `_sync_lock = threading.RLock()` to `SharedStateManager.__init__`, and inside `read_sync`, `write_sync`, `read_all_sync`, we wrap the dict mutations in `with self._manager._sync_lock:`.
+What about `read`, `write`, `read_all`, `_write_direct`, `_write_with_lock`, etc., in `SharedStateManager`?
+If `SharedStateManager` is used asynchronously, should they ALSO acquire `_sync_lock`?
+Yes, if they want to be protected from sync access. Because `asyncio.Lock` does not block a thread from acquiring a `threading.Lock`.
+So in `_write_direct`:
+```python
+    async def _write_direct(
+        self,
+        key: str,
+        value: Any,
+        execution_id: str,
+        stream_id: str,
+        scope: StateScope,
+    ) -> None:
+        """Write without locking (for ISOLATED and SHARED)."""
+        with self._sync_lock:
+            if scope == StateScope.EXECUTION:
+                if execution_id not in self._execution_state:
+                    self._execution_state[execution_id] = {}
+                self._execution_state[execution_id][key] = value
+
+            elif scope == StateScope.STREAM:
+                if stream_id not in self._stream_state:
+                    self._stream_state[stream_id] = {}
+                self._stream_state[stream_id][key] = value
+
+            elif scope == StateScope.GLOBAL:
+                self._global_state[key] = value
+
+            self._version += 1
+```
+And `read`:
+```python
+    async def read(
+        self,
+        key: str,
+        execution_id: str,
+        stream_id: str,
+        isolation: IsolationLevel,
+    ) -> Any:
+        with self._sync_lock:
+            if isolation == IsolationLevel.ISOLATED:
+                exec_state = self._execution_state.get(execution_id, {})
+                return exec_state.get(key)
+            else:
+                exec_state = self._execution_state.get(execution_id, {})
+                if key in exec_state:
+                    return exec_state[key]
+                stream_state = self._stream_state.get(stream_id, {})
+                if key in stream_state:
+                    return stream_state[key]
+                return self._global_state.get(key)
+```
+Wait, if we do this, it makes the entire dictionary state thread-safe! That perfectly matches the recommendation "using `threading.Lock` for thread-safe dict access".
+Is `threading.RLock()` better? `RLock` allows re-entrance in the same thread, which is safer if methods call each other. Let's use `threading.RLock()`.
+Wait, in `__init__`:
+```python
+import threading
+        # Change history for debugging/auditing
+        self._sync_lock = threading.RLock()
+```
+And wrap the dictionary access logic inside `read`, `write_sync`, `read_sync`, `read_all_sync`, `read_all`, `_write_direct`, `_record_change`.
+
+Wait! The issue says:
+"The synchronous state access methods (read_sync(), write_sync(), and read_all_sync()) directly mutate shared execution state without acquiring any locks, even when the isolation level is set to SYNCHRONIZED. These methods bypass the locking mechanisms used by their async counterparts"
+"Actual Behavior: Sync APIs write directly to shared state without locks. Data races occur when mixed with async operations."
+So if the sync API is used inside `SYNCHRONIZED` isolation mode, it should ideally respect the `SYNCHRONIZED` logic!
+Wait! The `write_sync` method only writes to the `EXECUTION` scope. And in the async version, writes to `EXECUTION` scope DO NOT ACQUIRE LOCKS (`asyncio.Lock`), even in `SYNCHRONIZED` mode.
+Wait! Let me re-read `write`:
+```python
+        # SYNCHRONIZED requires locks for stream/global writes
+        if isolation == IsolationLevel.SYNCHRONIZED and scope != StateScope.EXECUTION:
+            await self._write_with_lock(key, value, execution_id, stream_id, scope)
+        else:
+            await self._write_direct(key, value, execution_id, stream_id, scope)
+```
+So execution-scoped writes NEVER acquire `asyncio.Lock` in async mode!
+Wait! But the issue states: "The synchronous state access methods (read_sync(), write_sync(), and read_all_sync()) directly mutate shared execution state without acquiring any locks, even when the isolation level is set to SYNCHRONIZED."
+Wait! If the async code does not acquire locks for execution scope either, why is the issue singling out sync methods?
+Because sync methods mutate `_execution_state` AND `_version += 1` non-atomically!
+Also, if two threads call `write_sync` concurrently, they can corrupt the `_execution_state` dictionary or the `_version` counter.
+
+But what if `write_sync` was somehow meant to acquire `asyncio.Lock`? No, it can't.
+The issue author says: "My approach is to make sync APIs acquire the same locks as async methods, and in the end will add regression tests to cover mixed sync/async access."
+And they created PR before (which is closed/drafted, but I am doing this issue).
+The recommendation explicitly says:
+"Add the same locking mechanism to sync methods (using `threading.Lock` for thread-safe dict access)"
+
+So I will:
+1. Import `threading` in `core/framework/runtime/shared_state.py`.
+2. Add `self._sync_lock = threading.RLock()` to `SharedStateManager.__init__`.
+3. Wrap all dictionary/state modifications and reads in `SharedStateManager` and `StreamMemory` (specifically `read_sync`, `write_sync`, `read_all_sync` in `StreamMemory`, and maybe `read`, `read_all`, `_write_direct`, `_record_change` in `SharedStateManager`) with `with self._sync_lock:`.
+
+Let's do a quick grep to see where `self._execution_state` and other states are modified in `SharedStateManager`.
