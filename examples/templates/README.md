@@ -45,3 +45,4 @@ uv run python -m exports.my_research_agent --input '{"topic": "..."}'
 | [deep_research_agent](deep_research_agent/) | Interactive research agent that searches diverse sources, evaluates findings with user checkpoints, and produces a cited HTML report |
 | [local_business_extractor](local_business_extractor/) | Finds local businesses on Google Maps, scrapes contact details, and syncs to Google Sheets |
 | [tech_news_reporter](tech_news_reporter/) | Researches the latest technology and AI news from the web and produces a well-organized report |
+| [commercial_crm_agent](commercial_crm_agent/) | Zero-Glue-Code Revenue/Support Agent that searches CRMs for leads/deals and dispatches messaging notifications |
