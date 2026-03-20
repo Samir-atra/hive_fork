@@ -919,8 +919,6 @@ class TestWorkerSessions:
             )
             assert resp.status == 404
 
-
-
     @pytest.mark.asyncio
     async def test_star_checkpoint(self, sample_session, tmp_agent_dir):
         session_id, session_dir, state = sample_session
@@ -932,7 +930,7 @@ class TestWorkerSessions:
         async with TestClient(TestServer(app)) as client:
             resp = await client.put(
                 f"/api/sessions/test_agent/worker-sessions/{session_id}/checkpoints/cp_node_complete_node_a_001/star",
-                json={"is_starred": True}
+                json={"is_starred": True},
             )
             assert resp.status == 200
             data = await resp.json()

@@ -264,7 +264,6 @@ class CheckpointStore:
 
         return await asyncio.to_thread(_check, checkpoint_id)
 
-
     async def update_checkpoint_star(self, checkpoint_id: str, is_starred: bool) -> bool:
         """
         Update the is_starred status of a checkpoint.

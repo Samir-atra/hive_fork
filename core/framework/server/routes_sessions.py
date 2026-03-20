@@ -584,7 +584,6 @@ async def handle_list_checkpoints(request: web.Request) -> web.Response:
     return web.json_response({"checkpoints": checkpoints})
 
 
-
 async def handle_star_checkpoint(request: web.Request) -> web.Response:
     """Star/unstar a checkpoint."""
     session, err = resolve_session(request)
@@ -605,6 +604,7 @@ async def handle_star_checkpoint(request: web.Request) -> web.Response:
         return web.json_response({"error": "Invalid JSON body"}, status=400)
 
     from framework.storage.checkpoint_store import CheckpointStore
+
     store = CheckpointStore(sessions_dir(session) / ws_id)
     updated = await store.update_checkpoint_star(checkpoint_id, is_starred)
 
