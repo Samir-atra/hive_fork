@@ -5,7 +5,7 @@ A Run contains all the decisions made during execution, along with
 summaries and metrics that Builder needs to understand what happened.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -36,7 +36,7 @@ class Problem(BaseModel):
     description: str
     root_cause: str | None = None
     decision_id: str | None = None
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     suggested_fix: str | None = None
 
     model_config = {"extra": "allow"}
@@ -74,7 +74,7 @@ class Run(BaseModel):
 
     id: str
     goal_id: str
-    started_at: datetime = Field(default_factory=datetime.now)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Status
     status: RunStatus = RunStatus.RUNNING
@@ -154,7 +154,7 @@ class Run(BaseModel):
     def complete(self, status: RunStatus, narrative: str = "") -> None:
         """Mark the run as complete."""
         self.status = status
-        self.completed_at = datetime.now()
+        self.completed_at = datetime.now(UTC)
         self.narrative = narrative or self._generate_narrative()
 
     def _generate_narrative(self) -> str:
@@ -259,3 +259,6 @@ class RunSummary(BaseModel):
             warnings=warnings,
             successes=successes,
         )
+
+
+# trigger CI run

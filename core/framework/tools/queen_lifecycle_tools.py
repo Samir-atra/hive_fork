@@ -2772,7 +2772,7 @@ def register_queen_lifecycle_tools(
                 }
                 ctx = stream.get_context(exec_id)
                 if ctx:
-                    elapsed = (datetime.now() - ctx.started_at).total_seconds()
+                    elapsed = (datetime.now(UTC) - ctx.started_at).total_seconds()
                     exec_info["elapsed_seconds"] = round(elapsed, 1)
                 active_execs.append(exec_info)
         preamble["_active_execs"] = active_execs

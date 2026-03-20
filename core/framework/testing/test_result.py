@@ -5,7 +5,7 @@ Results include detailed error information for debugging and
 categorization for guiding iteration strategy.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -66,7 +66,7 @@ class TestResult(BaseModel):
     # Associated run ID (links to Runtime data)
     run_id: str | None = Field(default=None, description="Runtime run ID for detailed analysis")
 
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     model_config = {"extra": "allow"}
 
@@ -100,7 +100,7 @@ class TestSuiteResult(BaseModel):
 
     duration_ms: int = Field(default=0, description="Total execution time in milliseconds")
 
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     model_config = {"extra": "allow"}
 

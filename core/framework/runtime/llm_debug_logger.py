@@ -8,7 +8,7 @@ write. Errors are silently swallowed — this must never break the agent.
 
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import IO, Any
 
@@ -23,7 +23,7 @@ _log_ready = False  # lazy init guard
 def _open_log() -> IO[str] | None:
     """Open the JSONL log file for this process."""
     _LLM_DEBUG_DIR.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     path = _LLM_DEBUG_DIR / f"{ts}.jsonl"
     logger.info("LLM debug log → %s", path)
     return open(path, "a", encoding="utf-8")  # noqa: SIM115
@@ -54,7 +54,7 @@ def log_llm_turn(
         if _log_file is None:
             return
         record = {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "node_id": node_id,
             "stream_id": stream_id,
             "execution_id": execution_id,

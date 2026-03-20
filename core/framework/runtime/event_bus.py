@@ -13,7 +13,7 @@ import logging
 import os
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import IO, Any
@@ -46,7 +46,7 @@ def _open_event_log() -> IO[str] | None:
     else:
         log_dir = Path(raw)
     log_dir.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     path = log_dir / f"{ts}.jsonl"
     logger.info("Event debug log → %s", path)
     return open(path, "a", encoding="utf-8")  # noqa: SIM115
@@ -170,7 +170,7 @@ class AgentEvent:
     node_id: str | None = None  # Which node emitted this event
     execution_id: str | None = None
     data: dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     correlation_id: str | None = None  # For tracking related events
     graph_id: str | None = None  # Which graph emitted this event (multi-graph sessions)
     run_id: str | None = None  # Unique ID per trigger() invocation — used for run dividers

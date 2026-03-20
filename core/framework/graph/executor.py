@@ -228,7 +228,7 @@ class GraphExecutor:
             return
         try:
             import json as _json
-            from datetime import datetime
+            from datetime import UTC, datetime
 
             state_path = self._storage_path / "state.json"
             if state_path.exists():
@@ -245,7 +245,7 @@ class GraphExecutor:
 
             # Update timestamp
             timestamps = state_data.setdefault("timestamps", {})
-            timestamps["updated_at"] = datetime.now().isoformat()
+            timestamps["updated_at"] = datetime.now(UTC).isoformat()
 
             # Persist full memory so state.json is sufficient for resume
             # even if the process dies before the final write.
