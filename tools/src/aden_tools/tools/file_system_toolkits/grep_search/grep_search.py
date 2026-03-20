@@ -56,18 +56,22 @@ def register_tools(mcp: FastMCP) -> None:
             skipped_large_files = []
 
             if os.path.isfile(secure_path):
+                if os.path.islink(secure_path):
+                    return {"error": f"Symlinks are not supported: {path}"}
                 files = [secure_path]
             elif recursive:
                 files = []
-                for root, _, filenames in os.walk(secure_path):
+                for root, _, filenames in os.walk(secure_path, followlinks=False):
                     for filename in filenames:
-                        files.append(os.path.join(root, filename))
+                        file_path = os.path.join(root, filename)
+                        if not os.path.islink(file_path):
+                            files.append(file_path)
             else:
-                files = [
-                    os.path.join(secure_path, f)
-                    for f in os.listdir(secure_path)
-                    if os.path.isfile(os.path.join(secure_path, f))
-                ]
+                files = []
+                for f in os.listdir(secure_path):
+                    file_path = os.path.join(secure_path, f)
+                    if os.path.isfile(file_path) and not os.path.islink(file_path):
+                        files.append(file_path)
 
             for file_path in files:
                 # Calculate relative path for display
