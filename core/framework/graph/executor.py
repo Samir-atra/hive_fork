@@ -56,6 +56,9 @@ class ExecutionResult:
     steps_executed: int = 0
     total_tokens: int = 0
     total_latency_ms: int = 0
+    total_cost: float = 0.0
+    cost_breakdown: dict[str, float] = field(default_factory=dict)
+    models_used: dict[str, float] = field(default_factory=dict)
     path: list[str] = field(default_factory=list)  # Node IDs traversed
     paused_at: str | None = None  # Node ID where execution paused for HITL
     session_state: dict[str, Any] = field(default_factory=dict)  # State to resume from
@@ -518,6 +521,9 @@ class GraphExecutor:
         path: list[str] = []
         total_tokens = 0
         total_latency = 0
+        total_cost = 0.0
+        cost_breakdown: dict[str, float] = {}
+        models_used: dict[str, float] = {}
         node_retry_counts: dict[str, int] = {}  # Track retries per node
         node_visit_counts: dict[str, int] = {}  # Track visits for feedback loops
         _is_retry = False  # True when looping back for a retry (not a new visit)
@@ -1167,6 +1173,9 @@ class GraphExecutor:
                                 steps_executed=steps,
                                 total_tokens=total_tokens,
                                 total_latency_ms=total_latency,
+                                total_cost=total_cost,
+                                cost_breakdown=dict(cost_breakdown),
+                                models_used=dict(models_used),
                                 path=path,
                                 total_retries=total_retries_count,
                                 nodes_with_failures=nodes_failed,
@@ -1226,6 +1235,9 @@ class GraphExecutor:
                         steps_executed=steps,
                         total_tokens=total_tokens,
                         total_latency_ms=total_latency,
+                        total_cost=total_cost,
+                        cost_breakdown=dict(cost_breakdown),
+                        models_used=dict(models_used),
                         path=path,
                         paused_at=node_spec.id,
                         session_state=session_state_out,
@@ -1295,7 +1307,7 @@ class GraphExecutor:
 
                         # Execute branches in parallel
                         (
-                            _branch_results,
+                            branch_results,
                             branch_tokens,
                             branch_latency,
                         ) = await self._execute_parallel_branches(
@@ -1311,6 +1323,18 @@ class GraphExecutor:
 
                         total_tokens += branch_tokens
                         total_latency += branch_latency
+
+                        for _branch_id, _branch_res in branch_results.items():
+                            _cost = getattr(_branch_res, "cost", 0.0)
+                            total_cost += _cost
+                            if _cost > 0:
+                                # Record cost per branch
+                                cost_breakdown[_branch_id] = (
+                                    cost_breakdown.get(_branch_id, 0.0) + _cost
+                                )
+                            if hasattr(_branch_res, "models_used") and _branch_res.models_used:
+                                for m, c in _branch_res.models_used.items():
+                                    models_used[m] = models_used.get(m, 0.0) + c
 
                         # Continue from fan-in node
                         if fan_in_node:
@@ -1575,6 +1599,9 @@ class GraphExecutor:
                 steps_executed=steps,
                 total_tokens=total_tokens,
                 total_latency_ms=total_latency,
+                total_cost=total_cost,
+                cost_breakdown=dict(cost_breakdown),
+                models_used=dict(models_used),
                 path=path,
                 total_retries=total_retries_count,
                 nodes_with_failures=nodes_failed,
@@ -1650,6 +1677,9 @@ class GraphExecutor:
                 steps_executed=steps,
                 total_tokens=total_tokens,
                 total_latency_ms=total_latency,
+                total_cost=total_cost,
+                cost_breakdown=dict(cost_breakdown),
+                models_used=dict(models_used),
                 path=path,
                 paused_at=current_node_id,  # Save where we were
                 session_state=session_state_out,
@@ -1751,6 +1781,11 @@ class GraphExecutor:
                 error=str(e),
                 output=saved_memory,
                 steps_executed=steps,
+                total_tokens=total_tokens,
+                total_latency_ms=total_latency,
+                total_cost=total_cost,
+                cost_breakdown=dict(cost_breakdown),
+                models_used=dict(models_used),
                 path=path,
                 total_retries=total_retries_count,
                 nodes_with_failures=nodes_failed,
