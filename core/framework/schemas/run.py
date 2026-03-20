@@ -12,6 +12,7 @@ from typing import Any
 from pydantic import BaseModel, Field, computed_field
 
 from framework.schemas.decision import Decision, Outcome
+from framework.schemas.failure import Failure
 
 
 class RunStatus(StrEnum):
@@ -38,6 +39,7 @@ class Problem(BaseModel):
     decision_id: str | None = None
     timestamp: datetime = Field(default_factory=datetime.now)
     suggested_fix: str | None = None
+    failure: Failure | None = None
 
     model_config = {"extra": "allow"}
 
@@ -137,6 +139,7 @@ class Run(BaseModel):
         decision_id: str | None = None,
         root_cause: str | None = None,
         suggested_fix: str | None = None,
+        failure: Failure | None = None,
     ) -> str:
         """Add a problem to this run."""
         problem_id = f"prob_{len(self.problems)}"
@@ -147,6 +150,7 @@ class Run(BaseModel):
             decision_id=decision_id,
             root_cause=root_cause,
             suggested_fix=suggested_fix,
+            failure=failure,
         )
         self.problems.append(problem)
         return problem_id

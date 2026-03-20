@@ -15,6 +15,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field, computed_field
 
+from framework.schemas.failure import Failure
+
 
 class DecisionType(StrEnum):
     """Types of decisions an agent can make."""
@@ -63,6 +65,7 @@ class Outcome(BaseModel):
     success: bool
     result: Any = None  # The actual output
     error: str | None = None  # Error message if failed
+    failure: Failure | None = None  # Structured failure details if failed
 
     # Side effects
     state_changes: dict[str, Any] = Field(default_factory=dict)
