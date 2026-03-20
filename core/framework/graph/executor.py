@@ -58,6 +58,7 @@ class ExecutionResult:
     total_latency_ms: int = 0
     path: list[str] = field(default_factory=list)  # Node IDs traversed
     paused_at: str | None = None  # Node ID where execution paused for HITL
+    last_successful_node_id: str | None = None  # Watermark for the last completed node
     session_state: dict[str, Any] = field(default_factory=dict)  # State to resume from
 
     # Execution quality metrics
@@ -214,6 +215,7 @@ class GraphExecutor:
         path: list[str],
         memory: Any,
         node_visit_counts: dict[str, int],
+        last_successful_node_id: str | None = None,
     ) -> None:
         """Update state.json with live progress at node transitions.
 
@@ -241,6 +243,7 @@ class GraphExecutor:
             progress["current_node"] = current_node
             progress["path"] = list(path)
             progress["node_visit_counts"] = dict(node_visit_counts)
+            progress["last_successful_node_id"] = last_successful_node_id
             progress["steps_executed"] = len(path)
 
             # Update timestamp
@@ -521,6 +524,10 @@ class GraphExecutor:
         node_retry_counts: dict[str, int] = {}  # Track retries per node
         node_visit_counts: dict[str, int] = {}  # Track visits for feedback loops
         _is_retry = False  # True when looping back for a retry (not a new visit)
+        last_successful_node_id: str | None = None
+
+        if session_state and "last_successful_node_id" in session_state:
+            last_successful_node_id = session_state["last_successful_node_id"]
 
         # Restore node_visit_counts from session state if available
         if session_state and "node_visit_counts" in session_state:
@@ -621,10 +628,18 @@ class GraphExecutor:
                     self.logger.info(f"🔄 Resuming from paused node: {paused_at}")
             else:
                 # Fall back to normal entry point logic
-                self.logger.warning(
-                    f"⚠ paused_at={paused_at} is not a valid node, falling back to entry point"
-                )
-                current_node_id = graph.get_entry_point(session_state)
+                if paused_at:
+                    self.logger.warning(
+                        f"⚠ paused_at={paused_at} is not a valid node, falling back to entry point"
+                    )
+
+                # Use last_successful_node_id as entry point if available and valid
+                last_success = session_state.get("last_successful_node_id") if session_state else None
+                if last_success and graph.get_node(last_success) is not None:
+                    current_node_id = last_success
+                    self.logger.info(f"🔄 Resuming from last successful node: {last_success}")
+                else:
+                    current_node_id = graph.get_entry_point(session_state)
 
         steps = 0
 
@@ -1155,6 +1170,7 @@ class GraphExecutor:
                                 "execution_path": list(path),
                                 "node_visit_counts": dict(node_visit_counts),
                                 "resume_from": current_node_id,
+                                "last_successful_node_id": last_successful_node_id,
                             }
 
                             return ExecutionResult(
@@ -1168,6 +1184,7 @@ class GraphExecutor:
                                 total_tokens=total_tokens,
                                 total_latency_ms=total_latency,
                                 path=path,
+                                last_successful_node_id=last_successful_node_id,
                                 total_retries=total_retries_count,
                                 nodes_with_failures=nodes_failed,
                                 retry_details=dict(node_retry_counts),
@@ -1176,6 +1193,10 @@ class GraphExecutor:
                                 node_visit_counts=dict(node_visit_counts),
                                 session_state=failure_session_state,
                             )
+
+                # Node successfully executed - update watermark
+                if result.success:
+                    last_successful_node_id = current_node_id
 
                 # Check if we just executed a pause node - if so, save state and return
                 # This must happen BEFORE determining next node, since pause nodes may have no edges
@@ -1228,6 +1249,7 @@ class GraphExecutor:
                         total_latency_ms=total_latency,
                         path=path,
                         paused_at=node_spec.id,
+                        last_successful_node_id=last_successful_node_id,
                         session_state=session_state_out,
                         total_retries=total_retries_count,
                         nodes_with_failures=nodes_failed,
@@ -1258,7 +1280,9 @@ class GraphExecutor:
                         )
 
                     current_node_id = result.next_node
-                    self._write_progress(current_node_id, path, memory, node_visit_counts)
+                    self._write_progress(
+                        current_node_id, path, memory, node_visit_counts, last_successful_node_id
+                    )
                 else:
                     # Get all traversable edges for fan-out detection
                     traversable_edges = await self._get_all_traversable_edges(
@@ -1316,7 +1340,13 @@ class GraphExecutor:
                         if fan_in_node:
                             self.logger.info(f"   ⑃ Fan-in: converging at {fan_in_node}")
                             current_node_id = fan_in_node
-                            self._write_progress(current_node_id, path, memory, node_visit_counts)
+                            self._write_progress(
+                                current_node_id,
+                                path,
+                                memory,
+                                node_visit_counts,
+                                last_successful_node_id,
+                            )
                         else:
                             # No convergence point - branches are terminal
                             self.logger.info("   → Parallel branches completed (no convergence)")
@@ -1381,7 +1411,9 @@ class GraphExecutor:
                         current_node_id = next_node
 
                 # Write progress snapshot at node transition
-                self._write_progress(current_node_id, path, memory, node_visit_counts)
+                self._write_progress(
+                    current_node_id, path, memory, node_visit_counts, last_successful_node_id
+                )
 
                 # Continuous mode: thread conversation forward with transition marker
                 if is_continuous and result.conversation is not None:
@@ -1582,10 +1614,12 @@ class GraphExecutor:
                 had_partial_failures=len(nodes_failed) > 0,
                 execution_quality=exec_quality,
                 node_visit_counts=dict(node_visit_counts),
+                last_successful_node_id=last_successful_node_id,
                 session_state={
                     "memory": output,  # output IS memory.read_all()
                     "execution_path": list(path),
                     "node_visit_counts": dict(node_visit_counts),
+                    "last_successful_node_id": last_successful_node_id,
                 },
             )
 
@@ -1627,6 +1661,7 @@ class GraphExecutor:
                 "memory": saved_memory,
                 "execution_path": list(path),
                 "node_visit_counts": dict(node_visit_counts),
+                "last_successful_node_id": last_successful_node_id,
             }
 
             # Calculate quality metrics
@@ -1652,6 +1687,7 @@ class GraphExecutor:
                 total_latency_ms=total_latency,
                 path=path,
                 paused_at=current_node_id,  # Save where we were
+                last_successful_node_id=last_successful_node_id,
                 session_state=session_state_out,
                 total_retries=total_retries_count,
                 nodes_with_failures=nodes_failed,

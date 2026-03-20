@@ -1021,6 +1021,7 @@ class ExecutionStream:
                     resume_from=ss.get("paused_at") or ss.get("resume_from"),
                     path=ss.get("execution_path", []),
                     node_visit_counts=ss.get("node_visit_counts", {}),
+                    last_successful_node_id=ss.get("last_successful_node_id"),
                 )
                 state = SessionState(
                     session_id=execution_id,
