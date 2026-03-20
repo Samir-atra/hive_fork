@@ -340,6 +340,7 @@ def _load_resume_state(
             "paused_at": paused_at,
             "execution_path": progress.get("path", []),
             "node_visit_counts": progress.get("node_visit_counts", {}),
+            "last_successful_node_id": progress.get("last_successful_node_id"),
         }
 
 

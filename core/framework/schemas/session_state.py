@@ -43,6 +43,7 @@ class SessionProgress(BaseModel):
     current_node: str | None = None
     paused_at: str | None = None  # Node ID where paused
     resume_from: str | None = None  # Entry point or node ID to resume from
+    last_successful_node_id: str | None = None  # Watermark for the last completed node
     steps_executed: int = 0
     total_tokens: int = 0
     total_latency_ms: int = 0
@@ -227,6 +228,7 @@ class SessionState(BaseModel):
                 resume_from=result.session_state.get("resume_from")
                 if result.session_state
                 else None,
+                last_successful_node_id=getattr(result, "last_successful_node_id", None),
                 steps_executed=result.steps_executed,
                 total_tokens=result.total_tokens,
                 total_latency_ms=result.total_latency_ms,
@@ -306,4 +308,5 @@ class SessionState(BaseModel):
             "memory": self.memory,
             "execution_path": self.progress.path,
             "node_visit_counts": self.progress.node_visit_counts,
+            "last_successful_node_id": self.progress.last_successful_node_id,
         }
