@@ -497,6 +497,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         output["error"] = result.error
     if result.paused_at:
         output["paused_at"] = result.paused_at
+    if result.proof_url:
+        output["proof_url"] = result.proof_url
 
     # Output results
     if args.output:
@@ -514,6 +516,8 @@ def cmd_run(args: argparse.Namespace) -> int:
             print(f"Status: {status_str}")
             print(f"Steps executed: {result.steps_executed}")
             print(f"Path: {' → '.join(result.path)}")
+            if result.proof_url:
+                print(f"Proof of Delivery: {result.proof_url}")
             print("=" * 60)
 
             if result.success:

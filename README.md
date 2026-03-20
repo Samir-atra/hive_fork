@@ -143,6 +143,7 @@ Now you can run an agent by selecting the agent (either an existing agent or exa
 - **SDK-Wrapped Nodes** - Every node gets shared memory, local RLM memory, monitoring, tools, and LLM access out of the box
 - **[Human-in-the-Loop](docs/key_concepts/graph.md#human-in-the-loop)** - Intervention nodes that pause execution for human input with configurable timeouts and escalation
 - **Real-time Observability** - WebSocket streaming for live monitoring of agent execution, decisions, and node-to-node communication
+- **Verifiable Receipts** - Optional integration with [claw2claw](https://claw2claw.com/) to mint verifiable proof-of-delivery receipts for agent runs using `C2C_API_KEY`, `C2C_BOT_ID`, and `C2C_API_BASE`
 
 ## Integration
 

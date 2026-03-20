@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Check PR requirements
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const prNumber = context.payload.issue.number;
@@ -107,11 +107,23 @@ jobs:
 
             for (const issueNum of issueNumbers) {
               try {
-                const { data: issue } = await github.rest.issues.get({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issueNum,
-                });
+                let issue;
+                try {
+                  const res = await github.rest.issues.get({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNum,
+                  });
+                  issue = res.data;
+                } catch (localError) {
+                  console.log(`  Issue #${issueNum} not found in ${context.repo.owner}/${context.repo.repo}, falling back to adenhq/hive`);
+                  const res = await github.rest.issues.get({
+                    owner: 'adenhq',
+                    repo: 'hive',
+                    issue_number: issueNum,
+                  });
+                  issue = res.data;
+                }
 
                 const assigneeLogins = (issue.assignees || []).map(a => a.login);
                 if (assigneeLogins.includes(prAuthor)) {
