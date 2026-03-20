@@ -7,8 +7,6 @@ on:
 jobs:
   check-requirements:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     permissions:
       pull-requests: write
       issues: write
@@ -103,33 +101,16 @@ jobs:
 
             // Check if any linked issue has the PR author as assignee
             const prAuthor = pr.user.login;
-
-            // Allow bots to bypass assignment checks
-            if (prAuthor.includes('bot') || prAuthor === 'google-labs-jules[bot]') {
-              console.log(`PR author is a bot (${prAuthor}), skipping assignee check.`);
-              return;
-            }
             let issueWithAuthorAssigned = null;
             let issuesWithoutAuthor = [];
 
             for (const issueNum of issueNumbers) {
               try {
-                let issue;
-                try {
-                  const res = await github.rest.issues.get({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    issue_number: issueNum,
-                  });
-                  issue = res.data;
-                } catch (e) {
-                  const res = await github.rest.issues.get({
-                    owner: 'adenhq',
-                    repo: 'hive',
-                    issue_number: issueNum,
-                  });
-                  issue = res.data;
-                }
+                const { data: issue } = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNum,
+                });
 
                 const assigneeLogins = (issue.assignees || []).map(a => a.login);
                 if (assigneeLogins.includes(prAuthor)) {

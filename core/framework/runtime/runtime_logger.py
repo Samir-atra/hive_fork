@@ -77,7 +77,6 @@ class RuntimeLogger:
         self._store.ensure_run_dir(self._run_id)
         return self._run_id
 
-
     def log_judgment(
         self,
         node_id: str,

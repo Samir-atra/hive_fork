@@ -77,11 +77,11 @@ class RuntimeLogStore:
         run_dir = self._get_run_dir(run_id)
         run_dir.mkdir(parents=True, exist_ok=True)
 
-
     def append_judgment(self, run_id: str, judgment: JudgmentLog) -> None:
         """Append one JSONL line to judgments.jsonl. Sync."""
         path = self._get_run_dir(run_id) / "judgments.jsonl"
         import json
+
         line = json.dumps(judgment.model_dump(), ensure_ascii=False) + "\n"
         with open(path, "a", encoding="utf-8") as f:
             f.write(line)
@@ -90,6 +90,7 @@ class RuntimeLogStore:
         """Read judgments.jsonl back. Sync."""
         path = self._get_run_dir(run_id) / "judgments.jsonl"
         from framework.runtime.runtime_log_schemas import JudgmentLog
+
         return _read_jsonl_as_models(path, JudgmentLog)
 
     def append_step(self, run_id: str, step: NodeStepLog) -> None:
