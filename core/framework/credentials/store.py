@@ -511,11 +511,15 @@ class CredentialStore:
         return provider.should_refresh(credential)
 
     def _refresh_credential(self, credential: CredentialObject) -> CredentialObject:
-        """Refresh a credential using its provider."""
+        """Refresh a credential using its provider.
+
+        Raises:
+            CredentialRefreshError: If no provider is found or refresh fails
+        """
         provider = self.get_provider_for_credential(credential)
         if provider is None:
-            logger.warning(f"No provider found for credential '{credential.id}'")
-            return credential
+            logger.error(f"No provider found for credential '{credential.id}'")
+            raise CredentialRefreshError(f"No provider found for credential '{credential.id}'")
 
         try:
             refreshed = provider.refresh(credential)
