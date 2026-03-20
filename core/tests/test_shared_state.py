@@ -1,8 +1,10 @@
 import asyncio
 import concurrent.futures
+
 import pytest
 
-from framework.runtime.shared_state import SharedStateManager, IsolationLevel
+from framework.runtime.shared_state import IsolationLevel, SharedStateManager
+
 
 @pytest.mark.asyncio
 async def test_mixed_sync_async_writes():
