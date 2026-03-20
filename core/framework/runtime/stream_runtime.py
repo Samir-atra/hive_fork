@@ -330,6 +330,27 @@ class StreamRuntime:
                 outcome=outcome,
             )
 
+    # === KPI RECORDING ===
+
+    def report_kpi_metric(
+        self,
+        execution_id: str,
+        kpi_id: str,
+        value: float,
+        source: str | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> None:
+        """
+        Record a metric reading for a KPI.
+        """
+        if self._outcome_aggregator:
+            self._outcome_aggregator.record_kpi_metric(
+                kpi_id=kpi_id,
+                value=value,
+                source=source or execution_id,
+                context=context,
+            )
+
     # === PROBLEM RECORDING ===
 
     def report_problem(
@@ -530,6 +551,21 @@ class StreamRuntimeAdapter:
             state_changes=state_changes,
             tokens_used=tokens_used,
             latency_ms=latency_ms,
+        )
+
+    def report_kpi_metric(
+        self,
+        kpi_id: str,
+        value: float,
+        source: str | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> None:
+        self._runtime.report_kpi_metric(
+            execution_id=self._execution_id,
+            kpi_id=kpi_id,
+            value=value,
+            source=source,
+            context=context,
         )
 
     def report_problem(

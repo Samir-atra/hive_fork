@@ -17,6 +17,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from framework.schemas.kpi import KPI
+
 
 class GoalStatus(StrEnum):
     """Lifecycle status of a goal."""
@@ -127,6 +129,9 @@ class Goal(BaseModel):
 
     # What the agent must respect
     constraints: list[Constraint] = Field(default_factory=list)
+
+    # Business KPIs
+    kpis: list[KPI] = Field(default_factory=list)
 
     # Context for the agent
     context: dict[str, Any] = Field(
