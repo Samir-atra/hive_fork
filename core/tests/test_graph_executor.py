@@ -212,6 +212,33 @@ async def test_executor_skips_events_for_event_loop_nodes():
 
 
 @pytest.mark.asyncio
+async def test_multi_entry_graph_reachability_validation():
+    """Test that GraphSpec.validate() correctly marks nodes in a multi-entry graph as reachable."""
+    from framework.graph.edge import EdgeSpec
+
+    graph = GraphSpec(
+        id="multi-entry-graph",
+        goal_id="g-multi",
+        nodes=[
+            NodeSpec(id="entry1", name="Entry 1", description="1", node_type="event_loop", input_keys=[], output_keys=[]),
+            NodeSpec(id="entry2", name="Entry 2", description="2", node_type="event_loop", input_keys=[], output_keys=[]),
+            NodeSpec(id="worker", name="Worker", description="3", node_type="event_loop", input_keys=[], output_keys=[]),
+            NodeSpec(id="terminator", name="Terminator", description="4", node_type="event_loop", input_keys=[], output_keys=[])
+        ],
+        edges=[
+            EdgeSpec(id="e1", source="entry1", target="worker"),
+            EdgeSpec(id="e2", source="entry2", target="worker"),
+            EdgeSpec(id="e3", source="worker", target="terminator")
+        ],
+        entry_node="entry1",
+        terminal_nodes=["terminator"]
+    )
+
+    result = graph.validate()
+    assert not result.get("errors"), f"Validation should not fail: {result.get('errors')}"
+
+
+@pytest.mark.asyncio
 async def test_executor_no_events_without_event_bus():
     """Executor should work fine without an event bus (backward compat)."""
     runtime = DummyRuntime()
