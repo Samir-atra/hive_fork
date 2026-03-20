@@ -21,19 +21,19 @@ check: ## Run all checks without modifying files (CI-safe)
 	cd tools && uv run ruff format --check .
 
 test: ## Run all tests (core + tools, excludes live)
-	cd core && uv run python -m pytest tests/ -v
-	cd tools && uv run python -m pytest -v
+	cd core && uv run python -m pytest -n auto tests/ -v
+	cd tools && uv run python -m pytest -n auto -v
 
 test-tools: ## Run tool tests only (mocked, no credentials needed)
-	cd tools && uv run python -m pytest -v
+	cd tools && uv run python -m pytest -n auto -v
 
 test-live: ## Run live integration tests (requires real API credentials)
-	cd tools && uv run python -m pytest -m live -s -o "addopts=" --log-cli-level=INFO
+	cd tools && uv run python -m pytest -n auto -m live -s -o "addopts=" --log-cli-level=INFO
 
 test-all: ## Run everything including live tests
-	cd core && uv run python -m pytest tests/ -v
-	cd tools && uv run python -m pytest -v
-	cd tools && uv run python -m pytest -m live -s -o "addopts=" --log-cli-level=INFO
+	cd core && uv run python -m pytest -n auto tests/ -v
+	cd tools && uv run python -m pytest -n auto -v
+	cd tools && uv run python -m pytest -n auto -m live -s -o "addopts=" --log-cli-level=INFO
 
 install-hooks: ## Install pre-commit hooks
 	uv pip install pre-commit
