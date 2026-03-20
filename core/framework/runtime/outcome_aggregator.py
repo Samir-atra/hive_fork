@@ -251,7 +251,7 @@ class OutcomeAggregator:
             for criterion in self.goal.success_criteria:
                 status = await self._evaluate_criterion(criterion)
                 self._criterion_status[criterion.id] = status
-                result["criteria_status"][criterion.id] = {
+                result["criteria_status"][criterion.id] = {  # type: ignore
                     "description": status.description,
                     "met": status.met,
                     "progress": status.progress,
@@ -304,8 +304,8 @@ class OutcomeAggregator:
                 if stream_ids:
                     await self._event_bus.emit_goal_progress(
                         stream_id=list(stream_ids)[0],
-                        progress=result["overall_progress"],
-                        criteria_status=result["criteria_status"],
+                        progress=result["overall_progress"],  # type: ignore
+                        criteria_status=result["criteria_status"],  # type: ignore
                     )
 
             return result

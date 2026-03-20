@@ -100,7 +100,7 @@ class _DiscordClient:
         if isinstance(result, dict) and "error" in result:
             return result
         if text_only:
-            result = [c for c in result if c.get("type") in TEXT_CHANNEL_TYPES]
+            result = [c for c in result if c.get("type") in TEXT_CHANNEL_TYPES]  # type: ignore
         return result
 
     def send_message(

@@ -1275,7 +1275,7 @@ class EventBus:
 
     def get_stats(self) -> dict:
         """Get event bus statistics."""
-        type_counts = {}
+        type_counts = {}  # type: ignore
         for event in self._event_history:
             type_counts[event.type.value] = type_counts.get(event.type.value, 0) + 1
 

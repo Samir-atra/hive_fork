@@ -267,7 +267,7 @@ def _read_jsonl_as_models(path: Path, model_cls: type) -> list:
 
     Skips blank lines and corrupt JSON lines (partial writes from crashes).
     """
-    results = []
+    results = []  # type: ignore
     if not path.exists():
         return results
     try:

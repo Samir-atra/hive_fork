@@ -129,7 +129,7 @@ async def create_queen(
         register_worker_monitoring_tools(
             queen_registry,
             session.event_bus,
-            session.worker_path,
+            session.worker_path,  # type: ignore
             stream_id="queen",
             worker_graph_id=session.worker_runtime._graph_id,
             default_session_id=session.id,

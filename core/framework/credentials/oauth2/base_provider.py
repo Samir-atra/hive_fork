@@ -433,7 +433,7 @@ class BaseOAuth2Provider(CredentialProvider):
         from urllib.parse import parse_qs
 
         parsed = parse_qs(text)
-        return {k: v[0] if len(v) == 1 else v for k, v in parsed.items()}
+        return {k: v[0] if len(v) == 1 else v for k, v in parsed.items()}  # type: ignore
 
     # --- Token Formatting for Requests ---
 

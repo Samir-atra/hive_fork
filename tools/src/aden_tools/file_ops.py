@@ -581,7 +581,7 @@ def register_file_tools(
                                 line[match.end() :],
                             )
                             path_part = os.path.normpath(path_part.replace("/", os.sep))
-                            proj_norm = os.path.normpath(project_root.replace("/", os.sep))
+                            proj_norm = os.path.normpath(project_root.replace("/", os.sep))  # type: ignore
                             try:
                                 rel = os.path.relpath(path_part, proj_norm)
                                 line = f"{rel}:{line_num}:{rest}"
@@ -846,7 +846,7 @@ def register_file_tools(
 
                 case "replace":
                     old_content = op.get("old_content")
-                    new_content = op.get("new_content")
+                    new_content = op.get("new_content")  # type: ignore
                     if old_content is None:
                         return f"Error: Edit #{i + 1} (replace): missing old_content"
                     if not isinstance(old_content, str):
@@ -863,7 +863,7 @@ def register_file_tools(
                     replaces.append((old_content, new_content, i, allow_multiple))
 
                 case "append":
-                    new_content = op.get("content")
+                    new_content = op.get("content")  # type: ignore
                     if new_content is None:
                         return f"Error: Edit #{i + 1} (append): missing content"
                     if not isinstance(new_content, str):

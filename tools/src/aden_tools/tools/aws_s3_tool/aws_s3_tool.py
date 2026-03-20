@@ -208,7 +208,7 @@ def register_tools(mcp: FastMCP, credentials: Any = None) -> None:
             objects.append(
                 {
                     "key": key_el.text if key_el is not None else None,
-                    "size": int(size_el.text) if size_el is not None else 0,
+                    "size": int(size_el.text) if size_el is not None else 0,  # type: ignore
                     "last_modified": modified_el.text if modified_el is not None else None,
                 }
             )

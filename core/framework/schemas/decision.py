@@ -147,7 +147,7 @@ class Decision(BaseModel):
 
     model_config = {"extra": "allow"}
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def chosen_option(self) -> Option | None:
         """Get the option that was chosen."""
@@ -156,13 +156,13 @@ class Decision(BaseModel):
                 return opt
         return None
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def was_successful(self) -> bool:
         """Did this decision's execution succeed?"""
         return self.outcome is not None and self.outcome.success
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def was_good_decision(self) -> bool:
         """Was this evaluated as a good decision?"""

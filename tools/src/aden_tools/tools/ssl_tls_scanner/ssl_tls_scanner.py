@@ -107,21 +107,21 @@ def register_tools(mcp: FastMCP) -> None:
             return {"error": f"Connection failed: {e}"}
 
         # Parse certificate details
-        subject = _format_dn(cert_dict.get("subject", ()))
-        issuer = _format_dn(cert_dict.get("issuer", ()))
+        subject = _format_dn(cert_dict.get("subject", ()))  # type: ignore
+        issuer = _format_dn(cert_dict.get("issuer", ()))  # type: ignore
 
-        not_before_str = cert_dict.get("notBefore", "")
-        not_after_str = cert_dict.get("notAfter", "")
+        not_before_str = cert_dict.get("notBefore", "")  # type: ignore
+        not_after_str = cert_dict.get("notAfter", "")  # type: ignore
 
-        not_before = _parse_cert_date(not_before_str)
-        not_after = _parse_cert_date(not_after_str)
+        not_before = _parse_cert_date(not_before_str)  # type: ignore
+        not_after = _parse_cert_date(not_after_str)  # type: ignore
         now = datetime.now(UTC)
 
         days_until_expiry = (not_after - now).days if not_after else None
 
         # SAN (Subject Alternative Names)
         san_list = []
-        for san_type, san_value in cert_dict.get("subjectAltName", ()):
+        for san_type, san_value in cert_dict.get("subjectAltName", ()):  # type: ignore
             if san_type == "DNS":
                 san_list.append(san_value)
 

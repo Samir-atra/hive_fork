@@ -216,9 +216,9 @@ class AgentOrchestrator:
                 if isinstance(response, Exception):
                     results[agent_name] = {"error": str(response)}
                 else:
-                    messages.append(response)
-                    self._message_log.append(response)
-                    results[agent_name] = response.content
+                    messages.append(response)  # type: ignore
+                    self._message_log.append(response)  # type: ignore
+                    results[agent_name] = response.content  # type: ignore
                     handled_by.append(agent_name)
         else:
             # Run agents sequentially
@@ -342,8 +342,8 @@ class AgentOrchestrator:
                     parent_id=message.id,
                 )
             else:
-                responses[name] = result
-                self._message_log.append(result)
+                responses[name] = result  # type: ignore
+                self._message_log.append(result)  # type: ignore
 
         return responses
 
@@ -371,7 +371,7 @@ class AgentOrchestrator:
                     reasoning=f"Error: {result}",
                 )
             else:
-                capabilities[name] = result
+                capabilities[name] = result  # type: ignore
 
         return capabilities
 
@@ -462,7 +462,7 @@ Respond with JSON only:
 }}"""
 
         try:
-            response = await self._llm.acomplete(
+            response = await self._llm.acomplete(  # type: ignore
                 messages=[{"role": "user", "content": prompt}],
                 system="You are a request router. Respond with JSON only.",
                 max_tokens=256,

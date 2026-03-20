@@ -243,7 +243,7 @@ async def _compact_context(text: str, llm: object, *, _depth: int = 0) -> str:
 
     async def _summarise(chunk: str) -> str:
         try:
-            resp = await llm.acomplete(
+            resp = await llm.acomplete(  # type: ignore
                 messages=[{"role": "user", "content": chunk}],
                 system=_COMPACT_SYSTEM,
                 max_tokens=2048,
@@ -322,12 +322,12 @@ async def consolidate_queen_memory(
         from framework.agents.queen.config import default_config
 
         semantic_resp, diary_resp = await asyncio.gather(
-            llm.acomplete(
+            llm.acomplete(  # type: ignore
                 messages=[{"role": "user", "content": user_msg}],
                 system=_SEMANTIC_SYSTEM,
                 max_tokens=default_config.max_tokens,
             ),
-            llm.acomplete(
+            llm.acomplete(  # type: ignore
                 messages=[{"role": "user", "content": user_msg}],
                 system=_DIARY_SYSTEM,
                 max_tokens=default_config.max_tokens,

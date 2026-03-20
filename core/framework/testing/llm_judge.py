@@ -90,7 +90,7 @@ Respond with JSON: {{"passes": true/false, "explanation": "..."}}"""
                 )
                 return self._parse_json_result(response.content[0].text.strip())
             else:
-                active_provider = self._get_fallback_provider()
+                active_provider = self._get_fallback_provider()  # type: ignore
 
             response = active_provider.complete(
                 messages=[{"role": "user", "content": prompt}],

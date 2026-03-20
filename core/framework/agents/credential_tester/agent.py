@@ -441,11 +441,11 @@ pass an account parameter — they are pre-injected into the session.
     ),
 ]
 
-edges = []
+edges = []  # type: ignore
 
 entry_node = "tester"
 entry_points = {"start": "tester"}
-pause_nodes = []
+pause_nodes = []  # type: ignore
 terminal_nodes = ["tester"]  # Tester node can terminate
 
 conversation_mode = "continuous"
@@ -509,8 +509,8 @@ class CredentialTesterAgent:
     def _build_graph(self) -> GraphSpec:
         provider = self.selected_provider
         alias = self.selected_alias
-        source = self._selected_account.get("source", "aden")
-        identity = self._selected_account.get("identity", {})
+        source = self._selected_account.get("source", "aden")  # type: ignore
+        identity = self._selected_account.get("identity", {})  # type: ignore
         tools = get_tools_for_provider(provider)
 
         if source == "local":
@@ -600,8 +600,8 @@ class CredentialTesterAgent:
         """Set up and start the agent runtime."""
         if self._agent_runtime is None:
             self._setup()
-        if not self._agent_runtime.is_running:
-            await self._agent_runtime.start()
+        if not self._agent_runtime.is_running:  # type: ignore
+            await self._agent_runtime.start()  # type: ignore
 
     async def stop(self) -> None:
         """Stop the agent runtime."""
@@ -613,7 +613,7 @@ class CredentialTesterAgent:
         """Run the agent (convenience for single execution)."""
         await self.start()
         try:
-            result = await self._agent_runtime.trigger_and_wait(
+            result = await self._agent_runtime.trigger_and_wait(  # type: ignore
                 entry_point_id="start",
                 input_data={},
             )

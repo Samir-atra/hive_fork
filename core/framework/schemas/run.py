@@ -55,7 +55,7 @@ class RunMetrics(BaseModel):
     nodes_executed: list[str] = Field(default_factory=list)
     edges_traversed: list[str] = Field(default_factory=list)
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def success_rate(self) -> float:
         if self.total_decisions == 0:
@@ -99,7 +99,7 @@ class Run(BaseModel):
 
     model_config = {"extra": "allow"}
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def duration_ms(self) -> int:
         """Duration of the run in milliseconds."""

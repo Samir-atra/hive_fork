@@ -289,7 +289,7 @@ def validate_agent_credentials(
     if os.environ.get("HIVE_CREDENTIAL_KEY"):
         storage = CompositeStorage(primary=env_storage, fallbacks=[EncryptedFileStorage()])
     else:
-        storage = env_storage
+        storage = env_storage  # type: ignore
     store = CredentialStore(storage=storage)
 
     # Build reverse mappings — 1:many for multi-provider tools (e.g. send_email → resend OR google)
@@ -460,10 +460,10 @@ def validate_agent_credentials(
     if raise_on_error and validation_result.has_errors:
         from framework.credentials.models import CredentialError
 
-        exc = CredentialError(validation_result.format_error_message())
-        exc.validation_result = validation_result  # type: ignore[attr-defined]
-        exc.failed_cred_names = validation_result.failed_cred_names  # type: ignore[attr-defined]
-        raise exc
+        err = CredentialError(validation_result.format_error_message())  # type: ignore
+        err.validation_result = validation_result  # type: ignore[attr-defined]
+        err.failed_cred_names = validation_result.failed_cred_names  # type: ignore[attr-defined]
+        raise err  # type: ignore
 
     return validation_result
 

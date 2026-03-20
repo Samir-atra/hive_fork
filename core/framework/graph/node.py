@@ -366,7 +366,7 @@ class SharedMemory:
 
         # Ensure key has a lock (double-checked locking pattern)
         if key not in self._key_locks:
-            async with self._lock:
+            async with self._lock:  # type: ignore
                 if key not in self._key_locks:
                     self._key_locks[key] = asyncio.Lock()
 

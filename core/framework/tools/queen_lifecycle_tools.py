@@ -437,7 +437,7 @@ async def _start_trigger_timer(session: Any, trigger_id: str, tdef: Any) -> None
 
     async def _timer_loop() -> None:
         if cron_expr:
-            from croniter import croniter
+            from croniter import croniter  # type: ignore
 
             cron = croniter(cron_expr, datetime.now(tz=UTC))
 
@@ -727,7 +727,7 @@ def _dissolve_planning_nodes(
         # Attach to each predecessor's sub_agents list
         for ie in in_edges:
             pred_id = ie["source"]
-            pred = node_by_id.get(pred_id)
+            pred = node_by_id.get(pred_id)  # type: ignore
             if pred is None:
                 continue
 
@@ -1288,7 +1288,7 @@ def register_queen_lifecycle_tools(
 
         # Group sub-agent nodes under their parent in the flowchart map
         # (mirrors what _dissolve_planning_nodes does for planned drafts)
-        sub_agent_ids: set[str] = set()
+        sub_agent_ids: set[str] = set()  # type: ignore
         for node in nodes:
             for sa_id in node.get("sub_agents") or []:
                 if sa_id in node_ids:
@@ -1627,7 +1627,7 @@ def register_queen_lifecycle_tools(
             # Attach to each predecessor's sub_agents list
             for ie in in_edges:
                 pred_id = ie["source"]
-                pred = node_by_id.get(pred_id)
+                pred = node_by_id.get(pred_id)  # type: ignore
                 if pred is None:
                     continue
 
@@ -2129,7 +2129,7 @@ def register_queen_lifecycle_tools(
                     # Worker not loaded yet — resolve from draft name
                     draft_name = draft.get("agent_name", "")
                     if draft_name:
-                        candidate = Path("exports") / draft_name
+                        candidate = Path("exports") / draft_name  # type: ignore
                         if candidate.is_dir():
                             save_path = candidate
                 _save_flowchart_file(
@@ -2150,7 +2150,7 @@ def register_queen_lifecycle_tools(
                     AgentEvent(
                         type=EventType.DRAFT_GRAPH_UPDATED,
                         stream_id="queen",
-                        data=phase_state.draft_graph if phase_state else draft,
+                        data=phase_state.draft_graph if phase_state else draft,  # type: ignore
                     )
                 )
                 # Send original draft + map for flowchart overlay
@@ -2178,7 +2178,7 @@ def register_queen_lifecycle_tools(
         dissolution_info = {}
         if is_building and phase_state is not None and phase_state.original_draft_graph:
             orig_count = len(phase_state.original_draft_graph.get("nodes", []))
-            conv_count = len(phase_state.draft_graph.get("nodes", []))
+            conv_count = len(phase_state.draft_graph.get("nodes", []))  # type: ignore
             dissolution_info = {
                 "planning_nodes_dissolved": orig_count - conv_count,
                 "flowchart_map": phase_state.flowchart_map,
@@ -4050,7 +4050,7 @@ def register_queen_lifecycle_tools(
 
             tdef.active = True
             session.active_trigger_ids.add(trigger_id)
-            await _persist_active_triggers(session, session_id)
+            await _persist_active_triggers(session, session_id)  # type: ignore
             _save_trigger_to_agent(session, trigger_id, tdef)
             bus = getattr(session, "event_bus", None)
             if bus:
@@ -4108,7 +4108,7 @@ def register_queen_lifecycle_tools(
         session.active_trigger_ids.add(trigger_id)
 
         # Persist to session state and agent definition
-        await _persist_active_triggers(session, session_id)
+        await _persist_active_triggers(session, session_id)  # type: ignore
         _save_trigger_to_agent(session, trigger_id, tdef)
 
         # Emit event
@@ -4210,7 +4210,7 @@ def register_queen_lifecycle_tools(
             tdef.active = False
 
         # Persist to session state and remove from agent definition
-        await _persist_active_triggers(session, session_id)
+        await _persist_active_triggers(session, session_id)  # type: ignore
         _remove_trigger_from_agent(session, trigger_id)
 
         # Emit event

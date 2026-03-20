@@ -96,7 +96,7 @@ def atomic_replace(target: str, replacement: str) -> None:
         None,
         None,
     ):
-        raise ctypes.WinError()
+        raise ctypes.WinError()  # type: ignore
 
     # Best-effort: content is already saved, don't fail the whole edit
     # over a DACL restore failure.

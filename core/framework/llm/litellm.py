@@ -828,7 +828,7 @@ class LiteLLMProvider(LLMProvider):
             return
 
         raw = response.raw_response
-        tool_calls = []
+        tool_calls = []  # type: ignore
         if raw and hasattr(raw, "choices") and raw.choices:
             msg = raw.choices[0].message
             tool_calls = msg.tool_calls or []

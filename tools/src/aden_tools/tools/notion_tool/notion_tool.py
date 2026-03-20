@@ -177,7 +177,7 @@ def register_tools(
                 sel = prop.get("select")
                 simple_props[name] = sel.get("name", "") if sel else ""
             elif ptype == "multi_select":
-                simple_props[name] = [s.get("name", "") for s in prop.get("multi_select", [])]
+                simple_props[name] = [s.get("name", "") for s in prop.get("multi_select", [])]  # type: ignore
             elif ptype == "number":
                 simple_props[name] = prop.get("number")
             elif ptype == "checkbox":

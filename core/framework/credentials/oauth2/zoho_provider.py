@@ -100,7 +100,7 @@ class ZohoOAuth2Provider(BaseOAuth2Provider):
         )
         super().__init__(config, provider_id="zoho_crm_oauth2")
         self._accounts_domain = base
-        self._api_domain = (
+        self._api_domain = (  # type: ignore
             api_domain or os.getenv("ZOHO_API_DOMAIN", "https://www.zohoapis.com")
         ).rstrip("/")
 

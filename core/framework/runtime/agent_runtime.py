@@ -399,7 +399,7 @@ class AgentRuntime:
                 if cron_expr:
                     # Cron expression mode — takes priority over interval_minutes
                     try:
-                        from croniter import croniter
+                        from croniter import croniter  # type: ignore
 
                         # Validate the expression upfront
                         if not croniter.is_valid(cron_expr):

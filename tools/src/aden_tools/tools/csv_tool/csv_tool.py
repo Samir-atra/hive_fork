@@ -55,7 +55,7 @@ def register_tools(mcp: FastMCP) -> None:
                 columns = list(reader.fieldnames)
 
                 # Apply offset and limit
-                rows = []
+                rows = []  # type: ignore
                 for i, row in enumerate(reader):
                     if i < offset:
                         continue
@@ -65,7 +65,7 @@ def register_tools(mcp: FastMCP) -> None:
 
             # Get total row count (re-read for accurate count)
             with open(secure_path, encoding="utf-8", newline="") as f:
-                reader = csv.reader(f)
+                reader = csv.reader(f)  # type: ignore
                 total_rows = sum(1 for row in reader if any(row)) - 1
 
             return {
@@ -194,7 +194,7 @@ def register_tools(mcp: FastMCP) -> None:
 
             # Get new total row count
             with open(secure_path, encoding="utf-8", newline="") as f:
-                reader = csv.reader(f)
+                reader = csv.reader(f)  # type: ignore
                 total_rows = sum(1 for row in reader if any(row)) - 1  # Subtract header
 
             return {
