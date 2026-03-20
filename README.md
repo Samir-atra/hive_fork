@@ -117,6 +117,21 @@ This sets up:
 
 <img width="2500" height="1214" alt="home-screen" src="https://github.com/user-attachments/assets/134d897f-5e75-4874-b00b-e0505f6b45c4" />
 
+### Docker (Production)
+
+To run the framework in a containerized environment:
+
+```bash
+# Build the image
+docker build -t hive-framework .
+
+# Run the framework
+docker run --rm hive-framework --help
+
+# Example: Run calculator agent inside the container
+docker run --rm -v $(pwd)/exports:/app/exports hive-framework run exports/calculator --input '{"expression": "2 + 3 * 4"}'
+```
+
 ### Build Your First Agent
 
 Type the agent you want to build in the home input box
