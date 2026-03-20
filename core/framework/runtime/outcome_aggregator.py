@@ -8,7 +8,7 @@ concurrent executions collectively achieve the goal.
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from framework.schemas.decision import Decision, Outcome
@@ -29,7 +29,7 @@ class CriterionStatus:
     met: bool
     evidence: list[str] = field(default_factory=list)
     progress: float = 0.0  # 0.0 to 1.0
-    last_updated: datetime = field(default_factory=datetime.now)
+    last_updated: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -42,7 +42,7 @@ class ConstraintCheck:
     violation_details: str | None = None
     stream_id: str | None = None
     execution_id: str | None = None
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -53,7 +53,7 @@ class DecisionRecord:
     execution_id: str
     decision: Decision
     outcome: Outcome | None = None
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 class OutcomeAggregator:

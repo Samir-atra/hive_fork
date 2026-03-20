@@ -12,7 +12,7 @@ import json
 import logging
 import time
 from collections.abc import AsyncIterator
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -175,14 +175,14 @@ def _dump_failed_request(
     """Dump failed request to a file for debugging. Returns the file path."""
     FAILED_REQUESTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S_%f")
     filename = f"{error_type}_{model.replace('/', '_')}_{timestamp}.json"
     filepath = FAILED_REQUESTS_DIR / filename
 
     # Build dump data
     messages = kwargs.get("messages", [])
     dump_data = {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "model": model,
         "error_type": error_type,
         "attempt": attempt,

@@ -15,7 +15,7 @@ import uuid
 from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from framework.graph.checkpoint_config import CheckpointConfig
@@ -128,7 +128,7 @@ class ExecutionContext:
     isolation_level: IsolationLevel
     session_state: dict[str, Any] | None = None  # For resuming from pause
     run_id: str | None = None  # Unique ID per trigger() invocation
-    started_at: datetime = field(default_factory=datetime.now)
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
     status: str = "pending"  # pending, running, completed, failed, paused
 
@@ -753,7 +753,7 @@ class ExecutionStream:
                 )
 
                 # Update context
-                ctx.completed_at = datetime.now()
+                ctx.completed_at = datetime.now(UTC)
                 ctx.status = "completed" if result.success else "failed"
                 if result.paused_at:
                     ctx.status = "paused"
@@ -826,7 +826,7 @@ class ExecutionStream:
                 # Update context status based on result
                 if has_result and result.paused_at:
                     ctx.status = "paused"
-                    ctx.completed_at = datetime.now()
+                    ctx.completed_at = datetime.now(UTC)
                 else:
                     ctx.status = "cancelled"
 
@@ -935,7 +935,7 @@ class ExecutionStream:
 
         session_dir = self._session_store.get_session_path(execution_id)
         runs_file = session_dir / "runs.jsonl"
-        now = datetime.now()
+        now = datetime.now(UTC)
         record = {
             "run_id": run_id,
             "event": event,
@@ -1013,7 +1013,7 @@ class ExecutionStream:
                     SessionTimestamps,
                 )
 
-                now = datetime.now().isoformat()
+                now = datetime.now(UTC).isoformat()
                 ss = ctx.session_state or {}
                 progress = SessionProgress(
                     current_node=ss.get("paused_at") or ss.get("resume_from"),

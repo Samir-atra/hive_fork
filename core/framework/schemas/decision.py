@@ -9,7 +9,7 @@ This is MORE important than actions because:
 4. It's what we need to improve
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -72,7 +72,7 @@ class Outcome(BaseModel):
     # Natural language summary (crucial for Builder)
     summary: str = ""  # "Found 3 contacts matching query"
 
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     model_config = {"extra": "allow"}
 
@@ -115,7 +115,7 @@ class Decision(BaseModel):
     """
 
     id: str
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     node_id: str
 
     # WHAT was the agent trying to accomplish?

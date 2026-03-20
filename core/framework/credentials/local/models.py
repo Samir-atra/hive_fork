@@ -8,7 +8,7 @@ the same identity/status metadata as Aden OAuth credentials.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 
 from framework.credentials.models import CredentialIdentity
 
@@ -35,7 +35,7 @@ class LocalAccountInfo:
     status: str = "unknown"
     identity: CredentialIdentity = field(default_factory=CredentialIdentity)
     last_validated: datetime | None = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def storage_id(self) -> str:

@@ -11,7 +11,7 @@ import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -423,18 +423,18 @@ class AgentRuntime:
 
                             _persistent_session_id: str | None = None
                             if not immediate:
-                                cron = croniter(expr, datetime.now())
+                                cron = croniter(expr, datetime.now(UTC))
                                 next_dt = cron.get_next(datetime)
-                                sleep_secs = (next_dt - datetime.now()).total_seconds()
+                                sleep_secs = (next_dt - datetime.now(UTC)).total_seconds()
                                 self._timer_next_fire[entry_point_id] = (
                                     time.monotonic() + sleep_secs
                                 )
                                 await asyncio.sleep(max(0, sleep_secs))
                             while self._running:
                                 # Calculate next fire time upfront (used by skip paths too)
-                                cron = croniter(expr, datetime.now())
+                                cron = croniter(expr, datetime.now(UTC))
                                 next_dt = cron.get_next(datetime)
-                                sleep_secs = (next_dt - datetime.now()).total_seconds()
+                                sleep_secs = (next_dt - datetime.now(UTC)).total_seconds()
 
                                 # Gate: skip tick if timers are explicitly paused
                                 if self._timers_paused:
@@ -529,9 +529,9 @@ class AgentRuntime:
                                         exc_info=True,
                                     )
                                 # Calculate next fire from now
-                                cron = croniter(expr, datetime.now())
+                                cron = croniter(expr, datetime.now(UTC))
                                 next_dt = cron.get_next(datetime)
-                                sleep_secs = (next_dt - datetime.now()).total_seconds()
+                                sleep_secs = (next_dt - datetime.now(UTC)).total_seconds()
                                 self._timer_next_fire[entry_point_id] = (
                                     time.monotonic() + sleep_secs
                                 )

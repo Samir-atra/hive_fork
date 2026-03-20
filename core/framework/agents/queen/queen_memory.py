@@ -21,7 +21,7 @@ import asyncio
 import json
 import logging
 import traceback
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -101,7 +101,7 @@ def append_episodic_entry(content: str) -> None:
     ep_path = episodic_memory_path()
     ep_path.parent.mkdir(parents=True, exist_ok=True)
     today_str = date.today().strftime("%B %-d, %Y")
-    timestamp = datetime.now().strftime("%H:%M")
+    timestamp = datetime.now(UTC).strftime("%H:%M")
     if not ep_path.exists():
         header = f"# {today_str}\n\n"
         block = f"{header}### {timestamp}\n\n{content.strip()}\n"
@@ -364,7 +364,7 @@ async def consolidate_queen_memory(
         try:
             error_path.parent.mkdir(parents=True, exist_ok=True)
             error_path.write_text(
-                f"session: {session_id}\ntime: {datetime.now().isoformat()}\n\n{tb}",
+                f"session: {session_id}\ntime: {datetime.now(UTC).isoformat()}\n\n{tb}",
                 encoding="utf-8",
             )
         except Exception:

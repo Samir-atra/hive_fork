@@ -11,7 +11,7 @@ Goals are:
 - Versionable: Can evolve based on runtime feedback
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -152,8 +152,8 @@ class Goal(BaseModel):
     evolution_reason: str | None = None
 
     # Timestamps
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     model_config = {"extra": "allow"}
 

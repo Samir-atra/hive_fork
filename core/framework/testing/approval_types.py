@@ -5,7 +5,7 @@ These types are used for both interactive CLI approval and
 programmatic/MCP-based approval.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -58,7 +58,7 @@ class ApprovalResult(BaseModel):
     success: bool
     message: str | None = None
     error: str | None = None
-    timestamp: datetime = Field(default_factory=datetime.now)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @classmethod
     def success_result(

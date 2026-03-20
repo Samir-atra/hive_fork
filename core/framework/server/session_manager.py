@@ -15,7 +15,7 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -98,7 +98,7 @@ class SessionManager:
         from framework.llm.litellm import LiteLLMProvider
         from framework.runtime.event_bus import EventBus
 
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        ts = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         resolved_id = session_id or f"session_{ts}_{uuid.uuid4().hex[:8]}"
 
         async with self._lock:
@@ -363,7 +363,7 @@ class SessionManager:
 
                 state["status"] = "cancelled"
                 state.setdefault("result", {})["error"] = "Stale session: runtime restarted"
-                state.setdefault("timestamps", {})["updated_at"] = datetime.now().isoformat()
+                state.setdefault("timestamps", {})["updated_at"] = datetime.now(UTC).isoformat()
                 state_path.write_text(json.dumps(state, indent=2), encoding="utf-8")
                 logger.info(
                     "Marked stale session '%s' as cancelled for agent '%s'", d.name, agent_path.name

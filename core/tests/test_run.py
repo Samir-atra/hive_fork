@@ -2,7 +2,7 @@
 Test the run module.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from framework.schemas.decision import Decision, Option, Outcome
 from framework.schemas.run import Run, RunMetrics, RunStatus, RunSummary
@@ -35,8 +35,8 @@ class TestRun:
         run = Run(
             id="test_run",
             goal_id="test_goal",
-            started_at=datetime.now(),
-            completed_at=datetime.now(),
+            started_at=datetime.now(UTC),
+            completed_at=datetime.now(UTC),
         )
         assert run.duration_ms == int((run.completed_at - run.started_at).total_seconds() * 1000)
 
@@ -44,12 +44,12 @@ class TestRun:
         run = Run(
             id="test_run",
             goal_id="test_goal",
-            started_at=datetime.now(),
-            completed_at=datetime.now(),
+            started_at=datetime.now(UTC),
+            completed_at=datetime.now(UTC),
         )
         decision = Decision(
             id="test_decision",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             node_id="test_node",
             intent="Choose a greeting",
             options=[
@@ -65,13 +65,13 @@ class TestRun:
         run = Run(
             id="test_run",
             goal_id="test_goal",
-            started_at=datetime.now(),
-            completed_at=datetime.now(),
+            started_at=datetime.now(UTC),
+            completed_at=datetime.now(UTC),
             metrics=RunMetrics(total_decisions=0, successful_decisions=0, failed_decisions=0),
         )
         decision = Decision(
             id="test_decision",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             node_id="test_node",
             intent="Choose a greeting",
             options=[
@@ -98,8 +98,8 @@ class TestRun:
         run = Run(
             id="test_run",
             goal_id="test_goal",
-            started_at=datetime.now(),
-            completed_at=datetime.now(),
+            started_at=datetime.now(UTC),
+            completed_at=datetime.now(UTC),
         )
         problem_id = run.add_problem(
             "Test problem",
@@ -123,8 +123,8 @@ class TestRun:
         run = Run(
             id="test_run",
             goal_id="test_goal",
-            started_at=datetime.now(),
-            completed_at=datetime.now(),
+            started_at=datetime.now(UTC),
+            completed_at=datetime.now(UTC),
         )
         run.complete(RunStatus.COMPLETED, "Test narrative")
         assert run.status == RunStatus.COMPLETED
@@ -138,8 +138,8 @@ class TestRunSummary:
         run = Run(
             id="test_run",
             goal_id="test_goal",
-            started_at=datetime.now(),
-            completed_at=datetime.now(),
+            started_at=datetime.now(UTC),
+            completed_at=datetime.now(UTC),
         )
         run.complete(RunStatus.COMPLETED, "Test narrative")
 
@@ -157,13 +157,13 @@ class TestRunSummary:
         run = Run(
             id="test_run",
             goal_id="test_goal",
-            started_at=datetime.now(),
-            completed_at=datetime.now(),
+            started_at=datetime.now(UTC),
+            completed_at=datetime.now(UTC),
         )
 
         successful_decision = Decision(
             id="decision_1",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             node_id="node_1",
             intent="Choose greeting",
             options=[
@@ -184,7 +184,7 @@ class TestRunSummary:
 
         failed_decision = Decision(
             id="decision_2",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             node_id="node_2",
             intent="Process data",
             options=[
@@ -221,8 +221,8 @@ class TestRunSummary:
         run = Run(
             id="test_run",
             goal_id="test_goal",
-            started_at=datetime.now(),
-            completed_at=datetime.now(),
+            started_at=datetime.now(UTC),
+            completed_at=datetime.now(UTC),
         )
 
         run.add_problem(
