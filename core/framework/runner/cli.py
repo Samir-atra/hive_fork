@@ -460,11 +460,11 @@ def cmd_run(args: argparse.Namespace) -> int:
         if not args.quiet:
             resume_node = session_state.get("paused_at", "unknown")
             if checkpoint:
-                print(f"Resuming from checkpoint: {checkpoint}")
+                print(f"Resuming from checkpoint: {checkpoint}", file=sys.stderr)
             else:
-                print(f"Resuming session: {resume_session}")
-            print(f"Resume point: {resume_node}")
-            print()
+                print(f"Resuming session: {resume_session}", file=sys.stderr)
+            print(f"Resume point: {resume_node}", file=sys.stderr)
+            print(file=sys.stderr)
 
     # Auto-inject user_id if the agent expects it but it's not provided
     entry_input_keys = runner.graph.nodes[0].input_keys if runner.graph.nodes else []
@@ -475,22 +475,41 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     if not args.quiet:
         info = runner.info()
-        print(f"Agent: {info.name}")
-        print(f"Goal: {info.goal_name}")
-        print(f"Steps: {info.node_count}")
-        print(f"Input: {json.dumps(context)}")
-        print()
-        print("=" * 60)
-        print("Executing agent...")
-        print("=" * 60)
-        print()
+        print(f"Agent: {info.name}", file=sys.stderr)
+        print(f"Goal: {info.goal_name}", file=sys.stderr)
+        print(f"Steps: {info.node_count}", file=sys.stderr)
+        print(f"Input: {json.dumps(context)}", file=sys.stderr)
+        print(file=sys.stderr)
+        print("=" * 60, file=sys.stderr)
+        print("Executing agent...", file=sys.stderr)
+        print("=" * 60, file=sys.stderr)
+        print(file=sys.stderr)
 
-    result = asyncio.run(runner.run(context, session_state=session_state))
+    import time
+
+    start_time = time.perf_counter()
+
+    async def run_with_heartbeat():
+        async def heartbeat():
+            while True:
+                await asyncio.sleep(30)
+                if not args.quiet:
+                    print("Research in progress...", file=sys.stderr)
+
+        task = asyncio.create_task(heartbeat())
+        try:
+            return await runner.run(context, session_state=session_state)
+        finally:
+            task.cancel()
+
+    result = asyncio.run(run_with_heartbeat())
+    duration_sec = round(time.perf_counter() - start_time, 2)
 
     # Format output
     output = {
         "success": result.success,
         "steps_executed": result.steps_executed,
+        "duration_sec": duration_sec,
         "output": result.output,
     }
     if result.error:
@@ -500,24 +519,33 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     # Output results
     if args.output:
-        with open(args.output, "w", encoding="utf-8") as f:
+        import os
+        import tempfile
+
+        output_path = Path(args.output)
+        with tempfile.NamedTemporaryFile(
+            "w", encoding="utf-8", delete=False, dir=output_path.parent
+        ) as f:
             json.dump(output, f, indent=2, default=str)
+            temp_name = f.name
+        os.replace(temp_name, args.output)
         if not args.quiet:
-            print(f"Results written to {args.output}")
+            print(f"Results written to {args.output}", file=sys.stderr)
     else:
         if args.quiet:
             print(json.dumps(output, indent=2, default=str))
         else:
-            print()
-            print("=" * 60)
+            print(file=sys.stderr)
+            print("=" * 60, file=sys.stderr)
             status_str = "SUCCESS" if result.success else "FAILED"
-            print(f"Status: {status_str}")
-            print(f"Steps executed: {result.steps_executed}")
-            print(f"Path: {' → '.join(result.path)}")
-            print("=" * 60)
+            print(f"Status: {status_str}", file=sys.stderr)
+            print(f"Steps executed: {result.steps_executed}", file=sys.stderr)
+            print(f"Path: {' → '.join(result.path)}", file=sys.stderr)
+            print(f"Duration: {duration_sec}s", file=sys.stderr)
+            print("=" * 60, file=sys.stderr)
 
             if result.success:
-                print("\n--- Results ---")
+                print("\n--- Results ---", file=sys.stderr)
                 # Show only meaningful output keys (skip internal/intermediate values)
                 meaningful_keys = ["final_response", "response", "result", "answer", "output"]
 
@@ -527,11 +555,11 @@ def cmd_run(args: argparse.Namespace) -> int:
                     if key in result.output:
                         value = result.output[key]
                         if isinstance(value, str) and len(value) > 10:
-                            print(value)
+                            print(value, file=sys.stderr)
                             shown = True
                             break
                         elif isinstance(value, (dict, list)):
-                            print(json.dumps(value, indent=2, default=str))
+                            print(json.dumps(value, indent=2, default=str), file=sys.stderr)
                             shown = True
                             break
 
@@ -546,18 +574,18 @@ def cmd_run(args: argparse.Namespace) -> int:
                             "recent_context",
                         ]:
                             if isinstance(value, (dict, list)):
-                                print(f"\n{key}:")
+                                print(f"\n{key}:", file=sys.stderr)
                                 value_str = json.dumps(value, indent=2, default=str)
                                 if len(value_str) > 300:
                                     value_str = value_str[:300] + "..."
-                                print(value_str)
+                                print(value_str, file=sys.stderr)
                             else:
                                 val_str = str(value)
                                 if len(val_str) > 200:
                                     val_str = val_str[:200] + "..."
-                                print(f"{key}: {val_str}")
+                                print(f"{key}: {val_str}", file=sys.stderr)
             elif result.error:
-                print(f"\nError: {result.error}")
+                print(f"\nError: {result.error}", file=sys.stderr)
 
     runner.cleanup()
     return 0 if result.success else 1
