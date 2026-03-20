@@ -158,3 +158,4 @@ result = grep_search(
 - Line numbers start at 1
 - Returned file paths are relative to the session root
 - For non-recursive directory searches, only files in the immediate directory are searched
+- Symlinks are not supported and are silently ignored during recursive/non-recursive search for security reasons to prevent sandbox escapes

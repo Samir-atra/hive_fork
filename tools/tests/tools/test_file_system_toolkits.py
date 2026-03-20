@@ -499,6 +499,78 @@ class TestGrepSearchTool:
         assert result["matches"][0]["line_number"] == 2
         assert "pattern" in result["matches"][0]["line_content"]
 
+    def test_grep_search_symlink_file(
+        self, grep_search_fn, mock_workspace, mock_secure_path, tmp_path
+    ):
+        """Searching a symlink directly returns an error."""
+        import os
+
+        test_file = tmp_path / "target.txt"
+        test_file.write_text("pattern inside", encoding="utf-8")
+
+        symlink_path = tmp_path / "link.txt"
+        os.symlink(test_file, symlink_path)
+
+        result = grep_search_fn(path="link.txt", pattern="pattern", **mock_workspace)
+
+        assert "error" in result
+        assert "Symlinks are not supported" in result["error"]
+
+    def test_grep_search_symlink_directory_recursive(
+        self, grep_search_fn, mock_workspace, mock_secure_path, tmp_path
+    ):
+        """Searching directory recursively ignores symlinks."""
+        import os
+
+        # Create target outside of searched area for clarity
+        target_file = tmp_path / "target.txt"
+        target_file.write_text("pattern inside target", encoding="utf-8")
+
+        # Create search directory
+        search_dir = tmp_path / "search_dir"
+        search_dir.mkdir()
+        (search_dir / "file1.txt").write_text("pattern inside dir", encoding="utf-8")
+
+        # Create a symlink in the search directory pointing to target
+        symlink_path = search_dir / "link.txt"
+        os.symlink(target_file, symlink_path)
+
+        # Update mock secure path to return our newly created directory for this specific call
+        # We need the search to be rooted at search_dir to traverse correctly
+        result = grep_search_fn(path="search_dir", pattern="pattern", recursive=True, **mock_workspace)
+
+        # Verify it finds the real file but ignores the symlink
+        assert result["success"] is True
+        assert result["total_matches"] == 1
+        assert "file1.txt" in result["matches"][0]["file"]
+        assert "pattern inside dir" in result["matches"][0]["line_content"]
+
+    def test_grep_search_symlink_directory_non_recursive(
+        self, grep_search_fn, mock_workspace, mock_secure_path, tmp_path
+    ):
+        """Searching directory non-recursively ignores symlinks."""
+        import os
+
+        # Use a subdirectory to limit scope since mock_secure_path sets root to tmp_path
+        search_dir = tmp_path / "search_dir"
+        search_dir.mkdir()
+
+        target_file = tmp_path / "target.txt"
+        target_file.write_text("pattern inside target", encoding="utf-8")
+
+        # Root directory files
+        (search_dir / "file1.txt").write_text("pattern inside root", encoding="utf-8")
+
+        # Root directory symlink
+        symlink_path = search_dir / "link.txt"
+        os.symlink(target_file, symlink_path)
+
+        result = grep_search_fn(path="search_dir", pattern="pattern", recursive=False, **mock_workspace)
+
+        assert result["success"] is True
+        assert result["total_matches"] == 1
+        assert "file1.txt" in result["matches"][0]["file"]
+
     def test_grep_search_no_matches(
         self, grep_search_fn, mock_workspace, mock_secure_path, tmp_path
     ):
