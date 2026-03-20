@@ -220,18 +220,46 @@ async def test_multi_entry_graph_reachability_validation():
         id="multi-entry-graph",
         goal_id="g-multi",
         nodes=[
-            NodeSpec(id="entry1", name="Entry 1", description="1", node_type="event_loop", input_keys=[], output_keys=[]),
-            NodeSpec(id="entry2", name="Entry 2", description="2", node_type="event_loop", input_keys=[], output_keys=[]),
-            NodeSpec(id="worker", name="Worker", description="3", node_type="event_loop", input_keys=[], output_keys=[]),
-            NodeSpec(id="terminator", name="Terminator", description="4", node_type="event_loop", input_keys=[], output_keys=[])
+            NodeSpec(
+                id="entry1",
+                name="Entry 1",
+                description="1",
+                node_type="event_loop",
+                input_keys=[],
+                output_keys=[],
+            ),
+            NodeSpec(
+                id="entry2",
+                name="Entry 2",
+                description="2",
+                node_type="event_loop",
+                input_keys=[],
+                output_keys=[],
+            ),
+            NodeSpec(
+                id="worker",
+                name="Worker",
+                description="3",
+                node_type="event_loop",
+                input_keys=[],
+                output_keys=[],
+            ),
+            NodeSpec(
+                id="terminator",
+                name="Terminator",
+                description="4",
+                node_type="event_loop",
+                input_keys=[],
+                output_keys=[],
+            ),
         ],
         edges=[
             EdgeSpec(id="e1", source="entry1", target="worker"),
             EdgeSpec(id="e2", source="entry2", target="worker"),
-            EdgeSpec(id="e3", source="worker", target="terminator")
+            EdgeSpec(id="e3", source="worker", target="terminator"),
         ],
         entry_node="entry1",
-        terminal_nodes=["terminator"]
+        terminal_nodes=["terminator"],
     )
 
     result = graph.validate()
