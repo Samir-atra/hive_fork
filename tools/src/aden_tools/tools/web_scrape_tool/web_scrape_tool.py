@@ -171,9 +171,13 @@ def register_tools(mcp: FastMCP) -> None:
             # Clean up whitespace
             text = " ".join(text.split())
 
-            # Truncate if needed
-            if len(text) > max_length:
-                text = text[:max_length] + "..."
+            # Truncate if needed (by bytes)
+            if len(text.encode("utf-8")) > max_length:
+                # Truncate by bytes, leaving room for ellipsis
+                truncate_size = max(0, max_length - 3)
+                content_bytes = text.encode("utf-8")[:truncate_size]
+                # Decode safely (avoid cutting mid-character)
+                text = content_bytes.decode("utf-8", errors="ignore") + "..."
 
             result: dict[str, Any] = {
                 "url": url,
