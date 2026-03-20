@@ -1,2 +1,5 @@
-const issueNum = 2553;
-// Just confirming JS regex matching. It says "Issue #2553 not found or inaccessible"
+// If it has 'micro-fix', it checks:
+// const isMicroFix = prLabels.includes('micro-fix') || /micro-fix/i.test(prTitle);
+// if (isMicroFix) ...
+
+// Let's ensure the title format triggers it
