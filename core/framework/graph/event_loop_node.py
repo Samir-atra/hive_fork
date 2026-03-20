@@ -1194,6 +1194,7 @@ class EventLoopNode(NodeProtocol):
                     # and wait for user input.
                     _cf_block = True
                     _cf_auto = True
+                    _cf_prompt = "[System: Paused until user responds]"
 
             if _cf_block:
                 # Auto-block grace: when required outputs are still
