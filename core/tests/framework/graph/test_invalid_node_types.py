@@ -10,9 +10,11 @@ class SyncNode(NodeProtocol):
     def execute(self, ctx: NodeContext) -> NodeResult:
         return NodeResult(success=True)
 
+
 class ValidNode(NodeProtocol):
     async def execute(self, ctx: NodeContext) -> NodeResult:
         return NodeResult(success=True)
+
 
 def test_register_invalid_nodes():
     executor = GraphExecutor(runtime=MagicMock())
