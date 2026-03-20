@@ -15,8 +15,7 @@ def get_env_var(
     *,
     required: Literal[True],
     strict: bool = False,
-) -> str:
-    ...
+) -> str: ...
 
 
 @overload
@@ -25,8 +24,7 @@ def get_env_var(
     default: str | None = None,
     required: Literal[False] = False,
     strict: bool = False,
-) -> str | None:
-    ...
+) -> str | None: ...
 
 
 @overload
@@ -35,8 +33,7 @@ def get_env_var(
     default: str | None = None,
     required: bool = False,
     strict: bool = False,
-) -> str | None:
-    ...
+) -> str | None: ...
 
 
 def get_env_var(
