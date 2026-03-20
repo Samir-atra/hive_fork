@@ -8,8 +8,8 @@ Provides different isolation levels:
 """
 
 import asyncio
-import threading
 import logging
+import threading
 import time
 from dataclasses import dataclass, field
 from enum import StrEnum
