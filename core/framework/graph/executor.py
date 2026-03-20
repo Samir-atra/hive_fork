@@ -634,7 +634,9 @@ class GraphExecutor:
                     )
 
                 # Use last_successful_node_id as entry point if available and valid
-                last_success = session_state.get("last_successful_node_id") if session_state else None
+                last_success = (
+                    session_state.get("last_successful_node_id") if session_state else None
+                )
                 if last_success and graph.get_node(last_success) is not None:
                     current_node_id = last_success
                     self.logger.info(f"🔄 Resuming from last successful node: {last_success}")
