@@ -49,3 +49,36 @@ class TestGetEnvVar:
         result = get_env_var("REQUIRED_VAR", required=True)
 
         assert result == "my_value"
+
+    def test_strict_mode_strips_whitespace(self, monkeypatch):
+        """Strict mode strips whitespace from values."""
+        monkeypatch.setenv("SPACED_VAR", "  value  ")
+
+        result = get_env_var("SPACED_VAR", strict=True)
+
+        assert result == "value"
+
+    def test_strict_mode_treats_empty_as_none(self, monkeypatch):
+        """Strict mode treats empty strings and whitespace-only as None."""
+        monkeypatch.setenv("EMPTY_VAR", "")
+        monkeypatch.setenv("SPACE_VAR", "   ")
+
+        assert get_env_var("EMPTY_VAR", strict=True) is None
+        assert get_env_var("SPACE_VAR", strict=True) is None
+
+    def test_non_strict_mode_keeps_whitespace(self, monkeypatch):
+        """Non-strict mode preserves whitespace and empty strings."""
+        monkeypatch.setenv("EMPTY_VAR", "")
+        monkeypatch.setenv("SPACE_VAR", "   ")
+
+        assert get_env_var("EMPTY_VAR", strict=False) == ""
+        assert get_env_var("SPACE_VAR") == "   "
+
+    def test_strict_mode_with_required_raises_on_empty(self, monkeypatch):
+        """Strict mode with required raises ValueError on empty strings."""
+        monkeypatch.setenv("EMPTY_VAR", "")
+
+        with pytest.raises(ValueError) as exc_info:
+            get_env_var("EMPTY_VAR", required=True, strict=True)
+
+        assert "EMPTY_VAR" in str(exc_info.value)
