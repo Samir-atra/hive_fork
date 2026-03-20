@@ -462,10 +462,13 @@ Respond with JSON only:
 }}"""
 
         try:
-            response = await self._llm.acomplete(
-                messages=[{"role": "user", "content": prompt}],
-                system="You are a request router. Respond with JSON only.",
-                max_tokens=256,
+            response = await asyncio.wait_for(
+                self._llm.acomplete(
+                    messages=[{"role": "user", "content": prompt}],
+                    system="You are a request router. Respond with JSON only.",
+                    max_tokens=256,
+                ),
+                timeout=30.0,
             )
 
             import re
