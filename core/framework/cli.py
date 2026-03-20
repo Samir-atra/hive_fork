@@ -2,6 +2,7 @@
 Command-line interface for Aden Hive.
 
 Usage:
+    hive demo
     hive run exports/my-agent --input '{"key": "value"}'
     hive info exports/my-agent
     hive validate exports/my-agent

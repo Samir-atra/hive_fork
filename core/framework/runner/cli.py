@@ -10,6 +10,16 @@ from pathlib import Path
 def register_commands(subparsers: argparse._SubParsersAction) -> None:
     """Register runner commands with the main CLI."""
 
+    # demo command
+    demo_parser = subparsers.add_parser(
+        "demo",
+        help="Run an interactive demo of Hive",
+        description="Run a pre-built agent with a deterministic mock LLM, no API keys required.",
+    )
+    from framework.runner.demo import cmd_demo
+
+    demo_parser.set_defaults(func=cmd_demo)
+
     # run command
     run_parser = subparsers.add_parser(
         "run",
