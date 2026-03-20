@@ -55,6 +55,28 @@ class TestWebScrapeTool:
     @pytest.mark.asyncio
     @patch(_STEALTH_PATH)
     @patch(_PW_PATH)
+    async def test_truncates_by_byte_count(self, mock_pw, mock_stealth, web_scrape_fn):
+        """Truncation is done by byte length, not character count, and limits max bytes."""
+        # 🔥 emoji is 4 bytes. 5000 emojis = 20,000 bytes.
+        emojis = "🔥" * 5000
+        html = f"<html><body>{emojis}</body></html>"
+        mock_cm, _, _ = _make_playwright_mocks(html, final_url="https://example.com")
+        mock_pw.return_value = mock_cm
+        mock_stealth.return_value.apply_stealth_async = AsyncMock()
+
+        result = await web_scrape_fn(url="https://example.com", max_length=1000)
+        assert isinstance(result, dict)
+        assert "error" not in result
+
+        # Resulting string's encoded byte length should be exactly 1000 (including ...)
+        # Due to errors="ignore" and 4-byte characters, it might be 999 or 1000, but not > 1000
+        result_bytes_len = len(result["content"].encode("utf-8"))
+        assert result_bytes_len <= 1000, f"Byte length {result_bytes_len} > 1000"
+        assert result["content"].endswith("...")
+
+    @pytest.mark.asyncio
+    @patch(_STEALTH_PATH)
+    @patch(_PW_PATH)
     async def test_url_auto_prefixed_with_https(self, mock_pw, mock_stealth, web_scrape_fn):
         """URLs without scheme get https:// prefix."""
         html = "<html><body>Hello</body></html>"
