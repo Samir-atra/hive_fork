@@ -537,7 +537,9 @@ class TestGrepSearchTool:
 
         # Update mock secure path to return our newly created directory for this specific call
         # We need the search to be rooted at search_dir to traverse correctly
-        result = grep_search_fn(path="search_dir", pattern="pattern", recursive=True, **mock_workspace)
+        result = grep_search_fn(
+            path="search_dir", pattern="pattern", recursive=True, **mock_workspace
+        )
 
         # Verify it finds the real file but ignores the symlink
         assert result["success"] is True
@@ -565,7 +567,9 @@ class TestGrepSearchTool:
         symlink_path = search_dir / "link.txt"
         os.symlink(target_file, symlink_path)
 
-        result = grep_search_fn(path="search_dir", pattern="pattern", recursive=False, **mock_workspace)
+        result = grep_search_fn(
+            path="search_dir", pattern="pattern", recursive=False, **mock_workspace
+        )
 
         assert result["success"] is True
         assert result["total_matches"] == 1
