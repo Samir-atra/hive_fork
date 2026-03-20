@@ -586,6 +586,13 @@ class GraphSpec(BaseModel):
         for entry_point_node in self.entry_points.values():
             to_visit.append(entry_point_node)
 
+        # Also add any node with 0 incoming edges as a valid starting point
+        # (they are entry points by definition)
+        nodes_with_incoming = {edge.target for edge in self.edges}
+        for node in self.nodes:
+            if node.id not in nodes_with_incoming:
+                to_visit.append(node.id)
+
         # Traverse from all entry points
         while to_visit:
             current = to_visit.pop()

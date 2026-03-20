@@ -2017,11 +2017,18 @@ def register_queen_lifecycle_tools(
                     existing_edge_pairs.add((sa_id, n["id"]))
 
         # ── Validate graph connectivity ─────────────────────────────
-        # Every node must be reachable from the entry node. Disconnected
+        # Every node must be reachable from an entry node. Disconnected
         # subgraphs indicate a broken design — remove unreachable nodes
         # and report them so the queen can fix the draft.
         if validated_nodes:
-            entry_id = validated_nodes[0]["id"]
+            # Find all nodes with 0 incoming edges to use as entry points
+            incoming_targets = {e["target"] for e in validated_edges}
+            entry_ids = [n["id"] for n in validated_nodes if n["id"] not in incoming_targets]
+
+            # If there's a cycle and no nodes have 0 incoming edges, fall back to the first node
+            if not entry_ids:
+                entry_ids = [validated_nodes[0]["id"]]
+
             # Build undirected adjacency from edges
             _adj: dict[str, set[str]] = {n["id"]: set() for n in validated_nodes}
             for e in validated_edges:
@@ -2029,9 +2036,9 @@ def register_queen_lifecycle_tools(
                 if s in _adj and t in _adj:
                     _adj[s].add(t)
                     _adj[t].add(s)
-            # BFS from entry
+            # BFS from all entry points
             visited: set[str] = set()
-            queue = [entry_id]
+            queue = list(entry_ids)
             while queue:
                 cur = queue.pop()
                 if cur in visited:
@@ -2042,16 +2049,17 @@ def register_queen_lifecycle_tools(
                         queue.append(nb)
             unreachable = {n["id"] for n in validated_nodes} - visited
             if unreachable:
+                entry_ids_str = ", ".join(entry_ids)
                 for uid in sorted(unreachable):
                     logger.warning(
-                        "Node '%s' is unreachable from entry node '%s' "
+                        "Node '%s' is unreachable from entry nodes [%s] "
                         "— removing it from the draft.",
                         uid,
-                        entry_id,
+                        entry_ids_str,
                     )
                     topology_corrections.append(
                         f"Node '{uid}' is disconnected from the graph "
-                        f"(unreachable from entry node '{entry_id}') — "
+                        f"(unreachable from entry nodes [{entry_ids_str}]) — "
                         f"removed. Connect it to the flow or assign it "
                         f"as a sub-agent of an existing node."
                     )
