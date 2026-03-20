@@ -9,6 +9,7 @@ Provides different isolation levels:
 
 import asyncio
 import logging
+import threading
 import time
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -86,6 +87,9 @@ class SharedStateManager:
         self._stream_locks: dict[str, asyncio.Lock] = {}
         self._key_locks: dict[str, asyncio.Lock] = {}
 
+        # Thread-safe access for dictionary mutations
+        self._sync_lock = threading.RLock()
+
         # Change history for debugging/auditing
         self._change_history: list[StateChange] = []
         self._max_history = 1000
@@ -110,14 +114,15 @@ class SharedStateManager:
         Returns:
             StreamMemory instance for reading/writing state
         """
-        # Initialize execution state
-        if execution_id not in self._execution_state:
-            self._execution_state[execution_id] = {}
+        with self._sync_lock:
+            # Initialize execution state
+            if execution_id not in self._execution_state:
+                self._execution_state[execution_id] = {}
 
-        # Initialize stream state
-        if stream_id not in self._stream_state:
-            self._stream_state[stream_id] = {}
-            self._stream_locks[stream_id] = asyncio.Lock()
+            # Initialize stream state
+            if stream_id not in self._stream_state:
+                self._stream_state[stream_id] = {}
+                self._stream_locks[stream_id] = asyncio.Lock()
 
         return StreamMemory(
             manager=self,
@@ -133,7 +138,8 @@ class SharedStateManager:
         Args:
             execution_id: Execution to clean up
         """
-        self._execution_state.pop(execution_id, None)
+        with self._sync_lock:
+            self._execution_state.pop(execution_id, None)
         logger.debug(f"Cleaned up state for execution: {execution_id}")
 
     def cleanup_stream(self, stream_id: str) -> None:
@@ -143,8 +149,9 @@ class SharedStateManager:
         Args:
             stream_id: Stream to clean up
         """
-        self._stream_state.pop(stream_id, None)
-        self._stream_locks.pop(stream_id, None)
+        with self._sync_lock:
+            self._stream_state.pop(stream_id, None)
+            self._stream_locks.pop(stream_id, None)
         logger.debug(f"Cleaned up state for stream: {stream_id}")
 
     # === LOW-LEVEL STATE OPERATIONS ===
@@ -164,20 +171,21 @@ class SharedStateManager:
         2. Stream state (if isolation != ISOLATED)
         3. Global state (if isolation != ISOLATED)
         """
-        # Always check execution-local first
-        if execution_id in self._execution_state:
-            if key in self._execution_state[execution_id]:
-                return self._execution_state[execution_id][key]
+        with self._sync_lock:
+            # Always check execution-local first
+            if execution_id in self._execution_state:
+                if key in self._execution_state[execution_id]:
+                    return self._execution_state[execution_id][key]
 
-        # Check stream-level (unless isolated)
-        if isolation != IsolationLevel.ISOLATED:
-            if stream_id in self._stream_state:
-                if key in self._stream_state[stream_id]:
-                    return self._stream_state[stream_id][key]
+            # Check stream-level (unless isolated)
+            if isolation != IsolationLevel.ISOLATED:
+                if stream_id in self._stream_state:
+                    if key in self._stream_state[stream_id]:
+                        return self._stream_state[stream_id][key]
 
-            # Check global
-            if key in self._global_state:
-                return self._global_state[key]
+                # Check global
+                if key in self._global_state:
+                    return self._global_state[key]
 
         return None
 
@@ -235,20 +243,21 @@ class SharedStateManager:
         scope: StateScope,
     ) -> None:
         """Write without locking (for ISOLATED and SHARED)."""
-        if scope == StateScope.EXECUTION:
-            if execution_id not in self._execution_state:
-                self._execution_state[execution_id] = {}
-            self._execution_state[execution_id][key] = value
+        with self._sync_lock:
+            if scope == StateScope.EXECUTION:
+                if execution_id not in self._execution_state:
+                    self._execution_state[execution_id] = {}
+                self._execution_state[execution_id][key] = value
 
-        elif scope == StateScope.STREAM:
-            if stream_id not in self._stream_state:
-                self._stream_state[stream_id] = {}
-            self._stream_state[stream_id][key] = value
+            elif scope == StateScope.STREAM:
+                if stream_id not in self._stream_state:
+                    self._stream_state[stream_id] = {}
+                self._stream_state[stream_id][key] = value
 
-        elif scope == StateScope.GLOBAL:
-            self._global_state[key] = value
+            elif scope == StateScope.GLOBAL:
+                self._global_state[key] = value
 
-        self._version += 1
+            self._version += 1
 
     async def _write_with_lock(
         self,
@@ -279,11 +288,12 @@ class SharedStateManager:
 
     def _record_change(self, change: StateChange) -> None:
         """Record a state change for auditing."""
-        self._change_history.append(change)
+        with self._sync_lock:
+            self._change_history.append(change)
 
-        # Trim history if too long
-        if len(self._change_history) > self._max_history:
-            self._change_history = self._change_history[-self._max_history :]
+            # Trim history if too long
+            if len(self._change_history) > self._max_history:
+                self._change_history = self._change_history[-self._max_history :]
 
     # === BULK OPERATIONS ===
 
@@ -300,17 +310,18 @@ class SharedStateManager:
         """
         result = {}
 
-        # Start with global (if visible)
-        if isolation != IsolationLevel.ISOLATED:
-            result.update(self._global_state)
+        with self._sync_lock:
+            # Start with global (if visible)
+            if isolation != IsolationLevel.ISOLATED:
+                result.update(self._global_state)
 
-            # Add stream state (overwrites global)
-            if stream_id in self._stream_state:
-                result.update(self._stream_state[stream_id])
+                # Add stream state (overwrites global)
+                if stream_id in self._stream_state:
+                    result.update(self._stream_state[stream_id])
 
-        # Add execution state (overwrites all)
-        if execution_id in self._execution_state:
-            result.update(self._execution_state[execution_id])
+            # Add execution state (overwrites all)
+            if execution_id in self._execution_state:
+                result.update(self._execution_state[execution_id])
 
         return result
 
@@ -330,17 +341,19 @@ class SharedStateManager:
 
     def get_stats(self) -> dict:
         """Get state manager statistics."""
-        return {
-            "global_keys": len(self._global_state),
-            "stream_count": len(self._stream_state),
-            "execution_count": len(self._execution_state),
-            "total_changes": len(self._change_history),
-            "version": self._version,
-        }
+        with self._sync_lock:
+            return {
+                "global_keys": len(self._global_state),
+                "stream_count": len(self._stream_state),
+                "execution_count": len(self._execution_state),
+                "total_changes": len(self._change_history),
+                "version": self._version,
+            }
 
     def get_recent_changes(self, limit: int = 10) -> list[StateChange]:
         """Get recent state changes."""
-        return self._change_history[-limit:]
+        with self._sync_lock:
+            return self._change_history[-limit:]
 
 
 class StreamMemory:
@@ -440,26 +453,26 @@ class StreamMemory:
         """
         Synchronous read (for compatibility with existing code).
 
-        Note: This runs the async operation in a new event loop
-        or uses direct access if no loop is running.
+        Note: This method uses a thread lock for safe dictionary access.
         """
         # Direct access for sync usage
         if self._allowed_read is not None and key not in self._allowed_read:
             raise PermissionError(f"Not allowed to read key: {key}")
 
-        # Check execution state
-        exec_state = self._manager._execution_state.get(self._execution_id, {})
-        if key in exec_state:
-            return exec_state[key]
+        with self._manager._sync_lock:
+            # Check execution state
+            exec_state = self._manager._execution_state.get(self._execution_id, {})
+            if key in exec_state:
+                return exec_state[key]
 
-        # Check stream/global if not isolated
-        if self._isolation != IsolationLevel.ISOLATED:
-            stream_state = self._manager._stream_state.get(self._stream_id, {})
-            if key in stream_state:
-                return stream_state[key]
+            # Check stream/global if not isolated
+            if self._isolation != IsolationLevel.ISOLATED:
+                stream_state = self._manager._stream_state.get(self._stream_id, {})
+                if key in stream_state:
+                    return stream_state[key]
 
-            if key in self._manager._global_state:
-                return self._manager._global_state[key]
+                if key in self._manager._global_state:
+                    return self._manager._global_state[key]
 
         return None
 
@@ -467,30 +480,32 @@ class StreamMemory:
         """
         Synchronous write (for compatibility with existing code).
 
-        Always writes to execution scope for simplicity.
+        Always writes to execution scope for simplicity. Uses a thread lock for safety.
         """
         if self._allowed_write is not None and key not in self._allowed_write:
             raise PermissionError(f"Not allowed to write key: {key}")
 
-        if self._execution_id not in self._manager._execution_state:
-            self._manager._execution_state[self._execution_id] = {}
+        with self._manager._sync_lock:
+            if self._execution_id not in self._manager._execution_state:
+                self._manager._execution_state[self._execution_id] = {}
 
-        self._manager._execution_state[self._execution_id][key] = value
-        self._manager._version += 1
+            self._manager._execution_state[self._execution_id][key] = value
+            self._manager._version += 1
 
     def read_all_sync(self) -> dict[str, Any]:
-        """Synchronous read all."""
+        """Synchronous read all using a thread lock for safety."""
         result = {}
 
-        # Global (if visible)
-        if self._isolation != IsolationLevel.ISOLATED:
-            result.update(self._manager._global_state)
-            if self._stream_id in self._manager._stream_state:
-                result.update(self._manager._stream_state[self._stream_id])
+        with self._manager._sync_lock:
+            # Global (if visible)
+            if self._isolation != IsolationLevel.ISOLATED:
+                result.update(self._manager._global_state)
+                if self._stream_id in self._manager._stream_state:
+                    result.update(self._manager._stream_state[self._stream_id])
 
-        # Execution
-        if self._execution_id in self._manager._execution_state:
-            result.update(self._manager._execution_state[self._execution_id])
+            # Execution
+            if self._execution_id in self._manager._execution_state:
+                result.update(self._manager._execution_state[self._execution_id])
 
         # Filter by permissions
         if self._allowed_read is not None:
