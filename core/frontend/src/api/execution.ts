@@ -71,4 +71,21 @@ export const executionApi = {
 
   goalProgress: (sessionId: string) =>
     api.get<GoalProgress>(`/sessions/${sessionId}/goal-progress`),
+
+  transcribe: async (sessionId: string, audioBlob: Blob) => {
+    const formData = new FormData();
+    formData.append("file", audioBlob, "recording.webm");
+
+    const response = await fetch(`/api/sessions/${sessionId}/transcribe`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: "Transcription failed" }));
+      throw new Error(errorData.error || "Transcription failed");
+    }
+
+    return response.json() as Promise<{ text: string }>;
+  },
 };

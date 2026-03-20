@@ -1696,3 +1696,30 @@ class TestCleanupStaleActiveSessions:
 
         state = self._read_state(session_dir)
         assert state["status"] == "paused", "Paused sessions must remain untouched"
+
+    @pytest.mark.asyncio
+    async def test_transcribe_audio(self):
+        from unittest.mock import patch
+
+        import aiohttp
+
+        session = _make_session()
+        app = _make_app_with_session(session)
+
+        with patch("framework.server.routes_execution.atranscription") as mock_atranscribe:
+            mock_response = MagicMock()
+            mock_response.text = "Hello, this is a transcribed text."
+            mock_atranscribe.return_value = mock_response
+
+            async with TestClient(TestServer(app)) as client:
+                data = aiohttp.FormData()
+                data.add_field(
+                    "file", b"fake audio data", filename="recording.webm", content_type="audio/webm"
+                )
+
+                resp = await client.post(f"/api/sessions/{session.id}/transcribe", data=data)
+                assert resp.status == 200
+                result = await resp.json()
+
+                assert result["text"] == "Hello, this is a transcribed text."
+                mock_atranscribe.assert_called_once()

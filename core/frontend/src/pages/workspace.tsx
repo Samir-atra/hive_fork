@@ -2906,6 +2906,7 @@ export default function Workspace() {
 
             {activeSession && (
               <ChatPanel
+                sessionId={activeSession.id}
                 messages={activeSession.messages}
                 onSend={handleSend}
                 onCancel={handleCancelQueen}
