@@ -627,20 +627,18 @@ class GraphExecutor:
                 else:
                     self.logger.info(f"🔄 Resuming from paused node: {paused_at}")
             else:
-                # Fall back to normal entry point logic
                 if paused_at:
                     self.logger.warning(
                         f"⚠ paused_at={paused_at} is not a valid node, falling back to entry point"
                     )
 
-                # Use last_successful_node_id as entry point if available and valid
-                last_success = (
-                    session_state.get("last_successful_node_id") if session_state else None
-                )
+                # Check for last_successful_node_id as a fallback
+                last_success = session_state.get("last_successful_node_id") if session_state else None
                 if last_success and graph.get_node(last_success) is not None:
                     current_node_id = last_success
                     self.logger.info(f"🔄 Resuming from last successful node: {last_success}")
                 else:
+                    # Fall back to normal entry point logic
                     current_node_id = graph.get_entry_point(session_state)
 
         steps = 0
