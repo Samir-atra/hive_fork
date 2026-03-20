@@ -1,11 +1,9 @@
-import pytest
 import sys
 from pathlib import Path
 
-# Add the repository root to sys.path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from examples.templates.university_admin_agent.agent import UniversityAdminAgent
+from examples.templates.university_admin_agent.agent import UniversityAdminAgent  # noqa: E402
 
 
 def test_university_admin_agent_validation():

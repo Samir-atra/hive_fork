@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Check PR has linked issue with assignee
-        uses: actions/github-script@v8
+        uses: actions/github-script@v7
         with:
           script: |
             const pr = context.payload.pull_request;
@@ -105,40 +105,27 @@ jobs:
             let issuesWithoutAuthor = [];
 
             for (const issueNum of issueNumbers) {
-              let issue;
               try {
-                const response = await github.rest.issues.get({
+                const { data: issue } = await github.rest.issues.get({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: issueNum,
                 });
-                issue = response.data;
-              } catch (error) {
-                console.log(`  Issue #${issueNum} not found in ${context.repo.owner}/${context.repo.repo}, checking upstream adenhq/hive`);
-                try {
-                  const response = await github.rest.issues.get({
-                    owner: 'adenhq',
-                    repo: 'hive',
-                    issue_number: issueNum,
-                  });
-                  issue = response.data;
-                } catch (upstreamError) {
-                  console.log(`  Issue #${issueNum} not found or inaccessible in upstream either`);
-                  continue;
-                }
-              }
 
-              const assigneeLogins = (issue.assignees || []).map(a => a.login);
-              if (assigneeLogins.includes(prAuthor)) {
-                issueWithAuthorAssigned = issueNum;
-                console.log(`  Issue #${issueNum} has PR author ${prAuthor} as assignee`);
-                break;
-              } else {
-                issuesWithoutAuthor.push({
-                  number: issueNum,
-                  assignees: assigneeLogins
-                });
-                console.log(`  Issue #${issueNum} assignees: ${assigneeLogins.length > 0 ? assigneeLogins.join(', ') : 'none'} (PR author: ${prAuthor})`);
+                const assigneeLogins = (issue.assignees || []).map(a => a.login);
+                if (assigneeLogins.includes(prAuthor)) {
+                  issueWithAuthorAssigned = issueNum;
+                  console.log(`  Issue #${issueNum} has PR author ${prAuthor} as assignee`);
+                  break;
+                } else {
+                  issuesWithoutAuthor.push({
+                    number: issueNum,
+                    assignees: assigneeLogins
+                  });
+                  console.log(`  Issue #${issueNum} assignees: ${assigneeLogins.length > 0 ? assigneeLogins.join(', ') : 'none'} (PR author: ${prAuthor})`);
+                }
+              } catch (error) {
+                console.log(`  Issue #${issueNum} not found or inaccessible`);
               }
             }
 

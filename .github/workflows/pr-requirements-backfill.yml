@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Check all open PRs
-        uses: actions/github-script@v8
+        uses: actions/github-script@v7
         with:
           script: |
             const { data: pullRequests } = await github.rest.pulls.list({
@@ -76,38 +76,25 @@ jobs:
               let issuesWithoutAuthor = [];
 
               for (const issueNum of issueNumbers) {
-                let issue;
                 try {
-                  const response = await github.rest.issues.get({
+                  const { data: issue } = await github.rest.issues.get({
                     owner: context.repo.owner,
                     repo: context.repo.repo,
                     issue_number: issueNum,
                   });
-                  issue = response.data;
-                } catch (error) {
-                  console.log(`  Issue #${issueNum} not found in ${context.repo.owner}/${context.repo.repo}, checking upstream adenhq/hive`);
-                  try {
-                    const response = await github.rest.issues.get({
-                      owner: 'adenhq',
-                      repo: 'hive',
-                      issue_number: issueNum,
-                    });
-                    issue = response.data;
-                  } catch (upstreamError) {
-                    console.log(`  Issue #${issueNum} not found or inaccessible in upstream either`);
-                    continue;
-                  }
-                }
 
-                const assigneeLogins = (issue.assignees || []).map(a => a.login);
-                if (assigneeLogins.includes(prAuthor)) {
-                  issueWithAuthorAssigned = issueNum;
-                  break;
-                } else {
-                  issuesWithoutAuthor.push({
-                    number: issueNum,
-                    assignees: assigneeLogins
-                  });
+                  const assigneeLogins = (issue.assignees || []).map(a => a.login);
+                  if (assigneeLogins.includes(prAuthor)) {
+                    issueWithAuthorAssigned = issueNum;
+                    break;
+                  } else {
+                    issuesWithoutAuthor.push({
+                      number: issueNum,
+                      assignees: assigneeLogins
+                    });
+                  }
+                } catch (error) {
+                  console.log(`  Issue #${issueNum} not found or inaccessible`);
                 }
               }
 

@@ -5,14 +5,9 @@ import json
 import logging
 import sys
 from argparse import ArgumentParser
-from pathlib import Path
 from rich.console import Console
 
 from framework.config import RuntimeConfig
-from framework.runtime.event_bus import EventBus
-from framework.runtime.core import Runtime
-from framework.llm import LiteLLMProvider
-from framework.runner.tool_registry import ToolRegistry
 
 from .agent import UniversityAdminAgent
 from .config import metadata
@@ -34,8 +29,12 @@ def setup_logging(verbose: bool) -> None:
 
 async def main():
     parser = ArgumentParser(description=metadata.description)
-    parser.add_argument("--goal", type=str, help="The initial input or goal for the agent.")
-    parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
+    parser.add_argument(
+        "--goal", type=str, help="The initial input or goal for the agent."
+    )
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable verbose logging"
+    )
     parser.add_argument(
         "--model", type=str, default="gpt-4o", help="LLM to use (default: gpt-4o)"
     )

@@ -1,7 +1,7 @@
 """Agent graph construction for University Admin Navigation Agent."""
 
 from framework.graph import EdgeSpec, EdgeCondition, Goal, SuccessCriterion, Constraint
-from framework.graph.edge import GraphSpec
+from framework.graph import GraphSpec
 from framework.graph.executor import ExecutionResult, GraphExecutor
 from framework.runtime.event_bus import EventBus
 from framework.runtime.core import Runtime
@@ -104,6 +104,7 @@ entry_node = "intake"
 entry_points = {"start": "intake"}
 pause_nodes = []
 terminal_nodes = ["resource-mapper"]
+
 
 class UniversityAdminAgent:
     """
@@ -275,5 +276,6 @@ class UniversityAdminAgent:
             "errors": errors,
             "warnings": warnings,
         }
+
 
 default_agent = UniversityAdminAgent()
