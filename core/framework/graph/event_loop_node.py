@@ -370,6 +370,8 @@ class EventLoopNode(NodeProtocol):
         self._tool_task: asyncio.Task | None = None  # gather task while tools run
         # Track which nodes already have an action plan emitted (skip on revisit)
         self._action_plan_emitted: set[str] = set()
+        # Track consecutive judge LLM failures
+        self._judge_failure_count: int = 0
         # Monotonic counter for spillover file naming (web_search_1.txt, etc.)
         self._spill_counter: int = 0
         # Subagent mark_complete: when True, _evaluate returns ACCEPT immediately
@@ -3131,7 +3133,14 @@ class EventLoopNode(NodeProtocol):
                 success_criteria=ctx.node_spec.success_criteria,
                 accumulator_state=accumulator.to_dict(),
                 max_context_tokens=self._config.max_context_tokens,
+                _judge_failure_count=self._judge_failure_count,
             )
+
+            if verdict.confidence == 0.0:
+                self._judge_failure_count += 1
+            else:
+                self._judge_failure_count = 0
+
             if verdict.action != "ACCEPT":
                 return JudgeVerdict(
                     action=verdict.action,
