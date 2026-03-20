@@ -3,6 +3,8 @@
 import asyncio
 import json
 import logging
+import uuid
+from pathlib import Path
 from typing import Any
 
 from aiohttp import web
@@ -503,9 +505,51 @@ async def handle_cancel_queen(request: web.Request) -> web.Response:
     return web.json_response({"cancelled": True})
 
 
+async def handle_upload(request: web.Request) -> web.Response:
+    """POST /api/sessions/{session_id}/upload — upload a file to the session workspace."""
+    session, err = resolve_session(request)
+    if err:
+        return err
+
+    try:
+        reader = await request.multipart()
+        field = await reader.next()
+        if not field:
+            return web.json_response({"error": "No file field found"}, status=400)
+
+        raw_filename = field.filename or f"upload_{uuid.uuid4().hex[:8]}.bin"
+        filename = Path(raw_filename).name
+
+        # Determine the target path inside the session workspace
+        workspace = session.runtime.get_workspace()
+        if not workspace:
+            return web.json_response({"error": "No workspace"}, status=400)
+
+        target_path = workspace / filename
+
+        with open(target_path, "wb") as f:
+            while True:
+                chunk = await field.read_chunk()
+                if not chunk:
+                    break
+                f.write(chunk)
+
+        return web.json_response(
+            {
+                "status": "success",
+                "filename": filename,
+                "path": str(target_path.absolute()),
+            }
+        )
+    except Exception as e:
+        logger.exception("Failed to handle upload")
+        return web.json_response({"error": str(e)}, status=500)
+
+
 def register_routes(app: web.Application) -> None:
     """Register execution control routes."""
     # Session-primary routes
+    app.router.add_post("/api/sessions/{session_id}/upload", handle_upload)
     app.router.add_post("/api/sessions/{session_id}/trigger", handle_trigger)
     app.router.add_post("/api/sessions/{session_id}/inject", handle_inject)
     app.router.add_post("/api/sessions/{session_id}/chat", handle_chat)

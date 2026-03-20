@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Check PR has linked issue with assignee
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const pr = context.payload.pull_request;
@@ -103,14 +103,27 @@ jobs:
             const prAuthor = pr.user.login;
             let issueWithAuthorAssigned = null;
             let issuesWithoutAuthor = [];
+            let accessibleIssuesFound = false;
 
             for (const issueNum of issueNumbers) {
               try {
-                const { data: issue } = await github.rest.issues.get({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issueNum,
-                });
+                let issue;
+                try {
+                  const { data } = await github.rest.issues.get({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNum,
+                  });
+                  issue = data;
+                } catch (err) {
+                  console.log(`  Issue #${issueNum} not found in ${context.repo.owner}/${context.repo.repo}. Trying adenhq/hive...`);
+                  const { data } = await github.rest.issues.get({
+                    owner: 'adenhq',
+                    repo: 'hive',
+                    issue_number: issueNum,
+                  });
+                  issue = data;
+                }
 
                 const assigneeLogins = (issue.assignees || []).map(a => a.login);
                 if (assigneeLogins.includes(prAuthor)) {

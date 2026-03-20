@@ -1,5 +1,5 @@
 import { memo, useState, useRef, useEffect } from "react";
-import { Send, Square, Crown, Cpu, Check, Loader2 } from "lucide-react";
+import { Send, Square, Crown, Cpu, Check, Loader2, ImagePlus } from "lucide-react";
 import MarkdownContent from "@/components/MarkdownContent";
 import QuestionWidget from "@/components/QuestionWidget";
 import MultiQuestionWidget from "@/components/MultiQuestionWidget";
@@ -23,6 +23,7 @@ export interface ChatMessage {
 interface ChatPanelProps {
   messages: ChatMessage[];
   onSend: (message: string, thread: string) => void;
+  onFileUpload?: (file: File) => Promise<{filename: string, path: string} | null>;
   isWaiting?: boolean;
   /** When true a worker is thinking (not yet streaming) */
   isWorkerWaiting?: boolean;
@@ -241,13 +242,34 @@ const MessageBubble = memo(function MessageBubble({ msg, queenPhase }: { msg: Ch
   );
 }, (prev, next) => prev.msg.id === next.msg.id && prev.msg.content === next.msg.content && prev.msg.phase === next.msg.phase && prev.queenPhase === next.queenPhase);
 
-export default function ChatPanel({ messages, onSend, isWaiting, isWorkerWaiting, isBusy, activeThread, disabled, onCancel, pendingQuestion, pendingOptions, pendingQuestions, onQuestionSubmit, onMultiQuestionSubmit, onQuestionDismiss, queenPhase }: ChatPanelProps) {
+export default function ChatPanel({ messages, onSend, onFileUpload, isWaiting, isWorkerWaiting, isBusy, activeThread, disabled, onCancel, pendingQuestion, pendingOptions, pendingQuestions, onQuestionSubmit, onMultiQuestionSubmit, onQuestionDismiss, queenPhase }: ChatPanelProps) {
   const [input, setInput] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [readMap, setReadMap] = useState<Record<string, number>>({});
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !onFileUpload) return;
+
+    setIsUploading(true);
+    try {
+      const result = await onFileUpload(file);
+      if (result) {
+        setInput(prev => prev + `[Uploaded Image: ${result.filename}]`);
+      }
+    } catch (err) {
+      console.error("Failed to upload image", err);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
 
   const threadMessages = messages.filter((m) => {
     if (m.type === "system" && !m.thread) return false;
@@ -367,6 +389,24 @@ export default function ChatPanel({ messages, onSend, isWaiting, isWorkerWaiting
       ) : (
         <form onSubmit={handleSubmit} className="p-4">
           <div className="flex items-center gap-3 bg-muted/40 rounded-xl px-4 py-2.5 border border-border focus-within:border-primary/40 transition-colors">
+            <input
+              type="file"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              accept="image/*"
+              onChange={handleFileUpload}
+            />
+            {onFileUpload && (
+              <button
+                type="button"
+                disabled={disabled || isUploading}
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2 -ml-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                title="Upload Image"
+              >
+                {isUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+              </button>
+            )}
             <textarea
               ref={textareaRef}
               rows={1}

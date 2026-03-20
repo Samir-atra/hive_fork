@@ -34,6 +34,20 @@ export const executionApi = {
       graph_id: graphId,
     }),
 
+  uploadFile: async (sessionId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post<{status: string, filename: string, path: string}>(
+      `/sessions/${sessionId}/upload`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data"
+        }
+      }
+    );
+  },
+
   chat: (sessionId: string, message: string) =>
     api.post<ChatResult>(`/sessions/${sessionId}/chat`, { message }),
 
