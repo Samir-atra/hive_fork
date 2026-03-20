@@ -11,6 +11,9 @@ on:
         description: "Only count PRs merged after this date (YYYY-MM-DD). Leave empty for all-time."
         required: false
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   leaderboard:
     runs-on: ubuntu-latest
