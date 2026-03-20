@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 class KPICalculationMethod(StrEnum):
     """How the KPI is calculated."""
+
     SUM = "sum"
     AVERAGE = "average"
     COUNT = "count"
@@ -32,10 +33,12 @@ class KPI(BaseModel):
 
     model_config = {"extra": "allow"}
 
+
 class KPIMetric(BaseModel):
     """
     A specific metric reading contributing to a KPI.
     """
+
     kpi_id: str
     value: float
     timestamp: datetime = Field(default_factory=datetime.now)
@@ -44,15 +47,17 @@ class KPIMetric(BaseModel):
 
     model_config = {"extra": "allow"}
 
+
 class KPIEvaluationResult(BaseModel):
     """
     The result of evaluating a KPI.
     """
+
     kpi_id: str
     current_value: float
     target: float | None = None
     evaluation_time: datetime = Field(default_factory=datetime.now)
     is_meeting_target: bool | None = None
-    trend: str | None = None # "up", "down", "stable"
+    trend: str | None = None  # "up", "down", "stable"
 
     model_config = {"extra": "allow"}

@@ -40,8 +40,8 @@ def sample_goal():
                 description="Latest system status score.",
                 target=1.0,
                 calculation_method=KPICalculationMethod.LATEST,
-            )
-        ]
+            ),
+        ],
     )
 
 
@@ -114,6 +114,7 @@ async def test_kpi_evaluation_latest(sample_goal):
     aggregator.record_kpi_metric("status", 0.5, "node_1")
     # Small sleep to ensure different timestamps if testing locally
     import asyncio
+
     await asyncio.sleep(0.01)
     aggregator.record_kpi_metric("status", 1.2, "node_2")
     await asyncio.sleep(0.01)
