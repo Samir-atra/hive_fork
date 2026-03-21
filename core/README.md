@@ -146,3 +146,6 @@ for s in suggestions:
 - Python 3.11+
 - pydantic >= 2.0
 - anthropic >= 0.40.0 (for LLM-powered agents)
+
+## Agent Template Registry
+The framework includes an Intent-to-Template Matcher (`AgentTemplateRegistry`) with Semantic Keyword Matching. This component enables natural language agent selection by mapping a user's intent to one of the 11 pre-registered common agent templates through keyword and regex-based matching rules.

@@ -6,6 +6,8 @@ import json
 import sys
 from pathlib import Path
 
+from framework.agent_registry import AgentTemplateRegistry
+
 
 def register_commands(subparsers: argparse._SubParsersAction) -> None:
     """Register runner commands with the main CLI."""
@@ -118,6 +120,26 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
         help="Directory to search (default: exports)",
     )
     list_parser.set_defaults(func=cmd_list)
+
+    # match-template command
+    match_parser = subparsers.add_parser(
+        "match-template",
+        help="Match an intent string to an agent template",
+        description="Find the best agent templates for a natural language intent.",
+    )
+    match_parser.add_argument(
+        "--intent",
+        type=str,
+        required=True,
+        help="Natural language intent string",
+    )
+    match_parser.add_argument(
+        "--top",
+        type=int,
+        default=3,
+        help="Number of top results to return",
+    )
+    match_parser.set_defaults(func=cmd_match_template)
 
     # dispatch command (multi-agent)
     dispatch_parser = subparsers.add_parser(
@@ -341,6 +363,29 @@ def _load_resume_state(
             "execution_path": progress.get("path", []),
             "node_visit_counts": progress.get("node_visit_counts", {}),
         }
+
+
+def cmd_match_template(args: argparse.Namespace) -> int:
+    """Handle the match-template CLI command.
+
+    Args:
+        args: Parsed command-line arguments.
+
+    Returns:
+        Integer status code for the command execution (0 for success).
+    """
+    registry = AgentTemplateRegistry.register_defaults()
+    results = registry.match_intent(args.intent)
+
+    print(f"\nTop matching templates for intent: '{args.intent}'\n")
+    print(f"{'Template Name':<30} | {'Score':<5}")
+    print("-" * 40)
+
+    for name, score in results[: args.top]:
+        print(f"{name:<30} | {score:>5.1f}")
+
+    print()
+    return 0
 
 
 def _prompt_before_start(agent_path: str, runner, model: str | None = None):
