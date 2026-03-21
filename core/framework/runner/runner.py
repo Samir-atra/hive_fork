@@ -1096,6 +1096,11 @@ class AgentRunner:
         self._llm: LLMProvider | None = None
         self._approval_callback: Callable | None = None
 
+        import asyncio
+
+        self._setup_lock = asyncio.Lock()
+        self._setup_complete = False
+
         # AgentRuntime — unified execution path for all agents
         self._agent_runtime: AgentRuntime | None = None
         # Pre-load validation: structural checks + credentials.
@@ -1433,8 +1438,18 @@ class AgentRunner:
         """
         self._approval_callback = callback
 
+    async def _ensure_setup(self, event_bus=None) -> None:
+        """Ensure the runtime, LLM, and executor are set up exactly once."""
+        if not self._setup_complete:
+            async with self._setup_lock:
+                if not self._setup_complete:
+                    self._setup(event_bus=event_bus)
+
     def _setup(self, event_bus=None) -> None:
         """Set up runtime, LLM, and executor."""
+        if self._setup_complete:
+            return
+
         # Configure structured logging (auto-detects JSON vs human-readable)
         from framework.observability import configure_logging
 
@@ -1695,6 +1710,7 @@ class AgentRunner:
             event_bus=event_bus,
             skills_manager_config=skills_manager_config,
         )
+        self._setup_complete = True
 
     def _get_api_key_env_var(self, model: str) -> str | None:
         """Get the environment variable name for the API key based on model name."""
@@ -1929,7 +1945,7 @@ class AgentRunner:
         import sys
 
         if self._agent_runtime is None:
-            self._setup()
+            await self._ensure_setup()
 
         # Start runtime if not running
         if not self._agent_runtime.is_running:
@@ -2021,7 +2037,7 @@ class AgentRunner:
         instead.
         """
         if self._agent_runtime is None:
-            self._setup()
+            await self._ensure_setup()
 
         await self._agent_runtime.start()
 
@@ -2050,7 +2066,7 @@ class AgentRunner:
             Execution ID for tracking
         """
         if self._agent_runtime is None:
-            self._setup()
+            await self._ensure_setup()
 
         if not self._agent_runtime.is_running:
             await self._agent_runtime.start()
@@ -2069,7 +2085,7 @@ class AgentRunner:
             Dict with overall_progress, criteria_status, constraint_violations, etc.
         """
         if self._agent_runtime is None:
-            self._setup()
+            await self._ensure_setup()
 
         return await self._agent_runtime.get_goal_progress()
 
@@ -2252,7 +2268,7 @@ class AgentRunner:
         eval_llm = llm
         if eval_llm is None:
             if self._llm is None:
-                self._setup()
+                await self._ensure_setup()
             eval_llm = self._llm
 
         # If still no LLM (mock mode), do keyword matching
@@ -2492,7 +2508,7 @@ Respond with JSON only:
 
     async def __aenter__(self) -> "AgentRunner":
         """Context manager entry."""
-        self._setup()
+        await self._ensure_setup()
         if self._agent_runtime is not None:
             await self._agent_runtime.start()
         return self
