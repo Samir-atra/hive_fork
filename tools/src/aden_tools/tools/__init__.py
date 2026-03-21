@@ -94,6 +94,7 @@ from .n8n_tool import register_tools as register_n8n
 from .news_tool import register_tools as register_news
 from .notion_tool import register_tools as register_notion
 from .obsidian_tool import register_tools as register_obsidian
+from .openapi_rest_tool.openapi_rest_tool import register_tools as register_openapi_rest
 from .pagerduty_tool import register_tools as register_pagerduty
 from .pdf_read_tool import register_tools as register_pdf_read
 from .pinecone_tool import register_tools as register_pinecone
@@ -182,6 +183,7 @@ def _register_verified(
     register_google_maps(mcp, credentials=credentials)
     register_google_sheets(mcp, credentials=credentials)
     register_account_info(mcp, credentials=credentials)
+    register_openapi_rest(mcp, credentials=credentials)
 
     # --- File system toolkits ---
     register_list_dir(mcp)
