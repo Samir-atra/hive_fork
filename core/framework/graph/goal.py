@@ -29,6 +29,26 @@ class GoalStatus(StrEnum):
     SUSPENDED = "suspended"  # Paused for revision
 
 
+class EvolutionScope(BaseModel):
+    """
+    Explicit constraints on what aspects of an agent may evolve autonomously.
+
+    Defines boundaries around what an agent is allowed to change on its own
+    versus what must remain fixed to prevent silent or unintended agent drift.
+    """
+
+    allowed: list[str] = Field(
+        default_factory=list,
+        description="Aspects the agent is permitted to evolve (e.g. phrasing)",
+    )
+    forbidden: list[str] = Field(
+        default_factory=list,
+        description="Aspects the agent is prohibited from evolving (e.g. budget)",
+    )
+
+    model_config = {"extra": "allow"}
+
+
 class SuccessCriterion(BaseModel):
     """
     A measurable condition that defines success.
@@ -88,6 +108,7 @@ class Goal(BaseModel):
     - WHAT to achieve (success criteria)
     - WHAT NOT to do (constraints)
     - CONTEXT for decision-making
+    - SCOPE for evolution (allowed vs. forbidden changes)
 
     The agent graph (nodes, edges) is derived from this goal.
 
@@ -113,7 +134,11 @@ class Goal(BaseModel):
                     category="safety",
                     check="output != exception"
                 )
-            ]
+            ],
+            evolution_scope=EvolutionScope(
+                allowed=["prompt phrasing"],
+                forbidden=["budget limits"]
+            )
         )
     """
 
@@ -150,6 +175,10 @@ class Goal(BaseModel):
     version: str = "1.0.0"
     parent_version: str | None = None
     evolution_reason: str | None = None
+    evolution_scope: EvolutionScope | None = Field(
+        default=None,
+        description="Explicit constraints on what aspects of an agent may evolve autonomously",
+    )
 
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.now)
@@ -201,5 +230,17 @@ class Goal(BaseModel):
             lines.append("## Context:")
             for key, value in self.context.items():
                 lines.append(f"- {key}: {value}")
+
+        if self.evolution_scope:
+            lines.append("")
+            lines.append("## Evolution Scope:")
+            if self.evolution_scope.allowed:
+                lines.append("Allowed to evolve:")
+                for item in self.evolution_scope.allowed:
+                    lines.append(f"- {item}")
+            if self.evolution_scope.forbidden:
+                lines.append("Forbidden to evolve:")
+                for item in self.evolution_scope.forbidden:
+                    lines.append(f"- {item}")
 
         return "\n".join(lines)
