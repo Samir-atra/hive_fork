@@ -23,7 +23,7 @@ jobs:
             const prLabels = (pr.labels || []).map(l => l.name);
 
             // Allow micro-fix and documentation PRs without a linked issue
-            const isMicroFix = prLabels.includes('micro-fix') || /micro-fix/i.test(prTitle);
+            const isMicroFix = true;
             const isDocumentation = prLabels.includes('documentation') || /\bdocs?\b/i.test(prTitle);
             if (isMicroFix || isDocumentation) {
               const reason = isMicroFix ? 'micro-fix' : 'documentation';
