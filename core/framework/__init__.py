@@ -22,7 +22,12 @@ The framework includes a Goal-Based Testing system (Goal → Agent → Eval):
 See `framework.testing` for details.
 """
 
-from framework.llm import AnthropicProvider, LLMProvider
+from framework.llm import LLMProvider
+
+try:
+    from framework.llm import AnthropicProvider
+except ImportError:
+    AnthropicProvider = None
 from framework.runner import AgentOrchestrator, AgentRunner
 from framework.runtime.core import Runtime
 from framework.schemas.decision import Decision, DecisionEvaluation, Option, Outcome

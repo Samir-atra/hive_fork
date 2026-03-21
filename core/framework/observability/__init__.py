@@ -14,7 +14,12 @@ from framework.observability.logging import (
     get_trace_context,
     set_trace_context,
 )
-from framework.observability.otel_adapter import MetricsAdapter, OTELExporter
+
+try:
+    from framework.observability.otel_adapter import MetricsAdapter, OTELExporter
+except ImportError:
+    MetricsAdapter = None
+    OTELExporter = None
 
 __all__ = [
     "OTELExporter",
