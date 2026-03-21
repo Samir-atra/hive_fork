@@ -65,3 +65,38 @@ class TestOpenRouterConfig:
         monkeypatch.setattr("framework.config.HIVE_CONFIG_FILE", config_file)
 
         assert get_api_base() == "https://proxy.example/v1"
+
+
+def test_get_hive_config_hive_env(monkeypatch, tmp_path):
+    import json
+
+    monkeypatch.setenv("HIVE_ENV", "dev")
+    config_file = tmp_path / "configuration.json"
+    env_config_file = tmp_path / "configuration.dev.json"
+
+    # Create the env specific config file
+    with open(env_config_file, "w") as f:
+        json.dump({"env": "dev"}, f)
+
+    monkeypatch.setattr("framework.config.HIVE_CONFIG_FILE", config_file)
+    from framework.config import get_hive_config
+
+    config = get_hive_config()
+    assert config == {"env": "dev"}
+
+
+def test_get_hive_config_fallback(monkeypatch, tmp_path):
+    import json
+
+    monkeypatch.setenv("HIVE_ENV", "prod")
+    config_file = tmp_path / "configuration.json"
+
+    # Create only the fallback config file
+    with open(config_file, "w") as f:
+        json.dump({"env": "fallback"}, f)
+
+    monkeypatch.setattr("framework.config.HIVE_CONFIG_FILE", config_file)
+    from framework.config import get_hive_config
+
+    config = get_hive_config()
+    assert config == {"env": "fallback"}

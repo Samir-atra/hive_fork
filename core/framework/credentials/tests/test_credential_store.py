@@ -264,6 +264,18 @@ class TestEnvVarStorage:
 class TestEncryptedFileStorage:
     """Tests for EncryptedFileStorage."""
 
+    def test_encrypted_file_storage_hive_env(self, temp_dir, monkeypatch):
+        """Test that EncryptedFileStorage respects HIVE_ENV."""
+        monkeypatch.setenv("HIVE_ENV", "test-env")
+        storage = EncryptedFileStorage(temp_dir)
+        assert storage.base_path == temp_dir / "test-env"
+
+    def test_encrypted_file_storage_aden_env(self, temp_dir, monkeypatch):
+        """Test that EncryptedFileStorage respects ADEN_ENV."""
+        monkeypatch.setenv("ADEN_ENV", "staging")
+        storage = EncryptedFileStorage(temp_dir)
+        assert storage.base_path == temp_dir / "staging"
+
     @pytest.fixture
     def temp_dir(self):
         """Create a temporary directory for tests."""
