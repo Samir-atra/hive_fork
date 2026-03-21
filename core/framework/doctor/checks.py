@@ -42,8 +42,7 @@ def check_system() -> dict[str, Any]:
             {
                 "status": "pass",
                 "message": (
-                    f"Python {py_version[0]}.{py_version[1]}.{py_version[2]} "
-                    "(>=3.11 required)"
+                    f"Python {py_version[0]}.{py_version[1]}.{py_version[2]} (>=3.11 required)"
                 ),
             }
         )
@@ -162,7 +161,9 @@ def check_configuration() -> dict[str, Any]:
         from framework.config import HIVE_CONFIG_FILE, get_hive_config
     except ImportError:
         HIVE_CONFIG_FILE = Path.home() / ".hive" / "configuration.json"
-        def get_hive_config(): return {}
+
+        def get_hive_config():
+            return {}
 
     config_path = HIVE_CONFIG_FILE
 
@@ -170,7 +171,9 @@ def check_configuration() -> dict[str, Any]:
         results.append({"status": "pass", "message": f"{config_path} exists"})
 
         config = get_hive_config()
-        preferred_model = config.get("llm", {}).get("preferred_model", "anthropic/claude-3-haiku-20240307")
+        preferred_model = config.get("llm", {}).get(
+            "preferred_model", "anthropic/claude-3-haiku-20240307"
+        )
         results.append({"status": "pass", "message": f"Preferred model: {preferred_model}"})
 
         if preferred_model.startswith("anthropic/") or preferred_model.startswith("claude"):
