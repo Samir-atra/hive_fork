@@ -2,6 +2,7 @@
 
 import json
 import os
+import sys
 from unittest.mock import patch
 
 import pytest
@@ -365,11 +366,16 @@ class TestExecuteCommandTool:
     def test_execute_command_list_files(
         self, execute_command_fn, mock_workspace, mock_secure_path, tmp_path
     ):
-        """Executing ls command lists files."""
+        """Executing ls (or dir) command lists files."""
         # Create a test file
         (tmp_path / "testfile.txt").write_text("content", encoding="utf-8")
 
-        result = execute_command_fn(command=f"ls {tmp_path}", **mock_workspace)
+        if sys.platform.startswith("win"):
+            cmd = f"dir {tmp_path}"
+        else:
+            cmd = f"ls {tmp_path}"
+
+        result = execute_command_fn(command=cmd, **mock_workspace)
 
         assert result["success"] is True
         assert result["return_code"] == 0
@@ -377,11 +383,25 @@ class TestExecuteCommandTool:
 
     def test_execute_command_with_pipe(self, execute_command_fn, mock_workspace, mock_secure_path):
         """Executing a command with pipe works correctly."""
-        result = execute_command_fn(command="echo 'hello world' | tr 'a-z' 'A-Z'", **mock_workspace)
+        if sys.platform.startswith("win"):
+            # Use native cmd.exe filter on Windows (powershell is blocked)
+            cmd = "echo hello world | findstr world"
+            expected = "hello world"
+        else:
+            cmd = "echo 'hello world' | tr 'a-z' 'A-Z'"
+            expected = "HELLO WORLD"
 
-        assert result["success"] is True
+        result = execute_command_fn(command=cmd, **mock_workspace)
+
+        assert result.get("success", False) is True, (
+            f"Command failed: {result.get('error', 'unknown')}"
+        )
         assert result["return_code"] == 0
-        assert "HELLO WORLD" in result["stdout"]
+
+        # Normalize output to handle line breaks and platform differences
+        stdout_normalized = result["stdout"].strip().replace("\r\n", "\n")
+
+        assert expected in stdout_normalized
 
 
 class TestApplyDiffTool:
