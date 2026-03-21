@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
 import pytest
 from fastmcp import FastMCP
 
@@ -53,7 +54,7 @@ class TestDocumentIngestionTools:
 
     def test_pdf_extract_text_pagination(self, pdf_extract_text_fn, tmp_path: Path):
         """Test PDF extraction limits characters correctly."""
-        pypdf = pytest.importorskip("pypdf")
+        pytest.importorskip("pypdf")
 
         pdf_file = tmp_path / "test.pdf"
         pdf_file.touch()
@@ -92,7 +93,7 @@ class TestDocumentIngestionTools:
 
     def test_docx_extract_pagination(self, docx_extract_fn, tmp_path: Path):
         """Test DOCX extraction limits characters correctly."""
-        docx = pytest.importorskip("docx")
+        pytest.importorskip("docx")
 
         docx_file = tmp_path / "test.docx"
         docx_file.touch()
@@ -129,7 +130,7 @@ class TestDocumentIngestionTools:
 
     def test_xlsx_read_pagination(self, xlsx_read_fn, tmp_path: Path):
         """Test XLSX extraction limits rows correctly."""
-        openpyxl = pytest.importorskip("openpyxl")
+        pytest.importorskip("openpyxl")
 
         xlsx_file = tmp_path / "test.xlsx"
         xlsx_file.touch()
