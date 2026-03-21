@@ -18,6 +18,8 @@ GOOGLE_ANALYTICS_CREDENTIALS = {
             "ga_get_user_demographics",
             "ga_get_conversion_events",
             "ga_get_landing_pages",
+            "ga_compare_date_ranges",
+            "ga_list_properties",
         ],
         required=True,
         startup_required=False,

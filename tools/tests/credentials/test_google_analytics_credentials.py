@@ -21,7 +21,7 @@ class TestGoogleAnalyticsCredentials:
         assert spec.env_var == "GOOGLE_APPLICATION_CREDENTIALS"
 
     def test_tools_list(self):
-        """Spec lists all seven GA tool names."""
+        """Spec lists all nine GA tool names."""
         spec = GOOGLE_ANALYTICS_CREDENTIALS["google_analytics"]
         expected = [
             "ga_run_report",
@@ -31,6 +31,8 @@ class TestGoogleAnalyticsCredentials:
             "ga_get_user_demographics",
             "ga_get_conversion_events",
             "ga_get_landing_pages",
+            "ga_compare_date_ranges",
+            "ga_list_properties",
         ]
         assert spec.tools == expected
 

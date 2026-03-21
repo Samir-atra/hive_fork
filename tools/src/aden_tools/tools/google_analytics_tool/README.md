@@ -25,6 +25,30 @@ Run a custom GA4 report with flexible dimensions, metrics, and date ranges.
 | `start_date` | str | No | `"28daysAgo"` | Start date (e.g., `"2024-01-01"` or `"7daysAgo"`) |
 | `end_date` | str | No | `"today"` | End date |
 | `limit` | int | No | `100` | Max rows to return (1-10000) |
+| `dimension_filter` | dict | No | `None` | Filter data by dimension (e.g. `{"field": "country", "value": "US"}`) |
+| `metric_filter` | dict | No | `None` | Filter data by metric (e.g. `{"field": "sessions", "op": "gt", "value": "100"}`) |
+| `order_bys` | list[dict] | No | `None` | Order data (e.g. `[{"field": "sessions", "desc": True}]`) |
+
+### `ga_compare_date_ranges`
+
+Compare two date ranges side-by-side in a single API call (e.g. this week vs last week).
+
+| Argument | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `property_id` | str | Yes | - | GA4 property ID |
+| `metrics` | list[str] | Yes | - | Metrics to retrieve |
+| `dimensions` | list[str] | No | `None` | Dimensions to group by |
+| `current_start` | str | No | `"7daysAgo"` | Start date of current period |
+| `current_end` | str | No | `"today"` | End date of current period |
+| `previous_start` | str | No | `"14daysAgo"`| Start date of previous period |
+| `previous_end` | str | No | `"8daysAgo"` | End date of previous period |
+| `limit` | int | No | `100` | Max rows to return |
+
+### `ga_list_properties`
+
+List all GA4 properties accessible by the configured service account. This relies on the Admin API v1.
+
+Returns: Dict containing `property_count` and a list of `properties` with `account`, `account_name`, `property_id`, `property_name`, and `property_type`.
 
 ### `ga_get_realtime`
 

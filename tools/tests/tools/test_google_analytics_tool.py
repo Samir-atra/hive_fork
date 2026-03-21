@@ -78,7 +78,10 @@ class TestGAClient:
 
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials")
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient")
-    def test_format_report_response(self, mock_client_cls, mock_creds):
+    @patch(
+        "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+    )
+    def test_format_report_response(self, mock_admin_cls, mock_client_cls, mock_creds):
         """Report response is formatted into a plain dict."""
         client = _GAClient("/fake/path.json")
 
@@ -105,7 +108,12 @@ class TestGAClient:
 
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials")
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient")
-    def test_format_report_response_no_dimensions(self, mock_client_cls, mock_creds):
+    @patch(
+        "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+    )
+    def test_format_report_response_no_dimensions(
+        self, mock_admin_cls, mock_client_cls, mock_creds
+    ):
         """Report with no dimensions still returns valid structure."""
         client = _GAClient("/fake/path.json")
 
@@ -123,7 +131,10 @@ class TestGAClient:
 
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials")
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient")
-    def test_format_realtime_response(self, mock_client_cls, mock_creds):
+    @patch(
+        "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+    )
+    def test_format_realtime_response(self, mock_admin_cls, mock_client_cls, mock_creds):
         """Realtime response is formatted correctly."""
         client = _GAClient("/fake/path.json")
 
@@ -140,7 +151,10 @@ class TestGAClient:
 
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials")
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient")
-    def test_run_report_calls_api(self, mock_client_cls, mock_creds):
+    @patch(
+        "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+    )
+    def test_run_report_calls_api(self, mock_admin_cls, mock_client_cls, mock_creds):
         """run_report sends correct request to GA4 API."""
         mock_api = MagicMock()
         mock_client_cls.return_value = mock_api
@@ -165,7 +179,10 @@ class TestGAClient:
 
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials")
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient")
-    def test_run_realtime_report_calls_api(self, mock_client_cls, mock_creds):
+    @patch(
+        "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+    )
+    def test_run_realtime_report_calls_api(self, mock_admin_cls, mock_client_cls, mock_creds):
         """run_realtime_report sends correct request to GA4 API."""
         mock_api = MagicMock()
         mock_client_cls.return_value = mock_api
@@ -257,6 +274,12 @@ class TestGaRunReport:
             patch(
                 "aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient"
             ),
+            patch(
+                "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+            ),
+            patch(
+                "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+            ),
             patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials"),
         ):
             mcp = MagicMock()
@@ -323,7 +346,10 @@ class TestGaRunReport:
 
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials")
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient")
-    def test_successful_report(self, mock_client_cls, mock_creds, monkeypatch):
+    @patch(
+        "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+    )
+    def test_successful_report(self, mock_admin_cls, mock_client_cls, mock_creds, monkeypatch):
         """Successful report returns formatted data."""
         monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "/fake/path.json")
 
@@ -352,7 +378,12 @@ class TestGaRunReport:
 
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials")
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient")
-    def test_api_error_returns_error_dict(self, mock_client_cls, mock_creds, monkeypatch):
+    @patch(
+        "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+    )
+    def test_api_error_returns_error_dict(
+        self, mock_admin_cls, mock_client_cls, mock_creds, monkeypatch
+    ):
         """API exception is caught and returned as error dict."""
         monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "/fake/path.json")
 
@@ -400,6 +431,12 @@ class TestGaGetRealtime:
             patch(
                 "aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient"
             ),
+            patch(
+                "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+            ),
+            patch(
+                "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+            ),
             patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials"),
         ):
             mcp = MagicMock()
@@ -429,7 +466,10 @@ class TestGaGetRealtime:
 
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials")
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient")
-    def test_successful_realtime(self, mock_client_cls, mock_creds, monkeypatch):
+    @patch(
+        "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+    )
+    def test_successful_realtime(self, mock_admin_cls, mock_client_cls, mock_creds, monkeypatch):
         """Successful realtime report returns formatted data."""
         monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "/fake/path.json")
 
@@ -452,7 +492,10 @@ class TestGaGetRealtime:
 
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials")
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient")
-    def test_custom_metrics(self, mock_client_cls, mock_creds, monkeypatch):
+    @patch(
+        "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+    )
+    def test_custom_metrics(self, mock_admin_cls, mock_client_cls, mock_creds, monkeypatch):
         """Custom metrics are passed through to the API."""
         monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "/fake/path.json")
 
@@ -478,7 +521,12 @@ class TestGaGetRealtime:
 
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials")
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient")
-    def test_api_error_returns_error_dict(self, mock_client_cls, mock_creds, monkeypatch):
+    @patch(
+        "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+    )
+    def test_api_error_returns_error_dict(
+        self, mock_admin_cls, mock_client_cls, mock_creds, monkeypatch
+    ):
         """API exception is caught and returned as error dict."""
         monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "/fake/path.json")
 
@@ -523,6 +571,12 @@ class TestGaGetTopPages:
             patch(
                 "aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient"
             ),
+            patch(
+                "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+            ),
+            patch(
+                "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+            ),
             patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials"),
         ):
             mcp = MagicMock()
@@ -551,7 +605,12 @@ class TestGaGetTopPages:
 
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials")
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient")
-    def test_correct_dimensions_and_metrics(self, mock_client_cls, mock_creds, monkeypatch):
+    @patch(
+        "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+    )
+    def test_correct_dimensions_and_metrics(
+        self, mock_admin_cls, mock_client_cls, mock_creds, monkeypatch
+    ):
         """Sends pagePath, pageTitle dimensions and page-related metrics."""
         monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "/fake/path.json")
 
@@ -580,7 +639,12 @@ class TestGaGetTopPages:
 
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials")
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient")
-    def test_date_range_and_limit_forwarded(self, mock_client_cls, mock_creds, monkeypatch):
+    @patch(
+        "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+    )
+    def test_date_range_and_limit_forwarded(
+        self, mock_admin_cls, mock_client_cls, mock_creds, monkeypatch
+    ):
         """Custom date range and limit are passed to the API."""
         monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "/fake/path.json")
 
@@ -634,6 +698,12 @@ class TestGaGetTrafficSources:
             patch(
                 "aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient"
             ),
+            patch(
+                "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+            ),
+            patch(
+                "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+            ),
             patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials"),
         ):
             mcp = MagicMock()
@@ -664,7 +734,12 @@ class TestGaGetTrafficSources:
 
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials")
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient")
-    def test_correct_dimensions_and_metrics(self, mock_client_cls, mock_creds, monkeypatch):
+    @patch(
+        "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+    )
+    def test_correct_dimensions_and_metrics(
+        self, mock_admin_cls, mock_client_cls, mock_creds, monkeypatch
+    ):
         """Sends sessionSource, sessionMedium dimensions and traffic metrics."""
         monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "/fake/path.json")
 
@@ -696,7 +771,12 @@ class TestGaGetTrafficSources:
 
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials")
     @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient")
-    def test_api_error_returns_error_dict(self, mock_client_cls, mock_creds, monkeypatch):
+    @patch(
+        "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+    )
+    def test_api_error_returns_error_dict(
+        self, mock_admin_cls, mock_client_cls, mock_creds, monkeypatch
+    ):
         """API exception is caught and returned as error dict."""
         monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "/fake/path.json")
 
@@ -720,6 +800,110 @@ class TestGaGetTrafficSources:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# ga_compare_date_ranges tests
+# ---------------------------------------------------------------------------
+
+
+class TestGaCompareDateRanges:
+    """Tests for ga_compare_date_ranges tool."""
+
+    @pytest.fixture
+    def ga_tools(self, monkeypatch):
+        monkeypatch.delenv("GOOGLE_APPLICATION_CREDENTIALS", raising=False)
+        mcp = MagicMock()
+        fns = {}
+        mcp.tool.return_value = lambda fn: fns.update({fn.__name__: fn}) or fn
+        from aden_tools.tools.google_analytics_tool.google_analytics_tool import register_tools
+
+        register_tools(mcp, credentials=None)
+        return fns
+
+    @pytest.fixture
+    def ga_tools_with_creds(self, monkeypatch):
+        monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "/fake/path.json")
+        with (
+            patch(
+                "aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient"
+            ),
+            patch(
+                "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+            ),
+            patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials"),
+        ):
+            mcp = MagicMock()
+            fns = {}
+            mcp.tool.return_value = lambda fn: fns.update({fn.__name__: fn}) or fn
+            from aden_tools.tools.google_analytics_tool.google_analytics_tool import register_tools
+
+            register_tools(mcp, credentials=None)
+            yield fns
+
+    def test_invalid_property_id_returns_error(self, ga_tools_with_creds):
+        result = ga_tools_with_creds["ga_compare_date_ranges"](
+            property_id="bad-id", metrics=["sessions"]
+        )
+        assert "error" in result
+        assert "properties/" in result["error"]
+
+    def test_no_credentials_returns_error(self, ga_tools):
+        result = ga_tools["ga_compare_date_ranges"](
+            property_id="properties/123", metrics=["sessions"]
+        )
+        assert "error" in result
+        assert "not configured" in result["error"]
+
+    @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.Credentials")
+    @patch("aden_tools.tools.google_analytics_tool.google_analytics_tool.BetaAnalyticsDataClient")
+    @patch(
+        "aden_tools.tools.google_analytics_tool.google_analytics_tool.AnalyticsAdminServiceClient"
+    )
+    def test_api_called_with_two_date_ranges(
+        self, mock_admin_cls, mock_client_cls, mock_creds, monkeypatch
+    ):
+        monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "/fake/path.json")
+
+        mock_api = MagicMock()
+        mock_client_cls.return_value = mock_api
+        mock_api.run_report.return_value = _make_report_response(
+            dim_headers=[], metric_headers=[], rows=[]
+        )
+
+        mcp = MagicMock()
+        fns = {}
+        mcp.tool.return_value = lambda fn: fns.update({fn.__name__: fn}) or fn
+        from aden_tools.tools.google_analytics_tool.google_analytics_tool import register_tools
+
+        register_tools(mcp, credentials=None)
+
+        fns["ga_compare_date_ranges"](
+            property_id="properties/123",
+            metrics=["sessions"],
+            current_start="today",
+            current_end="today",
+            previous_start="yesterday",
+            previous_end="yesterday",
+        )
+
+        mock_api.run_report.assert_called_once()
+        req = mock_api.run_report.call_args[0][0]
+        assert len(req.date_ranges) == 2
+        assert req.date_ranges[0].start_date == "today"
+        assert req.date_ranges[1].start_date == "yesterday"
+
+
+# ---------------------------------------------------------------------------
+# ga_list_properties tests
+
+
+# ---------------------------------------------------------------------------
+# ga_compare_date_ranges tests
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# ga_list_properties tests
+
+
 class TestToolRegistration:
     """Tests for tool registration in register_all_tools."""
 
@@ -732,6 +916,8 @@ class TestToolRegistration:
         register_tools(mcp, credentials=None)
 
         expected_tools = {
+            "ga_compare_date_ranges",
+            "ga_list_properties",
             "ga_run_report",
             "ga_get_realtime",
             "ga_get_top_pages",
@@ -771,4 +957,4 @@ class TestToolRegistration:
 
         register_tools(mcp, credentials=cred_manager)
 
-        assert len(registered_fns) == 7
+        assert len(registered_fns) == 9
