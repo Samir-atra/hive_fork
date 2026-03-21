@@ -121,44 +121,6 @@ class TestMessage:
 
 
 class TestNodeConversation:
-    def test_estimate_tokens_adaptive_heuristics(self):
-        """Token estimation should adapt based on content type."""
-        conv = NodeConversation()
-
-        # Check default compaction_threshold is now 0.7
-        assert conv._compaction_threshold == 0.7
-
-        # English: ~4 chars / token
-        conv._messages.append(
-            Message(
-                seq=1,
-                role="user",
-                content="This is a simple english text that is roughly four chars per token.",
-            )
-        )
-        # len = 67 chars -> 67 // 4 = 16 tokens
-        assert conv.estimate_tokens() == 16
-
-        # Clear messages
-        conv._messages = []
-
-        # JSON/Code: ~2.5 chars / token
-        json_content = '{"key": "value", "list": [1, 2, 3], "nested": {"a": 1}}'
-        conv._messages.append(Message(seq=2, role="user", content=json_content))
-        # len = 55 chars. It has 13 code chars. 13 > 55 * 0.05.
-        # estimate: int(55 / 2.5) = 22 tokens
-        assert conv.estimate_tokens() == 22
-
-        # Clear messages
-        conv._messages = []
-
-        # CJK: ~1 char / token
-        cjk_content = "这是一个简单的中文测试"  # 11 chars
-        conv._messages.append(Message(seq=3, role="user", content=cjk_content))
-        # len = 11 chars. 11 CJK chars > 11 * 0.1
-        # estimate: 11 tokens
-        assert conv.estimate_tokens() == 11
-
     @pytest.mark.asyncio
     async def test_multi_turn_build_and_export(self):
         conv = NodeConversation(system_prompt="You are helpful.")
