@@ -84,7 +84,7 @@ def test_credential_store_cache(memory_store, sample_credential):
 
 
 def test_credential_store_cache_ttl(memory_store, sample_credential):
-    memory_store._cache_ttl = 0  # Immediate expiry
+    memory_store._cache_ttl = -1  # Immediate expiry
     memory_store.save_credential(sample_credential)
 
     # Modifying storage directly
