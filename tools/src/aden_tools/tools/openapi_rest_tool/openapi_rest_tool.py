@@ -21,6 +21,9 @@ def register_tools(
             return credentials.get("openapi_rest")
         return os.getenv("OPENAPI_API_KEY")
 
+    def _get_base_url() -> str | None:
+        return os.getenv("OPENAPI_BASE_URL")
+
     @mcp.tool()
     def openapi_request(
         method: str,
@@ -42,17 +45,18 @@ def register_tools(
             json_body: Optional JSON body for POST/PUT/PATCH requests
         """
         token = _get_token()
-
-        if not token:
-            return {
-                "error": "Missing credentials. Please configure 'openapi_rest' in your credential "
-                "store or set the OPENAPI_API_KEY environment variable.",
-                "help": "Create an API key or personal access token from your service's developer "
-                "console and add it to your credentials.",
-            }
+        base_url = _get_base_url()
 
         req_headers = headers or {}
         if token:
+            # Prevent leaking the token to arbitrary domains
+            if not base_url or not url.startswith(base_url):
+                return {
+                    "error": "Security check failed: Refusing to send credentials to an arbitrary URL. "
+                    "You must set the OPENAPI_BASE_URL environment variable to limit where credentials "
+                    "are sent, and the target URL must start with that base URL."
+                }
+
             # Add basic Bearer auth as fallback; users can customize via headers if needed
             if "Authorization" not in req_headers and "X-API-Key" not in req_headers:
                 req_headers["Authorization"] = f"Bearer {token}"
