@@ -51,6 +51,7 @@ from .databricks_tool import register_tools as register_databricks
 from .discord_tool import register_tools as register_discord
 from .dns_security_scanner import register_tools as register_dns_security_scanner
 from .docker_hub_tool import register_tools as register_docker_hub
+from .document_ingestion import register_tools as register_document_ingestion
 from .duckduckgo_tool import register_tools as register_duckduckgo
 from .email_tool import register_tools as register_email
 from .exa_search_tool import register_tools as register_exa_search
@@ -255,6 +256,7 @@ def _register_unverified(
     register_confluence(mcp, credentials=credentials)
     register_databricks(mcp, credentials=credentials)
     register_docker_hub(mcp, credentials=credentials)
+    register_document_ingestion(mcp)
     register_gitlab(mcp, credentials=credentials)
     register_google_analytics(mcp, credentials=credentials)
     register_google_search_console(mcp, credentials=credentials)
