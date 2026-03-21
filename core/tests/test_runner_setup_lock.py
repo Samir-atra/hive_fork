@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from framework.graph import Goal, GraphSpec, NodeSpec
 from framework.runner.runner import AgentRunner
 
