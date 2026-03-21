@@ -1,3 +1,5 @@
+"""Unit tests for the AgentTemplateRegistry."""
+
 from framework.agent_registry import AgentTemplateRegistry
 
 

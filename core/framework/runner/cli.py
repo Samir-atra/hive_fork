@@ -366,7 +366,14 @@ def _load_resume_state(
 
 
 def cmd_match_template(args: argparse.Namespace) -> int:
-    """Handle the match-template CLI command."""
+    """Handle the match-template CLI command.
+
+    Args:
+        args: Parsed command-line arguments.
+
+    Returns:
+        Integer status code for the command execution (0 for success).
+    """
     registry = AgentTemplateRegistry.register_defaults()
     results = registry.match_intent(args.intent)
 
