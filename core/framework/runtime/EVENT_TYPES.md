@@ -352,6 +352,20 @@ Not currently emitted — reserved for future use when `NodeConversation` compac
 
 ---
 
+### `missing_context_reported`
+
+A node has identified missing context required to proceed and paused execution.
+
+| Data Field            | Type        | Description                                  |
+| --------------------- | ----------- | -------------------------------------------- |
+| `missing_information` | `list[str]` | What information or prerequisites are missing|
+| `reason`              | `str`       | Why this information is required             |
+| `resolution_actions`  | `str`       | Suggested actions to resolve the gap         |
+
+**Emitted by:** `EventLoopNode` when the LLM calls `report_missing_context`.
+
+---
+
 ## State Changes
 
 ### `state_changed`

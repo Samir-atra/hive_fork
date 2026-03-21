@@ -754,6 +754,7 @@ class EventLoopNode(NodeProtocol):
         # Workers/subagents can escalate blockers to the queen.
         if stream_id not in ("queen", "judge"):
             tools.append(self._build_escalate_tool())
+            tools.append(self._build_report_missing_context_tool())
 
         # Add delegate_to_sub_agent tool if:
         # - Node has sub_agents defined
@@ -2589,6 +2590,44 @@ class EventLoopNode(NodeProtocol):
                     )
                     results_by_id[tc.tool_use_id] = result
 
+                elif tc.tool_name == "report_missing_context":
+                    # --- Framework-level missing context handling ---
+                    missing_information = tc.tool_input.get("missing_information", [])
+                    if not isinstance(missing_information, list):
+                        missing_information = [str(missing_information)]
+                    reason = str(tc.tool_input.get("reason", "")).strip()
+                    resolution_actions = str(tc.tool_input.get("resolution_actions", "")).strip()
+
+                    if self._event_bus is None:
+                        result = ToolResult(
+                            tool_use_id=tc.tool_use_id,
+                            content=(
+                                "ERROR: EventBus unavailable. "
+                                "Could not emit missing context report."
+                            ),
+                            is_error=True,
+                        )
+                        results_by_id[tc.tool_use_id] = result
+                        continue
+
+                    await self._event_bus.emit_missing_context_reported(
+                        stream_id=stream_id,
+                        node_id=node_id,
+                        missing_information=missing_information,
+                        reason=reason,
+                        resolution_actions=resolution_actions,
+                        execution_id=execution_id,
+                    )
+                    # Pause the node, waiting for input/guidance
+                    queen_input_requested = True
+
+                    result = ToolResult(
+                        tool_use_id=tc.tool_use_id,
+                        content="Missing context reported; pausing execution for guidance.",
+                        is_error=False,
+                    )
+                    results_by_id[tc.tool_use_id] = result
+
                 elif tc.tool_name == "delegate_to_sub_agent":
                     # Guard: in continuous mode the LLM may see delegate
                     # calls from a previous node's conversation history and
@@ -3163,6 +3202,38 @@ class EventLoopNode(NodeProtocol):
                     },
                 },
                 "required": ["key", "value"],
+            },
+        )
+
+    def _build_report_missing_context_tool(self) -> Tool:
+        """Build the synthetic report_missing_context tool for explicitly surfacing gaps."""
+        return Tool(
+            name="report_missing_context",
+            description=(
+                "Use this tool when you lack the required context, information, "
+                "or prerequisites to complete your task (e.g. missing credentials, "
+                "unavailable data, or unclear intent). It will pause execution and "
+                "explicitly surface what is missing so the user or supervisor can "
+                "provide it."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "missing_information": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Specific items, data, or context that are missing.",
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Why this information is required to proceed.",
+                    },
+                    "resolution_actions": {
+                        "type": "string",
+                        "description": "What actions could resolve the gap.",
+                    },
+                },
+                "required": ["missing_information", "reason"],
             },
         )
 

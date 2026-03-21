@@ -762,6 +762,52 @@ class TestClientFacingBlocking:
 
 class TestEscalate:
     @pytest.mark.asyncio
+    async def test_report_missing_context_emits_event(self, runtime, node_spec, memory):
+        """report_missing_context() should publish MISSING_CONTEXT_REPORTED and block."""
+        node_spec.output_keys = []
+        llm = MockStreamingLLM(
+            scenarios=[
+                tool_call_scenario(
+                    "report_missing_context",
+                    {
+                        "missing_information": ["API Token", "User Email"],
+                        "reason": "Required to authenticate and send the report",
+                        "resolution_actions": "Provide the token and email in the prompt",
+                    },
+                    tool_use_id="missing_context_1",
+                ),
+                text_scenario("Missing context reported."),
+            ]
+        )
+        bus = EventBus()
+        received = []
+
+        async def capture(event):
+            received.append(event)
+
+        bus.subscribe(event_types=[EventType.MISSING_CONTEXT_REPORTED], handler=capture)
+
+        ctx = build_ctx(runtime, node_spec, memory, llm, stream_id="worker")
+        node = EventLoopNode(event_bus=bus, config=LoopConfig(max_iterations=5))
+
+        async def queen_reply():
+            await asyncio.sleep(0.05)
+            await node.inject_event("Here is the context: token=123 email=a@b.com")
+
+        task = asyncio.create_task(queen_reply())
+        result = await node.execute(ctx)
+        await task
+
+        assert result.success is True
+        assert len(received) == 1
+        event = received[0]
+        assert event.type == EventType.MISSING_CONTEXT_REPORTED
+        assert event.data["missing_information"] == ["API Token", "User Email"]
+        assert event.data["reason"] == "Required to authenticate and send the report"
+        assert event.data["resolution_actions"] == "Provide the token and email in the prompt"
+        assert event.stream_id == "worker"
+
+    @pytest.mark.asyncio
     async def test_escalate_emits_event(self, runtime, node_spec, memory):
         """escalate() should publish ESCALATION_REQUESTED and block for queen guidance."""
         node_spec.output_keys = []
