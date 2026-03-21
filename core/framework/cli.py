@@ -96,6 +96,7 @@ def main():
 
     # Register doctor commands (doctor)
     from framework.doctor.cli import register_doctor_commands
+
     register_doctor_commands(subparsers)
 
     # Register debugger commands (debugger)
