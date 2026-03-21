@@ -1627,6 +1627,10 @@ class GraphExecutor:
             output = memory.read_all()
 
             self.logger.info("\n✓ Execution complete!")
+
+            # Calculate execution quality metrics
+            total_retries_count = sum(node_retry_counts.values())
+
             self._log_observability(
                 "execution_complete",
                 {
@@ -1642,9 +1646,6 @@ class GraphExecutor:
             self.logger.info(f"   Path: {' → '.join(path)}")
             self.logger.info(f"   Total tokens: {total_tokens}")
             self.logger.info(f"   Total latency: {total_latency}ms")
-
-            # Calculate execution quality metrics
-            total_retries_count = sum(node_retry_counts.values())
             nodes_failed = [nid for nid, count in node_retry_counts.items() if count > 0]
             exec_quality = "degraded" if total_retries_count > 0 else "clean"
 
