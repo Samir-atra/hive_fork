@@ -27,7 +27,7 @@ from framework.graph.node import (
     SharedMemory,
 )
 from framework.graph.validator import OutputValidator
-from framework.llm.provider import LLMProvider, Tool, ToolUse
+from framework.llm.provider import LLMProvider, Tool
 from framework.observability import set_trace_context
 from framework.runtime.core import Runtime
 from framework.schemas.checkpoint import Checkpoint
@@ -926,151 +926,20 @@ class GraphExecutor:
                                 value_str = value_str[:200] + "..."
                             self.logger.info(f"      {key}: {value_str}")
 
-                # Get or create node implementation
-                node_impl = self._get_node_implementation(node_spec, graph.cleanup_llm_model)
-
-                # Validate inputs
-                validation_errors = node_impl.validate_input(ctx)
-                if validation_errors:
-                    self.logger.warning(f"⚠ Validation warnings: {validation_errors}")
-                    self.runtime.report_problem(
-                        severity="warning",
-                        description=f"Validation errors for {current_node_id}: {validation_errors}",
-                    )
-
-                # CHECKPOINT: node_start
-                if (
-                    checkpoint_store
-                    and checkpoint_config
-                    and checkpoint_config.should_checkpoint_node_start()
-                ):
-                    checkpoint = self._create_checkpoint(
-                        checkpoint_type="node_start",
-                        current_node=node_spec.id,
-                        execution_path=list(path),
-                        memory=memory,
-                        is_clean=(sum(node_retry_counts.values()) == 0),
-                    )
-
-                    if checkpoint_config.async_checkpoint:
-                        # Non-blocking checkpoint save
-                        asyncio.create_task(checkpoint_store.save_checkpoint(checkpoint))
-                    else:
-                        # Blocking checkpoint save
-                        await checkpoint_store.save_checkpoint(checkpoint)
-
-                # Emit node-started event (skip event_loop nodes — they emit their own)
-                if self._event_bus and node_spec.node_type != "event_loop":
-                    await self._event_bus.emit_node_loop_started(
-                        stream_id=self._stream_id,
-                        node_id=current_node_id,
-                        execution_id=self._execution_id,
-                    )
-
-                # Execute node
-                self.logger.info("   Executing...")
-                result = await node_impl.execute(ctx)
-
-                # GCU tab cleanup: stop the browser profile after a top-level GCU node
-                # finishes so tabs don't accumulate. Mirrors the subagent cleanup in
-                # EventLoopNode._execute_subagent().
-                if node_spec.node_type == "gcu" and self.tool_executor is not None:
-                    try:
-                        from gcu.browser.session import (
-                            _active_profile as _gcu_profile_var,
-                        )
-
-                        _gcu_profile = _gcu_profile_var.get()
-                        _stop_use = ToolUse(
-                            id="gcu-cleanup",
-                            name="browser_stop",
-                            input={"profile": _gcu_profile},
-                        )
-                        _stop_result = self.tool_executor(_stop_use)
-                        if asyncio.iscoroutine(_stop_result) or asyncio.isfuture(_stop_result):
-                            await _stop_result
-                    except ImportError:
-                        pass  # GCU not installed
-                    except Exception as _gcu_exc:
-                        logger.warning(
-                            "GCU browser_stop failed for profile %r: %s",
-                            _gcu_profile,
-                            _gcu_exc,
-                        )
-
-                # Emit node-completed event (skip event_loop nodes)
-                if self._event_bus and node_spec.node_type != "event_loop":
-                    await self._event_bus.emit_node_loop_completed(
-                        stream_id=self._stream_id,
-                        node_id=current_node_id,
-                        iterations=1,
-                        execution_id=self._execution_id,
-                    )
-
-                # Ensure runtime logging has an L2 entry for this node
-                if self.runtime_logger:
-                    self.runtime_logger.ensure_node_logged(
-                        node_id=node_spec.id,
-                        node_name=node_spec.name,
-                        node_type=node_spec.node_type,
-                        success=result.success,
-                        error=result.error,
-                        tokens_used=result.tokens_used,
-                        latency_ms=result.latency_ms,
-                    )
+                result, node_impl = await self._execute_node_implementation(
+                    node_spec=node_spec,
+                    ctx=ctx,
+                    current_node_id=current_node_id,
+                    memory=memory,
+                    path=path,
+                    node_retry_counts=node_retry_counts,
+                    checkpoint_store=checkpoint_store,
+                    checkpoint_config=checkpoint_config,
+                    graph=graph,
+                )
 
                 if result.success:
-                    # Validate output before accepting it.
-                    # Skip for event_loop nodes — their judge system is
-                    # the sole acceptance mechanism (see WP-8).  Empty
-                    # strings and other flexible outputs are legitimate
-                    # for LLM-driven nodes that already passed the judge.
-                    if (
-                        result.output
-                        and node_spec.output_keys
-                        and node_spec.node_type != "event_loop"
-                    ):
-                        validation = self.validator.validate_all(
-                            output=result.output,
-                            expected_keys=node_spec.output_keys,
-                            check_hallucination=True,
-                            nullable_keys=node_spec.nullable_output_keys,
-                        )
-                        if not validation.success:
-                            self.logger.error(f"   ✗ Output validation failed: {validation.error}")
-                            result = NodeResult(
-                                success=False,
-                                error=f"Output validation failed: {validation.error}",
-                                output={},
-                                tokens_used=result.tokens_used,
-                                latency_ms=result.latency_ms,
-                            )
-
-                if result.success:
-                    self.logger.info(
-                        f"   ✓ Success (tokens: {result.tokens_used}, "
-                        f"latency: {result.latency_ms}ms)"
-                    )
-
-                    # Generate and log human-readable summary
-                    summary = result.to_summary(node_spec)
-                    self.logger.info(f"   📝 Summary: {summary}")
-
-                    # Log what was written to memory (detailed view)
-                    if result.output:
-                        self.logger.info("   Written to memory:")
-                        for key, value in result.output.items():
-                            value_str = str(value)
-                            if len(value_str) > 200:
-                                value_str = value_str[:200] + "..."
-                            self.logger.info(f"      {key}: {value_str}")
-
-                    # Write node outputs to memory BEFORE edge evaluation
-                    # This enables direct key access in conditional expressions (e.g., "score > 80")
-                    # Without this, conditional edges can only use output['key'] syntax
-                    if result.output:
-                        for key, value in result.output.items():
-                            memory.write(key, value, validate=False)
+                    await self._handle_success(result, node_spec, memory)
                 else:
                     self.logger.error(f"   ✗ Failed: {result.error}")
 
@@ -1104,110 +973,37 @@ class GraphExecutor:
                         # Retry - don't increment steps for retries
                         steps -= 1
 
-                        # --- EXPONENTIAL BACKOFF ---
-                        retry_count = node_retry_counts[current_node_id]
-                        # Backoff formula: 1.0 * (2^(retry - 1)) -> 1s, 2s, 4s...
-                        delay = 1.0 * (2 ** (retry_count - 1))
-                        self.logger.info(f"   Using backoff: Sleeping {delay}s before retry...")
-                        await asyncio.sleep(delay)
-                        # --------------------------------------
-
-                        self.logger.info(
-                            f"   ↻ Retrying ({node_retry_counts[current_node_id]}/{max_retries})..."
+                        steps, _is_retry = await self._handle_retry(
+                            node_spec=node_spec,
+                            current_node_id=current_node_id,
+                            result=result,
+                            node_retry_counts=node_retry_counts,
+                            steps=steps,
+                            max_retries=max_retries,
                         )
-
-                        # Emit retry event
-                        if self._event_bus:
-                            await self._event_bus.emit_node_retry(
-                                stream_id=self._stream_id,
-                                node_id=current_node_id,
-                                retry_count=retry_count,
-                                max_retries=max_retries,
-                                error=result.error or "",
-                                execution_id=self._execution_id,
-                            )
-
-                        _is_retry = True
                         continue
                     else:
-                        # Max retries exceeded - check for failure handlers
-                        self.logger.error(
-                            f"   ✗ Max retries ({max_retries}) exceeded for node {current_node_id}"
-                        )
-
-                        # Check if there's an ON_FAILURE edge to follow
-                        next_node = await self._follow_edges(
+                        next_node, terminal_result = await self._handle_failure(
                             graph=graph,
                             goal=goal,
+                            node_spec=node_spec,
                             current_node_id=current_node_id,
-                            current_node_spec=node_spec,
-                            result=result,  # result.success=False triggers ON_FAILURE
+                            result=result,
                             memory=memory,
+                            node_retry_counts=node_retry_counts,
+                            total_latency=total_latency,
+                            path=path,
+                            node_visit_counts=node_visit_counts,
+                            steps=steps,
+                            total_tokens=total_tokens,
+                            max_retries=max_retries,
+                            checkpoint_store=checkpoint_store,
                         )
-
                         if next_node:
-                            # Found a failure handler - route to it
-                            self.logger.info(f"   → Routing to failure handler: {next_node}")
                             current_node_id = next_node
-                            continue  # Continue execution with handler
-                        else:
-                            # No failure handler - terminate execution
-                            self.runtime.report_problem(
-                                severity="critical",
-                                description=(
-                                    f"Node {current_node_id} failed after "
-                                    f"{max_retries} attempts: {result.error}"
-                                ),
-                            )
-                            self.runtime.end_run(
-                                success=False,
-                                output_data=memory.read_all(),
-                                narrative=(
-                                    f"Failed at {node_spec.name} after "
-                                    f"{max_retries} retries: {result.error}"
-                                ),
-                            )
-
-                            # Calculate quality metrics
-                            total_retries_count = sum(node_retry_counts.values())
-                            nodes_failed = list(node_retry_counts.keys())
-
-                            if self.runtime_logger:
-                                await self.runtime_logger.end_run(
-                                    status="failure",
-                                    duration_ms=total_latency,
-                                    node_path=path,
-                                    execution_quality="failed",
-                                )
-
-                            # Save memory for potential resume
-                            saved_memory = memory.read_all()
-                            failure_session_state = {
-                                "memory": saved_memory,
-                                "execution_path": list(path),
-                                "node_visit_counts": dict(node_visit_counts),
-                                "resume_from": current_node_id,
-                            }
-
-                            return ExecutionResult(
-                                success=False,
-                                error=(
-                                    f"Node '{node_spec.name}' failed after "
-                                    f"{max_retries} attempts: {result.error}"
-                                ),
-                                output=saved_memory,
-                                steps_executed=steps,
-                                total_tokens=total_tokens,
-                                total_latency_ms=total_latency,
-                                path=path,
-                                total_retries=total_retries_count,
-                                nodes_with_failures=nodes_failed,
-                                retry_details=dict(node_retry_counts),
-                                had_partial_failures=len(nodes_failed) > 0,
-                                execution_quality="failed",
-                                node_visit_counts=dict(node_visit_counts),
-                                session_state=failure_session_state,
-                            )
+                            continue
+                        elif terminal_result:
+                            return terminal_result
 
                 # Check if we just executed a pause node - if so, save state and return
                 # This must happen BEFORE determining next node, since pause nodes may have no edges
@@ -2417,3 +2213,258 @@ class GraphExecutor:
             next_node=next_node,
             is_clean=is_clean,
         )
+
+    async def _execute_node_implementation(
+        self,
+        node_spec: NodeSpec,
+        ctx: Any,
+        current_node_id: str,
+        memory: SharedMemory,
+        path: list[str],
+        node_retry_counts: dict[str, int],
+        checkpoint_store: Any,
+        checkpoint_config: Any,
+        graph: GraphSpec,
+    ) -> tuple[NodeResult, Any]:
+        """Runs the actual node logic (LLM, Tool, etc.)."""
+        import asyncio
+
+        from framework.llm.provider import ToolUse
+
+        node_impl = self._get_node_implementation(node_spec, graph.cleanup_llm_model)
+
+        validation_errors = node_impl.validate_input(ctx)
+        if validation_errors:
+            self.logger.warning(f"⚠ Validation warnings: {validation_errors}")
+            self.runtime.report_problem(
+                severity="warning",
+                description=f"Validation errors for {current_node_id}: {validation_errors}",
+            )
+
+        if (
+            checkpoint_store
+            and checkpoint_config
+            and checkpoint_config.should_checkpoint_node_start()
+        ):
+            checkpoint = self._create_checkpoint(
+                checkpoint_type="node_start",
+                current_node=node_spec.id,
+                execution_path=list(path),
+                memory=memory,
+                is_clean=(sum(node_retry_counts.values()) == 0),
+            )
+
+            if checkpoint_config.async_checkpoint:
+                asyncio.create_task(checkpoint_store.save_checkpoint(checkpoint))
+            else:
+                await checkpoint_store.save_checkpoint(checkpoint)
+
+        if self._event_bus and node_spec.node_type != "event_loop":
+            await self._event_bus.emit_node_loop_started(
+                stream_id=self._stream_id,
+                node_id=current_node_id,
+                execution_id=self._execution_id,
+            )
+
+        self.logger.info("   Executing...")
+        result = await node_impl.execute(ctx)
+
+        if node_spec.node_type == "gcu" and self.tool_executor is not None:
+            try:
+                from gcu.browser.session import _active_profile as _gcu_profile_var
+
+                _gcu_profile = _gcu_profile_var.get()
+                _stop_use = ToolUse(
+                    id="gcu-cleanup",
+                    name="browser_stop",
+                    input={"profile": _gcu_profile},
+                )
+                _stop_result = self.tool_executor(_stop_use)
+                if asyncio.iscoroutine(_stop_result) or asyncio.isfuture(_stop_result):
+                    await _stop_result
+            except ImportError:
+                pass  # GCU not installed
+            except Exception as _gcu_exc:
+                self.logger.warning(
+                    "GCU browser_stop failed for profile %r: %s",
+                    _gcu_profile,
+                    _gcu_exc,
+                )
+
+        if self._event_bus and node_spec.node_type != "event_loop":
+            await self._event_bus.emit_node_loop_completed(
+                stream_id=self._stream_id,
+                node_id=current_node_id,
+                iterations=1,
+                execution_id=self._execution_id,
+            )
+
+        if self.runtime_logger:
+            self.runtime_logger.ensure_node_logged(
+                node_id=node_spec.id,
+                node_name=node_spec.name,
+                node_type=node_spec.node_type,
+                success=result.success,
+                error=result.error,
+                tokens_used=result.tokens_used,
+                latency_ms=result.latency_ms,
+            )
+
+        if result.success:
+            if result.output and node_spec.output_keys and node_spec.node_type != "event_loop":
+                validation = self.validator.validate_all(
+                    output=result.output,
+                    expected_keys=node_spec.output_keys,
+                    check_hallucination=True,
+                    nullable_keys=node_spec.nullable_output_keys,
+                )
+                if not validation.success:
+                    self.logger.error(f"   ✗ Output validation failed: {validation.error}")
+                    result = NodeResult(
+                        success=False,
+                        error=f"Output validation failed: {validation.error}",
+                        output={},
+                        tokens_used=result.tokens_used,
+                        latency_ms=result.latency_ms,
+                    )
+
+        return result, node_impl
+
+    async def _handle_retry(
+        self,
+        node_spec: NodeSpec,
+        current_node_id: str,
+        result: NodeResult,
+        node_retry_counts: dict[str, int],
+        steps: int,
+        max_retries: int,
+    ) -> tuple[int, bool]:
+        """Orchestrates a single node execution retry backoff."""
+        import asyncio
+
+        retry_count = node_retry_counts[current_node_id]
+        delay = 1.0 * (2 ** (retry_count - 1))
+        self.logger.info(f"   Using backoff: Sleeping {delay}s before retry...")
+        await asyncio.sleep(delay)
+
+        self.logger.info(f"   ↻ Retrying ({node_retry_counts[current_node_id]}/{max_retries})...")
+
+        if self._event_bus:
+            await self._event_bus.emit_node_retry(
+                stream_id=self._stream_id,
+                node_id=current_node_id,
+                retry_count=retry_count,
+                max_retries=max_retries,
+                error=result.error or "",
+                execution_id=self._execution_id,
+            )
+
+        return steps, True
+
+    async def _handle_failure(
+        self,
+        graph: GraphSpec,
+        goal: Goal,
+        node_spec: NodeSpec,
+        current_node_id: str,
+        result: NodeResult,
+        memory: SharedMemory,
+        node_retry_counts: dict[str, int],
+        total_latency: int,
+        path: list[str],
+        node_visit_counts: dict[str, int],
+        steps: int,
+        total_tokens: int,
+        max_retries: int,
+        checkpoint_store: Any = None,
+    ) -> tuple[str | None, ExecutionResult | None]:
+        """Handles final failure after retries exhausted."""
+        self.logger.error(f"   ✗ Max retries ({max_retries}) exceeded for node {current_node_id}")
+
+        next_node = await self._follow_edges(
+            graph=graph,
+            goal=goal,
+            current_node_id=current_node_id,
+            current_node_spec=node_spec,
+            result=result,
+            memory=memory,
+        )
+
+        if next_node:
+            self.logger.info(f"   → Routing to failure handler: {next_node}")
+            return next_node, None
+
+        self.runtime.report_problem(
+            severity="critical",
+            description=(
+                f"Node {current_node_id} failed after {max_retries} attempts: {result.error}"
+            ),
+        )
+        self.runtime.end_run(
+            success=False,
+            output_data=memory.read_all(),
+            narrative=(f"Failed at {node_spec.name} after {max_retries} retries: {result.error}"),
+        )
+
+        total_retries_count = sum(node_retry_counts.values())
+        nodes_failed = list(node_retry_counts.keys())
+
+        if self.runtime_logger:
+            await self.runtime_logger.end_run(
+                status="failure",
+                duration_ms=total_latency,
+                node_path=path,
+                execution_quality="failed",
+            )
+
+        saved_memory = memory.read_all()
+        failure_session_state = {
+            "memory": saved_memory,
+            "execution_path": list(path),
+            "node_visit_counts": dict(node_visit_counts),
+            "resume_from": current_node_id,
+        }
+
+        exec_result = ExecutionResult(
+            success=False,
+            error=(f"Node '{node_spec.name}' failed after {max_retries} attempts: {result.error}"),
+            output=saved_memory,
+            steps_executed=steps,
+            total_tokens=total_tokens,
+            total_latency_ms=total_latency,
+            path=path,
+            total_retries=total_retries_count,
+            nodes_with_failures=nodes_failed,
+            retry_details=dict(node_retry_counts),
+            had_partial_failures=len(nodes_failed) > 0,
+            execution_quality="failed",
+            node_visit_counts=dict(node_visit_counts),
+            session_state=failure_session_state,
+        )
+        return None, exec_result
+
+    async def _handle_success(
+        self,
+        result: NodeResult,
+        node_spec: NodeSpec,
+        memory: SharedMemory,
+    ) -> None:
+        """Updates memory and determines next steps on success."""
+        self.logger.info(
+            f"   ✓ Success (tokens: {result.tokens_used}, latency: {result.latency_ms}ms)"
+        )
+
+        summary = result.to_summary(node_spec)
+        self.logger.info(f"   📝 Summary: {summary}")
+
+        if result.output:
+            self.logger.info("   Written to memory:")
+            for key, value in result.output.items():
+                value_str = str(value)
+                if len(value_str) > 200:
+                    value_str = value_str[:200] + "..."
+                self.logger.info(f"      {key}: {value_str}")
+
+        if result.output:
+            for key, value in result.output.items():
+                memory.write(key, value, validate=False)
