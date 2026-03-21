@@ -61,7 +61,7 @@ class PromptInjectionShield:
             for compiled in compiled_list:
                 if compiled.search(content):
                     patterns_found.append(category)
-                    break  # One per category is enough for the warning
+                    break
         return ScanResult(detected=len(patterns_found) > 0, patterns_found=patterns_found)
 
     def scan_and_wrap(self, content: str, tool_name: str, mode: str) -> str:
