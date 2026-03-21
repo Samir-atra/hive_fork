@@ -841,6 +841,15 @@ class EventLoopNode(NodeProtocol):
                     tokens_used=total_input_tokens + total_output_tokens,
                     latency_ms=latency_ms,
                     conversation=conversation if _is_continuous else None,
+                    metrics={
+                        "iterations": iteration + 1,
+                        "judge_verdicts": {
+                            "ACCEPT": _accept_count,
+                            "RETRY": _retry_count,
+                            "ESCALATE": _escalate_count,
+                            "CONTINUE": _continue_count,
+                        },
+                    },
                 )
 
             # 6b. Drain injection queue
@@ -1303,6 +1312,15 @@ class EventLoopNode(NodeProtocol):
                     tokens_used=total_input_tokens + total_output_tokens,
                     latency_ms=latency_ms,
                     conversation=conversation if _is_continuous else None,
+                    metrics={
+                        "iterations": iteration + 1,
+                        "judge_verdicts": {
+                            "ACCEPT": _accept_count,
+                            "RETRY": _retry_count,
+                            "ESCALATE": _escalate_count,
+                            "CONTINUE": _continue_count,
+                        },
+                    },
                 )
 
             # 6f'. Tool doom loop detection
@@ -1870,6 +1888,15 @@ class EventLoopNode(NodeProtocol):
                     tokens_used=total_input_tokens + total_output_tokens,
                     latency_ms=latency_ms,
                     conversation=conversation if _is_continuous else None,
+                    metrics={
+                        "iterations": iteration + 1,
+                        "judge_verdicts": {
+                            "ACCEPT": _accept_count,
+                            "RETRY": _retry_count,
+                            "ESCALATE": _escalate_count,
+                            "CONTINUE": _continue_count,
+                        },
+                    },
                 )
 
             elif verdict.action == "ESCALATE":
@@ -1915,6 +1942,15 @@ class EventLoopNode(NodeProtocol):
                     tokens_used=total_input_tokens + total_output_tokens,
                     latency_ms=latency_ms,
                     conversation=conversation if _is_continuous else None,
+                    metrics={
+                        "iterations": iteration + 1,
+                        "judge_verdicts": {
+                            "ACCEPT": _accept_count,
+                            "RETRY": _retry_count,
+                            "ESCALATE": _escalate_count,
+                            "CONTINUE": _continue_count,
+                        },
+                    },
                 )
 
             elif verdict.action == "RETRY":

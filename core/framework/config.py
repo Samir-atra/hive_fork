@@ -440,6 +440,26 @@ def get_llm_extra_kwargs() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def get_observability_config() -> dict[str, Any]:
+    """Return observability configuration from ~/.hive/configuration.json.
+
+    Expected format in configuration.json:
+    "observability": {
+        "enabled": true,
+        "log_metrics": true,
+        "metrics_file": "/path/to/metrics.jsonl"
+    }
+    """
+    obs = get_hive_config().get("observability", {})
+    if not isinstance(obs, dict):
+        return {"enabled": False, "log_metrics": False, "metrics_file": ""}
+    return {
+        "enabled": bool(obs.get("enabled", False)),
+        "log_metrics": bool(obs.get("log_metrics", True)),
+        "metrics_file": str(obs.get("metrics_file", "")),
+    }
+
+
 @dataclass
 class RuntimeConfig:
     """Agent runtime configuration loaded from ~/.hive/configuration.json."""
@@ -451,3 +471,4 @@ class RuntimeConfig:
     api_key: str | None = field(default_factory=get_api_key)
     api_base: str | None = field(default_factory=get_api_base)
     extra_kwargs: dict[str, Any] = field(default_factory=get_llm_extra_kwargs)
+    observability: dict[str, Any] = field(default_factory=get_observability_config)

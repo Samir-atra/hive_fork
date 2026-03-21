@@ -230,6 +230,37 @@ class GraphExecutor:
         # Track the currently executing node for external injection routing
         self.current_node_id: str | None = None
 
+    def _log_observability(self, event_type: str, data: dict[str, Any]) -> None:
+        from framework.config import get_observability_config
+
+        obs_config = get_observability_config()
+        if not obs_config.get("enabled", False):
+            return
+
+        metrics_file = obs_config.get("metrics_file")
+        if not metrics_file:
+            if not self._storage_path:
+                return
+            # Fall back to session metrics file
+            metrics_file = str(self._storage_path / "metrics.jsonl")
+
+        try:
+            import datetime
+            import json
+
+            with open(metrics_file, "a", encoding="utf-8") as f:
+                log_entry = {
+                    "event": event_type,
+                    "execution_id": self._execution_id,
+                    "stream_id": self._stream_id,
+                    "data": data,
+                }
+
+                log_entry["timestamp"] = datetime.datetime.utcnow().isoformat() + "Z"
+                f.write(json.dumps(log_entry) + "\n")
+        except Exception as e:
+            self.logger.debug(f"Failed to write observability metrics: {e}")
+
     def _write_progress(
         self,
         current_node: str,
@@ -959,6 +990,16 @@ class GraphExecutor:
                         # Blocking checkpoint save
                         await checkpoint_store.save_checkpoint(checkpoint)
 
+                # Observability hook
+                self._log_observability(
+                    "node_start",
+                    {
+                        "node_id": current_node_id,
+                        "node_type": node_spec.node_type,
+                        "node_name": node_spec.name,
+                    },
+                )
+
                 # Emit node-started event (skip event_loop nodes — they emit their own)
                 if self._event_bus and node_spec.node_type != "event_loop":
                     await self._event_bus.emit_node_loop_started(
@@ -1018,6 +1059,18 @@ class GraphExecutor:
                         tokens_used=result.tokens_used,
                         latency_ms=result.latency_ms,
                     )
+
+                # Observability hook
+                self._log_observability(
+                    "node_complete",
+                    {
+                        "node_id": current_node_id,
+                        "success": result.success,
+                        "latency_ms": result.latency_ms,
+                        "tokens_used": result.tokens_used,
+                        "metrics": getattr(result, "metrics", {}),
+                    },
+                )
 
                 if result.success:
                     # Validate output before accepting it.
@@ -1574,13 +1627,25 @@ class GraphExecutor:
             output = memory.read_all()
 
             self.logger.info("\n✓ Execution complete!")
+
+            # Calculate execution quality metrics
+            total_retries_count = sum(node_retry_counts.values())
+
+            self._log_observability(
+                "execution_complete",
+                {
+                    "success": True,
+                    "total_steps": steps,
+                    "total_tokens": total_tokens,
+                    "total_latency_ms": total_latency,
+                    "node_visit_counts": dict(node_visit_counts),
+                    "total_retries": total_retries_count,
+                },
+            )
             self.logger.info(f"   Steps: {steps}")
             self.logger.info(f"   Path: {' → '.join(path)}")
             self.logger.info(f"   Total tokens: {total_tokens}")
             self.logger.info(f"   Total latency: {total_latency}ms")
-
-            # Calculate execution quality metrics
-            total_retries_count = sum(node_retry_counts.values())
             nodes_failed = [nid for nid, count in node_retry_counts.items() if count > 0]
             exec_quality = "degraded" if total_retries_count > 0 else "clean"
 
