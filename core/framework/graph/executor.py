@@ -185,6 +185,7 @@ class GraphExecutor:
             skill_dirs: Skill base directories for Tier 3 resource access
         """
         self.runtime = runtime
+        self.visualizer = getattr(runtime, "visualizer", None)
         self.llm = llm
         self.tools = tools or []
         self.tool_executor = tool_executor
@@ -969,7 +970,20 @@ class GraphExecutor:
 
                 # Execute node
                 self.logger.info("   Executing...")
+                if self.visualizer:
+                    await self.visualizer.emit_node_start(node_spec.id, ctx)
+
                 result = await node_impl.execute(ctx)
+
+                if self.visualizer:
+                    duration = (
+                        getattr(result, "latency_ms", 0) / 1000.0
+                        if hasattr(result, "latency_ms")
+                        else 0.0
+                    )
+                    await self.visualizer.emit_node_complete(
+                        node_spec.id, result, duration=duration
+                    )
 
                 # GCU tab cleanup: stop the browser profile after a top-level GCU node
                 # finishes so tabs don't accumulate. Mirrors the subagent cleanup in
@@ -2216,7 +2230,21 @@ class GraphExecutor:
                     self.logger.info(
                         f"      ▶ Branch {node_spec.name}: executing (attempt {attempt + 1})"
                     )
+
+                    if self.visualizer:
+                        await self.visualizer.emit_node_start(node_spec.id, ctx)
+
                     result = await node_impl.execute(ctx)
+
+                    if self.visualizer:
+                        duration = (
+                            getattr(result, "latency_ms", 0) / 1000.0
+                            if hasattr(result, "latency_ms")
+                            else 0.0
+                        )
+                        await self.visualizer.emit_node_complete(
+                            node_spec.id, result, duration=duration
+                        )
                     last_result = result
 
                     # Ensure L2 entry for this branch node
