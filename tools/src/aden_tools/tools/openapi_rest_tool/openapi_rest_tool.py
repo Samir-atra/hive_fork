@@ -43,6 +43,14 @@ def register_tools(
         """
         token = _get_token()
 
+        if not token:
+            return {
+                "error": "Missing credentials. Please configure 'openapi_rest' in your credential "
+                "store or set the OPENAPI_API_KEY environment variable.",
+                "help": "Create an API key or personal access token from your service's developer "
+                "console and add it to your credentials.",
+            }
+
         req_headers = headers or {}
         if token:
             # Add basic Bearer auth as fallback; users can customize via headers if needed
