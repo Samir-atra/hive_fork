@@ -175,6 +175,7 @@ class EncryptedFileStorage(CredentialStorage):
 
         # Generate new key and persist
         from cryptography.fernet import Fernet
+
         new_key = Fernet.generate_key()
 
         # Save with restrictive permissions (owner read/write only)
@@ -237,7 +238,7 @@ class EncryptedFileStorage(CredentialStorage):
             # Log detailed error for debugging (server-side only)
             logger.debug(
                 f"Decryption failed for '{credential_id}': {e}",
-                exc_info=True  # Include full traceback in debug logs
+                exc_info=True,  # Include full traceback in debug logs
             )
 
             # Raise generic error to user (no implementation details)
@@ -300,7 +301,7 @@ class EncryptedFileStorage(CredentialStorage):
             "failed": {},
             "total": 0,
             "success": 0,
-            "timestamp": datetime.now(UTC).isoformat()
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         all_creds = self.list_all()

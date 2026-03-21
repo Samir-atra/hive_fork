@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 from cryptography.fernet import Fernet
 from pydantic import SecretStr
@@ -30,7 +32,9 @@ def test_encrypted_storage_auto_persists_key(tmp_path, monkeypatch):
 
     key_file = tmp_path / ".encryption_key"
     assert key_file.exists()
-    assert key_file.stat().st_mode & 0o777 == 0o600
+
+    if sys.platform != "win32":
+        assert key_file.stat().st_mode & 0o777 == 0o600
 
     # Reload storage, should use the persisted key
     storage2 = EncryptedFileStorage(base_path=tmp_path)
