@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
+from framework.debug_protocol import DebugProtocol
 from framework.graph.checkpoint_config import CheckpointConfig
 from framework.graph.executor import ExecutionResult, GraphExecutor
 from framework.runtime.event_bus import EventBus
@@ -282,6 +283,7 @@ class ExecutionStream:
 
         # State
         self._running = False
+        self._debug_protocol = DebugProtocol()
 
     async def start(self) -> None:
         """Start the execution stream."""
@@ -290,6 +292,9 @@ class ExecutionStream:
 
         self._running = True
         logger.info(f"ExecutionStream '{self.stream_id}' started")
+
+        if self.graph:
+            self._debug_protocol.on_graph_started(self.graph)
 
         # Emit stream started event
         if self._scoped_event_bus:

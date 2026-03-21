@@ -274,6 +274,13 @@ class NodeSpec(BaseModel):
 
     model_config = {"extra": "allow", "arbitrary_types_allowed": True}
 
+    def to_json(self) -> dict[str, Any]:
+        """Serialize node to JSON format suitable for external tools (e.g. Visual Builder)."""
+        dump = self.model_dump(exclude={"output_model"})
+        if self.output_model is not None:
+            dump["output_model"] = self.output_model.__name__
+        return dump
+
 
 class MemoryWriteError(Exception):
     """Raised when an invalid value is written to memory."""
