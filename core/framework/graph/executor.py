@@ -1466,6 +1466,19 @@ class GraphExecutor:
                         # Prepend scope preamble to focus so the LLM stays
                         # within this node's responsibility.
                         _focus = next_spec.system_prompt
+
+                        from framework.agents.worker_memory import get_recent_failures_context
+
+                        _past_learnings = (
+                            get_recent_failures_context(graph.id)
+                            if getattr(graph, "id", None)
+                            else ""
+                        )
+                        if _past_learnings and _focus:
+                            _focus = f"{_focus}\n\n{_past_learnings}"
+                        elif _past_learnings:
+                            _focus = _past_learnings
+
                         if next_spec.output_keys and _focus:
                             _focus = f"{EXECUTION_SCOPE_PREAMBLE}\n\n{_focus}"
                         new_system = compose_system_prompt(
@@ -1881,6 +1894,7 @@ class GraphExecutor:
             node_spec=node_spec,
             memory=scoped_memory,
             input_data=input_data,
+            graph_id=getattr(graph, "id", "") or "",
             llm=self.llm,
             available_tools=available_tools,
             goal_context=goal_context,

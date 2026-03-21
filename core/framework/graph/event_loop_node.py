@@ -616,9 +616,18 @@ class EventLoopNode(NodeProtocol):
 
                     _node_type_preamble = GCU_BROWSER_SYSTEM_PROMPT
 
+                from framework.agents.worker_memory import get_recent_failures_context
+
+                _past_learnings = get_recent_failures_context(ctx.graph_id) if ctx.graph_id else ""
+                _focus_prompt = ctx.node_spec.system_prompt
+                if _past_learnings and _focus_prompt:
+                    _focus_prompt = f"{_focus_prompt}\n\n{_past_learnings}"
+                elif _past_learnings:
+                    _focus_prompt = _past_learnings
+
                 _current_prompt = compose_system_prompt(
                     identity_prompt=ctx.identity_prompt or None,
-                    focus_prompt=ctx.node_spec.system_prompt,
+                    focus_prompt=_focus_prompt,
                     narrative=ctx.narrative or None,
                     accounts_prompt=ctx.accounts_prompt or None,
                     skills_catalog_prompt=ctx.skills_catalog_prompt or None,
@@ -634,12 +643,18 @@ class EventLoopNode(NodeProtocol):
                 _restored_tool_fingerprints = []
 
                 # Fresh conversation: either isolated mode or first node in continuous mode.
+                from framework.agents.worker_memory import get_recent_failures_context
                 from framework.graph.prompt_composer import (
                     EXECUTION_SCOPE_PREAMBLE,
                     _with_datetime,
                 )
 
                 system_prompt = _with_datetime(ctx.node_spec.system_prompt or "")
+
+                _past_learnings = get_recent_failures_context(ctx.graph_id) if ctx.graph_id else ""
+                if _past_learnings:
+                    system_prompt = f"{system_prompt}\n\n{_past_learnings}"
+
                 # Prepend execution-scope preamble for worker nodes so the
                 # LLM knows it is one step in a pipeline and should not try
                 # to perform work that belongs to other nodes.
