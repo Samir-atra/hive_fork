@@ -107,6 +107,52 @@ def _get_module_to_tools_mapping() -> dict[str, list[str]]:
     """
     mapping: dict[str, list[str]] = {}
 
+    import asyncio
+
+    def get_tools_sync(mcp_instance):
+        # Handle fastmcp < 2.0
+        if hasattr(mcp_instance, "_tool_manager"):
+            return list(mcp_instance._tool_manager._tools.keys())
+
+        # Handle fastmcp >= 2.0 where tools is available internally
+        if hasattr(mcp_instance, "_local_provider") and hasattr(mcp_instance._local_provider, "_tools"):
+            return list(mcp_instance._local_provider._tools.keys())
+
+        # Another fallback for internal dicts
+        if hasattr(mcp_instance, "_tools"):
+            return list(mcp_instance._tools.keys())
+
+        # If it has list_tools
+        if hasattr(mcp_instance, "list_tools"):
+            import asyncio
+            import inspect
+            if inspect.iscoroutinefunction(mcp_instance.list_tools):
+                # Run sync in thread if loop exists
+                try:
+                    loop = asyncio.get_running_loop()
+                    import threading
+                    result_list = []
+                    def run_in_thread():
+                        new_loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(new_loop)
+                        try:
+                            tools = new_loop.run_until_complete(mcp_instance.list_tools())
+                            result_list.extend([t.name for t in tools])
+                        finally:
+                            new_loop.close()
+                    t = threading.Thread(target=run_in_thread)
+                    t.start()
+                    t.join()
+                    return result_list
+                except RuntimeError:
+                    # No running loop
+                    tools = asyncio.run(mcp_instance.list_tools())
+                    return [t.name for t in tools]
+            else:
+                return [t.name for t in mcp_instance.list_tools()]
+
+        return []
+
     for import_path, short_name in TOOL_MODULES:
         mod = importlib.import_module(import_path)
         register_fn = getattr(mod, "register_tools", None)
@@ -120,7 +166,7 @@ def _get_module_to_tools_mapping() -> dict[str, list[str]]:
         else:
             register_fn(mcp)
 
-        mapping[short_name] = list(mcp._tool_manager._tools.keys())
+        mapping[short_name] = get_tools_sync(mcp)
 
     return mapping
 
