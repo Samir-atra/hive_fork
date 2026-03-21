@@ -37,6 +37,7 @@ from .apollo_tool import register_tools as register_apollo
 from .arxiv_tool import register_tools as register_arxiv
 from .asana_tool import register_tools as register_asana
 from .attio_tool import register_tools as register_attio
+from .audit_trail_tool import register_tools as register_audit_trail
 from .aws_s3_tool import register_tools as register_aws_s3
 from .azure_sql_tool import register_tools as register_azure_sql
 from .bigquery_tool import register_tools as register_bigquery
@@ -152,6 +153,7 @@ def _register_verified(
     register_pdf_read(mcp)
     register_time(mcp)
     register_runtime_logs(mcp)
+    register_audit_trail(mcp)
     register_wikipedia(mcp)
     register_arxiv(mcp)
 
