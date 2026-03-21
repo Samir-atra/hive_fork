@@ -209,6 +209,15 @@ class NodeSpec(BaseModel):
         default_factory=list,
         description="Node IDs that can be invoked as subagents from this node",
     )
+    # For agent_invoke nodes
+    agent_ref: str | None = Field(
+        default=None,
+        description="Node ID of the sub-agent to invoke via agent_invoke node type",
+    )
+    input_mapping: dict[str, str] = Field(
+        default_factory=dict,
+        description="Mapping of parent memory keys to sub-agent input keys for agent_invoke",
+    )
     # For function nodes
     function: str | None = Field(
         default=None, description="Function name or path for function nodes"
