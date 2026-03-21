@@ -68,9 +68,97 @@ class TestPdfReadTool:
         pdf_file.write_bytes(b"%PDF-1.4")
 
         # Test different page formats - all should be accepted
-        for pages in ["all", "1", "1-5", "1,3,5", None]:
+        for pages in ["all", "1", "1-5", "1,3,5", None, " 1 , 2 - 3 ", "-1"]:
             result = pdf_read_fn(file_path=str(pdf_file), pages=pages)
             assert isinstance(result, dict)
+
+    def test_page_range_parsing(self, pdf_read_fn, tmp_path: Path, monkeypatch):
+        """Mixed formats, spaces, and negative indices are handled correctly."""
+
+        class FakePage:
+            def __init__(self, text: str) -> None:
+                self._text = text
+
+            def extract_text(self) -> str:
+                return self._text
+
+        class FakePdfReader:
+            def __init__(self, f) -> None:
+                self.pages = [FakePage(f"Page {i + 1}") for i in range(10)]
+                self.is_encrypted = False
+                self.metadata = None
+
+        from aden_tools.tools.pdf_read_tool import pdf_read_tool
+
+        monkeypatch.setattr(pdf_read_tool, "PdfReader", FakePdfReader)
+
+        pdf_file = tmp_path / "test.pdf"
+        pdf_file.write_bytes(b"%PDF-1.4")
+
+        # Mixed comma and range
+        result = pdf_read_fn(file_path=str(pdf_file), pages="1, 3-5, 8")
+        assert result["pages_extracted"] == 5
+        assert "Page 1" in result["content"]
+        assert "Page 3" in result["content"]
+        assert "Page 4" in result["content"]
+        assert "Page 5" in result["content"]
+        assert "Page 8" in result["content"]
+
+        # Negative indexing (-1 = last page)
+        result2 = pdf_read_fn(file_path=str(pdf_file), pages="-1")
+        assert result2["pages_extracted"] == 1
+        assert "Page 10" in result2["content"]
+
+    def test_empty_text_warning(self, pdf_read_fn, tmp_path: Path, monkeypatch):
+        """Empty text extraction returns a warning about scanned PDFs."""
+
+        class FakePage:
+            def extract_text(self) -> str:
+                return ""  # Return empty text
+
+        class FakePdfReader:
+            def __init__(self, f) -> None:
+                self.pages = [FakePage()]
+                self.is_encrypted = False
+                self.metadata = None
+
+        from aden_tools.tools.pdf_read_tool import pdf_read_tool
+
+        monkeypatch.setattr(pdf_read_tool, "PdfReader", FakePdfReader)
+
+        pdf_file = tmp_path / "test.pdf"
+        pdf_file.write_bytes(b"%PDF-1.4")
+
+        result = pdf_read_fn(file_path=str(pdf_file), pages="1")
+        assert result.get("extracted_text_empty") is True
+        assert "scanned/image-only" in result.get("extracted_text_warning", "")
+
+    def test_pdf_date_parsing(self, pdf_read_fn, tmp_path: Path, monkeypatch):
+        """PDF date strings are parsed into ISO-8601 strings."""
+
+        class FakePage:
+            def extract_text(self) -> str:
+                return "text"
+
+        class FakePdfReader:
+            def __init__(self, f) -> None:
+                self.pages = [FakePage()]
+                self.is_encrypted = False
+                self.metadata = {
+                    "/CreationDate": "D:20230501123456Z",
+                    "/ModDate": "D:20240102153000-05'00'",
+                }
+
+        from aden_tools.tools.pdf_read_tool import pdf_read_tool
+
+        monkeypatch.setattr(pdf_read_tool, "PdfReader", FakePdfReader)
+
+        pdf_file = tmp_path / "test.pdf"
+        pdf_file.write_bytes(b"%PDF-1.4")
+
+        result = pdf_read_fn(file_path=str(pdf_file), include_metadata=True)
+        assert result["metadata"]["created"] == "2023-05-01T12:34:56Z"
+        assert result["metadata"]["modified"] == "2024-01-02T15:30:00-05:00"
 
     def test_include_metadata_parameter(self, pdf_read_fn, tmp_path: Path):
         """include_metadata parameter is accepted."""
