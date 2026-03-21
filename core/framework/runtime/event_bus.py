@@ -18,6 +18,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import IO, Any
 
+from framework.debug_protocol import DebugProtocol
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -260,6 +262,8 @@ class EventBus:
         self._semaphore = asyncio.Semaphore(max_concurrent_handlers)
         self._subscription_counter = 0
         self._lock = asyncio.Lock()
+
+        self._debug_protocol = DebugProtocol()
         # Per-session persistent event log (always-on, survives restarts)
         self._session_log: IO[str] | None = None
         self._session_log_iteration_offset: int = 0
@@ -459,6 +463,32 @@ class EventBus:
         ):
             offset = self._session_log_iteration_offset
             event.data = {**event.data, "iteration": event.data["iteration"] + offset}
+
+        # Broadcast to debug protocol
+        if event.type == EventType.NODE_LOOP_STARTED:
+            self._debug_protocol.on_node_started(
+                event.execution_id or "unknown", event.data.get("node_id", "unknown")
+            )
+        elif event.type == EventType.NODE_LOOP_COMPLETED:
+            from framework.graph.node import NodeResult
+
+            # Safely Reconstruct NodeResult for debug event if it's a dict
+            result_data = event.data.get("result")
+            if isinstance(result_data, dict):
+                result = NodeResult(
+                    success=result_data.get("success", True),
+                    output=result_data.get("output", {}),
+                    error=result_data.get("error"),
+                    next_node=result_data.get("next_node"),
+                )
+            elif hasattr(result_data, "success"):  # Already a NodeResult object
+                result = result_data
+            else:  # Fallback empty result
+                result = NodeResult(success=True)
+
+            self._debug_protocol.on_node_completed(
+                event.execution_id or "unknown", event.data.get("node_id", "unknown"), result
+            )
 
         # Add to history
         async with self._lock:

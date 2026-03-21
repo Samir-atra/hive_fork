@@ -104,6 +104,10 @@ class EdgeSpec(BaseModel):
 
     model_config = {"extra": "allow"}
 
+    def to_json(self) -> dict[str, Any]:
+        """Serialize edge to JSON format suitable for external tools (e.g. Visual Builder)."""
+        return self.model_dump()
+
     async def should_traverse(
         self,
         source_success: bool,
@@ -450,6 +454,20 @@ class GraphSpec(BaseModel):
     created_by: str = ""  # "human" or "builder_agent"
 
     model_config = {"extra": "allow"}
+
+    def to_json(self) -> dict[str, Any]:
+        """Serialize graph to JSON format suitable for external tools (e.g. Visual Builder)."""
+        # NodeSpecs don't inherently export correctly due to 'Any' typing in graph,
+        # so we iterate through them if they have a 'to_json' method.
+        dump = self.model_dump()
+        nodes_list = self.nodes.values() if isinstance(self.nodes, dict) else self.nodes
+        dump["nodes"] = [
+            n.to_json()
+            if hasattr(n, "to_json")
+            else (n.model_dump() if hasattr(n, "model_dump") else n)
+            for n in nodes_list
+        ]
+        return dump
 
     @model_validator(mode="before")
     @classmethod
