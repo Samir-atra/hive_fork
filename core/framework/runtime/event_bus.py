@@ -111,6 +111,9 @@ class EventType(StrEnum):
     # Output tracking
     OUTPUT_KEY_SET = "output_key_set"
 
+    # Shadow mode evaluation
+    SHADOW_COMPARISON_COMPLETED = "shadow_comparison_completed"
+
     # Retry / edge tracking
     NODE_RETRY = "node_retry"
     EDGE_TRAVERSED = "edge_traversed"
@@ -1044,6 +1047,31 @@ class EventBus:
                 node_id=node_id,
                 execution_id=execution_id,
                 data={"key": key},
+            )
+        )
+
+    async def emit_shadow_comparison_completed(
+        self,
+        baseline_graph_id: str,
+        candidate_graph_id: str,
+        winner: str,
+        should_promote: bool,
+        metrics: dict[str, Any],
+        execution_id: str | None = None,
+    ) -> None:
+        """Emit shadow comparison completed event."""
+        await self.publish(
+            AgentEvent(
+                type=EventType.SHADOW_COMPARISON_COMPLETED,
+                stream_id="shadow_mode",
+                execution_id=execution_id,
+                data={
+                    "baseline_graph_id": baseline_graph_id,
+                    "candidate_graph_id": candidate_graph_id,
+                    "winner": winner,
+                    "should_promote": should_promote,
+                    "metrics": metrics,
+                },
             )
         )
 
