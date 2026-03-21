@@ -107,7 +107,6 @@ def _get_module_to_tools_mapping() -> dict[str, list[str]]:
     """
     mapping: dict[str, list[str]] = {}
 
-    import asyncio
 
     def get_tools_sync(mcp_instance):
         # Handle fastmcp < 2.0
@@ -115,7 +114,8 @@ def _get_module_to_tools_mapping() -> dict[str, list[str]]:
             return list(mcp_instance._tool_manager._tools.keys())
 
         # Handle fastmcp >= 2.0 where tools is available internally
-        if hasattr(mcp_instance, "_local_provider") and hasattr(mcp_instance._local_provider, "_tools"):
+        if hasattr(mcp_instance, "_local_provider") and \
+           hasattr(mcp_instance._local_provider, "_tools"):
             return list(mcp_instance._local_provider._tools.keys())
 
         # Another fallback for internal dicts
@@ -129,7 +129,7 @@ def _get_module_to_tools_mapping() -> dict[str, list[str]]:
             if inspect.iscoroutinefunction(mcp_instance.list_tools):
                 # Run sync in thread if loop exists
                 try:
-                    loop = asyncio.get_running_loop()
+                    _ = asyncio.get_running_loop()
                     import threading
                     result_list = []
                     def run_in_thread():
