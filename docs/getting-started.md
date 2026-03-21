@@ -51,6 +51,32 @@ Agents are created using Claude Code or by manual creation in the
 exports/ directory. Until an agent exists, agent validation and run
 commands will fail.
 
+### First Success Path
+
+Before building complex agents, let's verify a minimal, successful run using the built-in manual agent example. This confirms your core runtime is working.
+
+**1. The Goal**
+Execute a pre-built agent graph that generates a greeting and converts it to uppercase. This tests the core runtime loop (Setup -> Graph definition -> Execution -> Result) without requiring external LLM APIs.
+
+**2. Execute the Command**
+Run the following from the root of the repository:
+```bash
+uv run python core/examples/manual_agent.py
+```
+
+**3. Confirm Success**
+If successful, you will see output similar to this in your terminal:
+```text
+Setting up Manual Agent...
+Executing agent with input: name='Alice'...
+
+Success!
+Path taken: greeter -> uppercaser
+Final output: HELLO, ALICE!
+```
+
+Once you've achieved this first success, you're ready to start building your own agents.
+
 ### Option 1: Using Claude Code Skills (Recommended)
 
 This is the recommended way to create your first agent.

@@ -80,6 +80,8 @@ Use Hive when you need:
 
 ## Quick Start
 
+Looking for a clear path to verify your setup? Follow the **[First Success Path](docs/getting-started.md#first-success-path)** in our Getting Started guide to run a built-in agent with three simple steps and see immediate, verifiable output.
+
 ### Prerequisites
 
 - Python 3.11+ for agent development
