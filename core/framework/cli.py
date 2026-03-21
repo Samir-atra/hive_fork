@@ -94,6 +94,11 @@ def main():
 
     register_skill_commands(subparsers)
 
+    # Register doctor commands (doctor)
+    from framework.doctor.cli import register_doctor_commands
+
+    register_doctor_commands(subparsers)
+
     # Register debugger commands (debugger)
     from framework.debugger.cli import register_debugger_commands
 

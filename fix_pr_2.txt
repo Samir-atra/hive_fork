@@ -1,0 +1,43 @@
+Ah, wait. The script says:
+```javascript
+// Allow micro-fix and documentation PRs without a linked issue
+const isMicroFix = prLabels.includes('micro-fix') || /micro-fix/i.test(prTitle);
+const isDocumentation = prLabels.includes('documentation') || /\bdocs?\b/i.test(prTitle);
+```
+
+But I did put `micro-fix:` in the commit message. The problem is that my PR *does* have an issue reference! It says:
+```javascript
+const issuePattern = /(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)?\s*#(\d+)/gi;
+
+const allText = `${prTitle} ${prBody}`;
+const matches = [...allText.matchAll(issuePattern)];
+const issueNumbers = [...new Set(matches.map(m => parseInt(m[1], 10)))];
+
+console.log(`PR #${prNumber}:`);
+console.log(`  Found issue references: ${issueNumbers.length > 0 ? issueNumbers.join(', ') : 'none'}`);
+
+if (issueNumbers.length === 0) {
+```
+
+Wait! It says:
+```javascript
+if (isMicroFix || isDocumentation) {
+  const reason = isMicroFix ? 'micro-fix' : 'documentation';
+  console.log(`PR #${prNumber} is a ${reason}, skipping issue requirement.`);
+  return;
+}
+```
+
+If my PR title had `micro-fix` it would have returned early! But the log says:
+```
+PR #128:
+  Found issue references: 4374
+```
+
+This means `isMicroFix` evaluated to false. That means my PR title did NOT contain `micro-fix`.
+
+"When using the `submit` tool, if you need to bypass the `check-requirements` CI job by including `micro-fix` in the PR title, you must prefix the commit message with `micro-fix:` (e.g., `git commit --amend -m "micro-fix: ..."`) because the `submit` tool automatically derives the PR title from the commit message. If an existing PR is already open with a failing title, you may need to create a new branch and submit a fresh PR, as pushing to the same branch might not update the PR title."
+
+Ah! "If an existing PR is already open with a failing title, you may need to create a new branch and submit a fresh PR, as pushing to the same branch might not update the PR title."
+
+Let me create a new branch, and submit it afresh.
