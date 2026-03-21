@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Check PR has linked issue with assignee
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const pr = context.payload.pull_request;
@@ -104,11 +104,13 @@ jobs:
             let issueWithAuthorAssigned = null;
             let issuesWithoutAuthor = [];
 
+
             for (const issueNum of issueNumbers) {
               try {
+                // Try upstream adenhq/hive first for issues referenced in forks
                 const { data: issue } = await github.rest.issues.get({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
+                  owner: 'adenhq',
+                  repo: 'hive',
                   issue_number: issueNum,
                 });
 
@@ -125,9 +127,32 @@ jobs:
                   console.log(`  Issue #${issueNum} assignees: ${assigneeLogins.length > 0 ? assigneeLogins.join(', ') : 'none'} (PR author: ${prAuthor})`);
                 }
               } catch (error) {
-                console.log(`  Issue #${issueNum} not found or inaccessible`);
+                console.log(`  Issue #${issueNum} not found or inaccessible in upstream`);
+                try {
+                    const { data: issue } = await github.rest.issues.get({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: issueNum,
+                    });
+
+                    const assigneeLogins = (issue.assignees || []).map(a => a.login);
+                    if (assigneeLogins.includes(prAuthor)) {
+                      issueWithAuthorAssigned = issueNum;
+                      console.log(`  Issue #${issueNum} has PR author ${prAuthor} as assignee`);
+                      break;
+                    } else {
+                      issuesWithoutAuthor.push({
+                        number: issueNum,
+                        assignees: assigneeLogins
+                      });
+                      console.log(`  Issue #${issueNum} assignees: ${assigneeLogins.length > 0 ? assigneeLogins.join(', ') : 'none'} (PR author: ${prAuthor})`);
+                    }
+                } catch (err2) {
+                    console.log(`  Issue #${issueNum} not found or inaccessible locally either`);
+                }
               }
             }
+
 
             if (!issueWithAuthorAssigned) {
               const issueList = issuesWithoutAuthor.map(i =>
