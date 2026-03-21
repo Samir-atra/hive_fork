@@ -60,6 +60,11 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
         help="LLM model to use (any LiteLLM-compatible name)",
     )
     run_parser.add_argument(
+        "--mock",
+        action="store_true",
+        help="Run in mock mode (no actual LLM calls)",
+    )
+    run_parser.add_argument(
         "--resume-session",
         type=str,
         default=None,
@@ -430,6 +435,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     try:
         runner = AgentRunner.load(
             args.agent_path,
+            mock_mode=getattr(args, "mock", False),
             model=args.model,
         )
     except CredentialError as e:

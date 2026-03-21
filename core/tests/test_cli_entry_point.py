@@ -131,3 +131,16 @@ class TestHiveEntryPoint:
             encoding="utf-8",
         )
         assert result.returncode != 0
+
+    def test_hive_run_mock_flag(self):
+        """Verify ``hive run --mock`` is parsed successfully."""
+        result = subprocess.run(
+            ["hive", "run", "nonexistent_agent_xyz", "--mock"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        # Should fail with missing agent rather than unrecognized arguments
+        assert result.returncode != 0
+        assert "unrecognized arguments: --mock" not in result.stderr
+        assert "No agent.py or agent.json found" in result.stderr or "Error:" in result.stderr
