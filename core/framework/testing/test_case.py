@@ -57,6 +57,9 @@ class Test(BaseModel):
     expected_output: dict[str, Any] = Field(
         default_factory=dict, description="Expected output or assertions"
     )
+    failure_conditions: list[Any] = Field(
+        default_factory=list, description="List of failure conditions to evaluate"
+    )
 
     # LLM generation metadata
     generated_by: str = Field(default="llm", description="Who created the test: 'llm' or 'human'")

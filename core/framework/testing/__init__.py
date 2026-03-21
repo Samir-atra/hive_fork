@@ -52,6 +52,12 @@ from framework.testing.cli import register_testing_commands
 
 # Debug
 from framework.testing.debug_tool import DebugInfo, DebugTool
+from framework.testing.failure_conditions import (
+    ErrorTypeCondition,
+    FailureCondition,
+    MetricRangeCondition,
+    StringMatchCondition,
+)
 
 # LLM Judge for semantic evaluation
 from framework.testing.llm_judge import LLMJudge
@@ -77,6 +83,11 @@ __all__ = [
     "ErrorCategory",
     "TestResult",
     "TestSuiteResult",
+    # Failure Conditions
+    "FailureCondition",
+    "StringMatchCondition",
+    "ErrorTypeCondition",
+    "MetricRangeCondition",
     # Storage
     "TestStorage",
     # Approval types (pure types, no LLM)
