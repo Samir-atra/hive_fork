@@ -478,6 +478,11 @@ class GraphExecutor:
         # Add agent_id to trace context for correlation
         set_trace_context(agent_id=graph.id)
 
+        # Initialize budget tracking
+        from framework.graph.token_budget import TokenBudget, TokenBudgetExceededError
+
+        budget = TokenBudget(getattr(graph, "token_budget", None))
+
         # Validate graph
         if validate_graph:
             result = graph.validate()
@@ -1077,6 +1082,21 @@ class GraphExecutor:
                 total_tokens += result.tokens_used
                 total_latency += result.latency_ms
 
+                # Enforce budget and fast-fail
+                try:
+                    budget.record(result.tokens_used, node_id=current_node_id)
+                except TokenBudgetExceededError as e:
+                    self.logger.error(f"🛑 {str(e)}")
+                    return ExecutionResult(
+                        success=False,
+                        error=str(e),
+                        output=result.output,
+                        total_tokens=total_tokens,
+                        total_latency_ms=total_latency,
+                        steps_executed=steps,
+                        path=path,
+                    )
+
                 # Handle failure
                 if not result.success:
                     # Track retries per node
@@ -1343,6 +1363,21 @@ class GraphExecutor:
 
                         total_tokens += branch_tokens
                         total_latency += branch_latency
+
+                        # Enforce budget for parallel branches
+                        try:
+                            budget.record(branch_tokens, node_id="<parallel_branches>")
+                        except TokenBudgetExceededError as e:
+                            self.logger.error(f"🛑 {str(e)}")
+                            return ExecutionResult(
+                                success=False,
+                                error=str(e),
+                                output=result.output,
+                                total_tokens=total_tokens,
+                                total_latency_ms=total_latency,
+                                steps_executed=steps,
+                                path=path,
+                            )
 
                         # Continue from fan-in node
                         if fan_in_node:

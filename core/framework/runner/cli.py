@@ -71,6 +71,12 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
         default=None,
         help="Resume from a specific checkpoint (requires --resume-session)",
     )
+    run_parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=None,
+        help="Maximum token budget for this execution (enforces hard stop)",
+    )
     run_parser.set_defaults(func=cmd_run)
 
     # info command
@@ -186,6 +192,12 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
         "--no-approve",
         action="store_true",
         help="Disable human-in-the-loop approval (auto-approve all steps)",
+    )
+    shell_parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=None,
+        help="Maximum token budget for this session (enforces hard stop)",
     )
     shell_parser.set_defaults(func=cmd_shell)
 
@@ -431,6 +443,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         runner = AgentRunner.load(
             args.agent_path,
             model=args.model,
+            max_tokens_override=getattr(args, "max_tokens", None),
         )
     except CredentialError as e:
         print(f"\n{e}", file=sys.stderr)
@@ -944,7 +957,7 @@ def cmd_shell(args: argparse.Namespace) -> int:
             return 1
 
     try:
-        runner = AgentRunner.load(agent_path)
+        runner = AgentRunner.load(agent_path, max_tokens_override=getattr(args, "max_tokens", None))
     except CredentialError as e:
         print(f"\n{e}", file=sys.stderr)
         return 1

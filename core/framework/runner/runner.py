@@ -945,6 +945,7 @@ def load_agent_export(data: str | dict) -> tuple[GraphSpec, Goal]:
         id=graph_data.get("id", "agent-graph"),
         goal_id=graph_data.get("goal_id", ""),
         version=graph_data.get("version", "1.0.0"),
+        token_budget=graph_data.get("token_budget", None),
         entry_node=graph_data.get("entry_node", ""),
         entry_points=graph_data.get("entry_points", {}),  # Support pause/resume architecture
         terminal_nodes=graph_data.get("terminal_nodes", []),
@@ -1170,6 +1171,7 @@ class AgentRunner:
         interactive: bool = True,
         skip_credential_validation: bool | None = None,
         credential_store: Any | None = None,
+        max_tokens_override: int | None = None,
     ) -> "AgentRunner":
         """
         Load an agent from an export folder.
@@ -1243,6 +1245,9 @@ class AgentRunner:
                 else:
                     agent_loop_config["max_context_tokens"] = get_max_context_tokens()
 
+            if agent_config and hasattr(agent_config, "token_budget"):
+                agent_loop_config["token_budget"] = agent_config.token_budget
+
             # Read intro_message from agent metadata (shown on TUI load)
             agent_metadata = getattr(agent_module, "metadata", None)
             intro_message = ""
@@ -1263,6 +1268,11 @@ class AgentRunner:
                 "max_tokens": max_tokens,
                 "loop_config": agent_loop_config,
             }
+            if max_tokens_override is not None:
+                graph_kwargs["token_budget"] = max_tokens_override
+            elif agent_config and hasattr(agent_config, "token_budget"):
+                graph_kwargs["token_budget"] = agent_config.token_budget
+
             # Only pass optional fields if explicitly defined by the agent module
             conversation_mode = getattr(agent_module, "conversation_mode", None)
             if conversation_mode is not None:
@@ -1326,6 +1336,9 @@ class AgentRunner:
             graph, goal = load_agent_export(export_data)
         except json.JSONDecodeError as exc:
             raise ValueError(f"Invalid JSON in agent export file: {agent_json_path}") from exc
+
+        if max_tokens_override is not None:
+            graph.token_budget = max_tokens_override
 
         # Generate flowchart.json if missing (for legacy JSON-based agents)
         generate_fallback_flowchart(graph, goal, agent_path)
