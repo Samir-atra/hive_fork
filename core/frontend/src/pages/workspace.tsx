@@ -1869,8 +1869,12 @@ export default function Workspace() {
                 updateGraphNodeStatus(agentType, event.node_id, "error");
                 const errMsg = (event.data?.error as string) || "unknown error";
                 appendNodeLog(agentType, event.node_id, `${ts} ERROR Execution failed: ${errMsg}`);
+                markAllNodesAs(agentType, ["running", "looping"], "pending");
+              } else {
+                // Global execution failure (e.g. tool validation failed before starting)
+                // Mark all nodes as error to indicate the pipeline failed to run
+                markAllNodesAs(agentType, ["running", "looping", "pending", "complete"], "error");
               }
-              markAllNodesAs(agentType, ["running", "looping"], "pending");
             }
           }
           break;
