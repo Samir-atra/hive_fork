@@ -99,6 +99,11 @@ def main():
 
     register_debugger_commands(subparsers)
 
+    # Register visualizer commands (visualize)
+    from framework.visualizer.cli import register_visualize_commands
+
+    register_visualize_commands(subparsers)
+
     args = parser.parse_args()
 
     if hasattr(args, "func"):

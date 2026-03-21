@@ -854,6 +854,9 @@ testing = [
     { name = "pytest-asyncio" },
     { name = "pytest-xdist" },
 ]
+viz = [
+    { name = "websockets" },
+]
 webhook = [
     { name = "aiohttp" },
 ]
@@ -882,8 +885,9 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'testing'", specifier = ">=0.23" },
     { name = "pytest-xdist", marker = "extra == 'testing'", specifier = ">=3.0" },
     { name = "tools", editable = "tools" },
+    { name = "websockets", marker = "extra == 'viz'", specifier = ">=12.0" },
 ]
-provides-extras = ["webhook", "server", "testing"]
+provides-extras = ["webhook", "viz", "server", "testing"]
 
 [package.metadata.requires-dev]
 dev = [

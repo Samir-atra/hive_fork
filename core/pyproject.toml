@@ -17,6 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 webhook = ["aiohttp>=3.9.0"]
+viz = ["websockets>=12.0"]
 server = ["aiohttp>=3.9.0"]
 testing = [
   "pytest>=8.0",
