@@ -207,6 +207,30 @@ flowchart LR
 4. **Control Plane Monitors** → Real-time metrics, budget enforcement, policy management
 5. **[Adaptiveness](docs/key_concepts/evolution.md)** → On failure, the system evolves the graph and redeploys automatically
 
+### End-to-End Example
+
+Here is a simple scenario demonstrating how Hive works in practice:
+
+**1. A Sample Business Goal**
+*User Input:* "Monitor Hacker News for AI product launches. If an interesting tool is found, generate a short summary and post it to our team's Slack channel."
+
+**2. Coding Agent Generates the Node Graph**
+The Hive Queen automatically translates this natural language goal into a running system. It creates:
+- A `hn_scraper_node` (to fetch the front page using browser tools)
+- A `filter_summarize_node` (an LLM node to analyze the posts and summarize AI tools)
+- A `slack_poster_node` (to send the final message via a Slack webhook)
+The framework writes the Python connection code and spins up these workers.
+
+**3. Failure Evolution in Practice**
+Imagine Hacker News changes its DOM structure, causing the `hn_scraper_node` to crash.
+- The framework catches the exception and captures the exact error trace.
+- The failure is sent back to the Hive Queen.
+- The Queen analyzes the new HTML, updates the scraping logic in the `hn_scraper_node`, and redeploys the node automatically without human intervention.
+
+**4. Final Deployment**
+Once stable, the agents run as persistent background processes. The framework's Control Plane provides real-time observability, showing you exactly how much the LLM calls cost, how many Slack messages were sent, and the current state of each worker node.
+
+
 ## Documentation
 
 - **[Developer Guide](docs/developer-guide.md)** - Comprehensive guide for developers
