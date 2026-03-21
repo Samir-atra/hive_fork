@@ -10,9 +10,11 @@ class IRNode(BaseModel):
     dependencies: list[str] = Field(default_factory=list)
     inputs: dict[str, Any] = Field(default_factory=dict)
 
+
 class WorkflowIR(BaseModel):
     name: str = "workflow"
     nodes: list[IRNode] = Field(default_factory=list)
+
 
 class PlanStep(BaseModel):
     step_id: str
@@ -20,9 +22,11 @@ class PlanStep(BaseModel):
     dependencies: list[str] = Field(default_factory=list)
     agent_type: str = "default"
 
+
 class Plan(BaseModel):
     goal_id: str
     steps: list[PlanStep] = Field(default_factory=list)
+
 
 class ExecutionSchedule(BaseModel):
     order: list[str] = Field(default_factory=list)
