@@ -1,4 +1,3 @@
-
 import pytest
 
 from framework.graph.agent_invoke_node import AgentInvokeNode

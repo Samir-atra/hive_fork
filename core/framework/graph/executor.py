@@ -1949,6 +1949,7 @@ class GraphExecutor:
         # Create based on type
         if node_spec.node_type == "agent_invoke":
             from framework.graph.agent_invoke_node import AgentInvokeNode
+
             node = AgentInvokeNode()
             self.node_registry[node_spec.id] = node
             return node
