@@ -41,6 +41,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+document-ingestion = [
+    "pypdf>=5.0.0",
+    "python-docx>=1.1.0",
+    "openpyxl>=3.1.0",
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
@@ -69,6 +74,9 @@ databricks = [
     "databricks-mcp>=0.1.0",
 ]
 all = [
+    "pypdf>=5.0.0",
+    "python-docx>=1.1.0",
+    "openpyxl>=3.1.0",
     "RestrictedPython>=7.0",
     "pytesseract>=0.3.10",
     "pillow>=10.0.0",
