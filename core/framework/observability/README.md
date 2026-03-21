@@ -234,3 +234,49 @@ ContextVar automatically propagates through async calls. If context seems lost, 
 - [Logging Implementation](../observability/logging.py) - Source code
 - [AgentRunner](../runner/runner.py) - Where logging is configured
 - [Runtime Core](../runtime/core.py) - Where trace context is set
+
+## OpenTelemetry Exporter
+
+The Hive framework natively supports pushing internal telemetry (spans and metrics) to OpenTelemetry-compatible backends such as Jaeger, Prometheus, Datadog, or any OTLP receiver.
+
+### Traces
+
+The `OTELExporter` automatically subscribes to internal event loops (Agent Starts, Decisions, Tool calls) and emits W3C-compliant traces.
+
+```python
+from framework.observability import OTELExporter
+
+# event_bus is typically an instance of framework.runtime.event_bus.EventBus
+# By default, it uses a ConsoleSpanExporter. To use OTLP over gRPC:
+exporter = OTELExporter(
+    event_bus=event_bus,
+    config={
+        "exporter": "otlp",
+        "service_name": "hive-agent"
+    }
+)
+exporter.start()
+
+# Later, before shutdown:
+exporter.stop()
+```
+
+### Metrics
+
+The `MetricsAdapter` periodically reads from the internal OutcomeAggregator to publish metrics on goal progress and criteria achieved.
+
+```python
+from framework.observability import MetricsAdapter
+
+# outcome_aggregator is typically an instance of framework.runtime.outcome_aggregator.OutcomeAggregator
+# By default, it uses a ConsoleMetricExporter. To use Prometheus:
+adapter = MetricsAdapter(
+    outcome_aggregator=outcome_aggregator,
+    config={
+        "metrics_exporter": "prometheus",
+        "service_name": "hive-agent"
+    }
+)
+
+# Metrics are automatically scraped or pushed based on the exporter.
+```
