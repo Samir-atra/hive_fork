@@ -27,16 +27,25 @@ logger = logging.getLogger(__name__)
 
 
 def get_hive_config() -> dict[str, Any]:
-    """Load hive configuration from ~/.hive/configuration.json."""
-    if not HIVE_CONFIG_FILE.exists():
+    """Load hive configuration from ~/.hive/configuration.json or environment-specific file."""
+    env = os.environ.get("HIVE_ENV") or os.environ.get("ADEN_ENV")
+
+    config_file = HIVE_CONFIG_FILE
+    if env:
+        # Try to load ~/.hive/configuration.{env}.json
+        env_config_file = HIVE_CONFIG_FILE.with_name(f"configuration.{env}.json")
+        if env_config_file.exists():
+            config_file = env_config_file
+
+    if not config_file.exists():
         return {}
     try:
-        with open(HIVE_CONFIG_FILE, encoding="utf-8-sig") as f:
+        with open(config_file, encoding="utf-8-sig") as f:
             return json.load(f)
     except (json.JSONDecodeError, OSError) as e:
         logger.warning(
             "Failed to load Hive config %s: %s",
-            HIVE_CONFIG_FILE,
+            config_file,
             e,
         )
         return {}
