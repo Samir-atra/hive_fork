@@ -1,0 +1,31 @@
+{
+  "id": "observability_agent",
+  "goal_id": "demo",
+  "description": "An agent that demonstrates observability metrics",
+  "entry_node": "writer",
+  "nodes": [
+    {
+      "id": "writer",
+      "name": "Content Writer",
+      "node_type": "event_loop",
+      "system_prompt": "You are a content writer. Produce the requested content.",
+      "output_keys": ["draft_content"]
+    },
+    {
+      "id": "reviewer",
+      "name": "Content Reviewer",
+      "node_type": "event_loop",
+      "system_prompt": "You are a reviewer. Review the content. Output 'final_content'.",
+      "input_keys": ["draft_content"],
+      "output_keys": ["final_content"]
+    }
+  ],
+  "edges": [
+    {
+      "source": "writer",
+      "target": "reviewer",
+      "condition": "ON_SUCCESS"
+    }
+  ],
+  "max_steps": 10
+}

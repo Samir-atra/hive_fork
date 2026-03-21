@@ -600,6 +600,9 @@ class NodeResult:
     tokens_used: int = 0
     latency_ms: int = 0
 
+    # Observability metrics
+    metrics: dict[str, Any] = field(default_factory=dict)
+
     # Pydantic validation errors (if any)
     validation_errors: list[str] = field(default_factory=list)
 
