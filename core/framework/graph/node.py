@@ -536,6 +536,9 @@ class NodeContext:
     # Execution ID (from StreamRuntimeAdapter)
     execution_id: str = ""
 
+    # Graph ID - the parent graph this node belongs to
+    graph_id: str = ""
+
     # Stream identity — the ExecutionStream this node runs within.
     # Falls back to node_id when not set (legacy / standalone executor).
     stream_id: str = ""

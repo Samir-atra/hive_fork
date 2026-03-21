@@ -32,6 +32,8 @@ Write 3-6 sentences covering:
 - What approach it took and what tools it used
 - What the outcome was (success, partial, or failure — and why if relevant)
 - Any notable issues, retries, or escalations to the queen
+- Explicitly highlight any errors encountered and the successful recovery strategy used
+  to resolve them, so future runs can learn from them.
 
 Write in third person past tense. Be direct and specific.
 Omit routine tool invocations unless the result matters.
@@ -284,3 +286,34 @@ def read_recent_digests(agent_name: str, max_runs: int = 5) -> list[tuple[str, s
         except OSError:
             continue
     return result
+
+
+def get_recent_failures_context(agent_name: str, max_runs: int = 5) -> str:
+    """Read recent run digests and return a formatted string for the system prompt.
+
+    This provides the worker agent with persistent cross-session memory of past
+    failures and how they were resolved.
+
+    Args:
+        agent_name: Worker agent directory name (typically graph.id).
+        max_runs:   Maximum number of prior runs to inspect.
+
+    Returns:
+        A formatted string containing recent run learnings, or empty string.
+    """
+    entries = read_recent_digests(agent_name, max_runs)
+    if not entries:
+        return ""
+
+    lines = [
+        "--- PAST RUN LEARNINGS ---",
+        "You have persistent memory from recent executions. Use these past experiences "
+        "to avoid repeating mistakes and reuse successful recovery strategies:",
+        "",
+    ]
+    for _run_id, content in entries:
+        lines.append(content)
+        lines.append("")
+
+    lines.append("--- END PAST RUN LEARNINGS ---")
+    return "\n".join(lines).strip()
