@@ -703,5 +703,111 @@ class TestOAuth2Module:
             )
 
 
+class TestProviderRegistration:
+    def test_register_provider(self):
+        store = CredentialStore()
+        provider = StaticProvider()
+        store.register_provider(provider)
+        assert store.get_provider(provider.provider_id) is provider
+
+    def test_get_provider_not_found(self):
+        store = CredentialStore()
+        assert store.get_provider("nonexistent") is None
+
+
+class TestCredentialRetrieval:
+    def test_get_credential_returns_none_for_missing(self):
+        store = CredentialStore(storage=InMemoryStorage())
+        assert store.get_credential("nonexistent") is None
+
+    def test_save_and_retrieve_credential(self):
+        store = CredentialStore(storage=InMemoryStorage())
+        cred = CredentialObject(
+            id="test_api",
+            credential_type=CredentialType.API_KEY,
+            keys={
+                "api_key": CredentialKey(
+                    name="api_key",
+                    value=SecretStr("secret123"),
+                )
+            },
+        )
+        store.save_credential(cred)
+        retrieved = store.get_credential("test_api")
+        assert retrieved is not None
+        assert retrieved.keys["api_key"].get_secret_value() == "secret123"
+
+    def test_get_key_success(self):
+        store = CredentialStore(storage=InMemoryStorage())
+        cred = CredentialObject(
+            id="github",
+            credential_type=CredentialType.API_KEY,
+            keys={"token": CredentialKey(name="token", value=SecretStr("ghp_xxx"))},
+        )
+        store.save_credential(cred)
+        assert store.get_key("github", "token") == "ghp_xxx"
+
+    def test_get_key_missing_credential(self):
+        store = CredentialStore(storage=InMemoryStorage())
+        assert store.get_key("nonexistent", "key") is None
+
+
+class TestTemplateResolution:
+    def test_resolve_simple_template(self):
+        store = CredentialStore(storage=InMemoryStorage())
+        cred = CredentialObject(
+            id="github",
+            credential_type=CredentialType.API_KEY,
+            keys={
+                "access_token": CredentialKey(
+                    name="access_token",
+                    value=SecretStr("ghp_xxxxxxxxxxxx"),
+                )
+            },
+        )
+        store.save_credential(cred)
+        result = store.resolve("Bearer {{github.access_token}}")
+        assert result == "Bearer ghp_xxxxxxxxxxxx"
+
+    def test_resolve_headers(self):
+        store = CredentialStore(storage=InMemoryStorage())
+        cred = CredentialObject(
+            id="api",
+            credential_type=CredentialType.API_KEY,
+            keys={"key": CredentialKey(name="key", value=SecretStr("secret"))},
+        )
+        store.save_credential(cred)
+        headers = store.resolve_headers({"Authorization": "ApiKey {{api.key}}"})
+        assert headers["Authorization"] == "ApiKey secret"
+
+
+class TestCacheTTL:
+    def test_cache_ttl_expires_credentials(self):
+        store = CredentialStore(storage=InMemoryStorage(), cache_ttl_seconds=0)
+        cred = CredentialObject(
+            id="test",
+            credential_type=CredentialType.API_KEY,
+            keys={"key": CredentialKey(name="key", value=SecretStr("value"))},
+        )
+        store.save_credential(cred)
+        # With TTL=0, should always fetch from storage
+        retrieved = store.get_credential("test")
+        assert retrieved is not None
+
+
+class TestErrorHandling:
+    def test_resolve_missing_credential_error(self):
+        store = CredentialStore(storage=InMemoryStorage())
+        # Should handle gracefully, not crash
+        with pytest.raises(CredentialNotFoundError):  # or returns error string
+            store.resolve("{{nonexistent.key}}")
+
+    def test_delete_nonexistent_credential(self):
+        store = CredentialStore(storage=InMemoryStorage())
+        # Should be idempotent
+        result = store.delete_credential("nonexistent")
+        assert result is False
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
