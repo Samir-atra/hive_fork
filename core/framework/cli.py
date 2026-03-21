@@ -99,6 +99,14 @@ def main():
 
     register_debugger_commands(subparsers)
 
+    # Register audit commands
+    try:
+        from framework.audit_cli import register_audit_commands
+
+        register_audit_commands(subparsers)
+    except ImportError:
+        pass
+
     args = parser.parse_args()
 
     if hasattr(args, "func"):
