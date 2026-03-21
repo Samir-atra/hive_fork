@@ -384,24 +384,24 @@ class TestExecuteCommandTool:
     def test_execute_command_with_pipe(self, execute_command_fn, mock_workspace, mock_secure_path):
         """Executing a command with pipe works correctly."""
         if sys.platform.startswith("win"):
-            # Use PowerShell for piping and uppercasing on Windows
-            cmd = (
-                "powershell -Command "
-                "\"Write-Output 'hello world' | ForEach-Object { $_.ToUpper() }\""
-            )
+            # Use native cmd.exe filter on Windows (powershell is blocked)
+            cmd = "echo hello world | findstr world"
+            expected = "hello world"
         else:
             cmd = "echo 'hello world' | tr 'a-z' 'A-Z'"
+            expected = "HELLO WORLD"
 
         result = execute_command_fn(command=cmd, **mock_workspace)
 
-        assert result["success"] is True
+        assert result.get("success", False) is True, (
+            f"Command failed: {result.get('error', 'unknown')}"
+        )
         assert result["return_code"] == 0
 
         # Normalize output to handle line breaks and platform differences
         stdout_normalized = result["stdout"].strip().replace("\r\n", "\n")
 
-        # PowerShell might output multiple lines, we just need to ensure HELLO WORLD is in there
-        assert "HELLO WORLD" in stdout_normalized
+        assert expected in stdout_normalized
 
 
 class TestApplyDiffTool:
