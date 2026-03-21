@@ -25,6 +25,10 @@ from typing import Any, Literal, Protocol, runtime_checkable
 
 from framework.graph.conversation import ConversationStore, NodeConversation
 from framework.graph.node import NodeContext, NodeProtocol, NodeResult
+from framework.graph.prompt_injection_shield import (
+    InjectionDetected,
+    PromptInjectionShield,
+)
 from framework.llm.capabilities import supports_image_tool_results
 from framework.llm.provider import Tool, ToolResult, ToolUse
 from framework.llm.stream_events import (
@@ -245,6 +249,7 @@ class LoopConfig:
     stall_similarity_threshold: float = 0.85
     max_context_tokens: int = 32_000
     store_prefix: str = ""
+    prompt_injection_shield: str | None = None
 
     # Overflow margin for max_tool_calls_per_turn.  Tool calls are only
     # discarded when the count exceeds max_tool_calls_per_turn * (1 + margin).
@@ -482,6 +487,7 @@ class EventLoopNode(NodeProtocol):
         self._event_bus = event_bus
         self._judge = judge
         self._config = config or LoopConfig()
+        self._shield = PromptInjectionShield()
         self._tool_executor = tool_executor
         self._conversation_store = conversation_store
         self._injection_queue: asyncio.Queue[tuple[str, bool, list[dict[str, Any]] | None]] = (
@@ -2866,9 +2872,27 @@ class EventLoopNode(NodeProtocol):
                     )
                     image_content = None
 
+                # OWASP LLM01: Prompt Injection Shield
+                final_content = result.content
+                if (
+                    not result.is_error
+                    and tc.tool_name != "set_output"
+                    and self._config.prompt_injection_shield
+                ):
+                    try:
+                        final_content = self._shield.scan_and_wrap(
+                            final_content, tc.tool_name, self._config.prompt_injection_shield
+                        )
+                    except InjectionDetected as e:
+                        logger.warning(
+                            "Prompt injection blocked in tool result from '%s'", tc.tool_name
+                        )
+                        final_content = f"Tool result blocked: {str(e)}"
+                        result.is_error = True
+
                 await conversation.add_tool_result(
                     tool_use_id=tc.tool_use_id,
-                    content=result.content,
+                    content=final_content,
                     is_error=result.is_error,
                     image_content=image_content,
                     is_skill_content=result.is_skill_content,

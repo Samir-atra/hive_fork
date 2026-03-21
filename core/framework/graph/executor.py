@@ -927,7 +927,9 @@ class GraphExecutor:
                             self.logger.info(f"      {key}: {value_str}")
 
                 # Get or create node implementation
-                node_impl = self._get_node_implementation(node_spec, graph.cleanup_llm_model)
+                node_impl = self._get_node_implementation(
+                    node_spec, graph.cleanup_llm_model, graph.prompt_injection_shield
+                )
 
                 # Validate inputs
                 validation_errors = node_impl.validate_input(ctx)
@@ -1922,7 +1924,10 @@ class GraphExecutor:
     }
 
     def _get_node_implementation(
-        self, node_spec: NodeSpec, cleanup_llm_model: str | None = None
+        self,
+        node_spec: NodeSpec,
+        cleanup_llm_model: str | None = None,
+        graph_prompt_injection_shield: str | None = None,
     ) -> NodeProtocol:
         """Get or create a node implementation."""
         # Check registry first
@@ -1978,6 +1983,8 @@ class GraphExecutor:
                     max_iterations=lc.get("max_iterations", default_max_iter),
                     max_tool_calls_per_turn=lc.get("max_tool_calls_per_turn", 30),
                     tool_call_overflow_margin=lc.get("tool_call_overflow_margin", 0.5),
+                    prompt_injection_shield=lc.get("prompt_injection_shield")
+                    or graph_prompt_injection_shield,
                     stall_detection_threshold=lc.get("stall_detection_threshold", 3),
                     max_context_tokens=lc.get("max_context_tokens", _default_max_context_tokens()),
                     max_tool_result_chars=lc.get("max_tool_result_chars", 30_000),
@@ -2166,7 +2173,9 @@ class GraphExecutor:
                 return branch, RuntimeError(branch.error)
 
             # Get node implementation to check its type
-            branch_impl = self._get_node_implementation(node_spec, graph.cleanup_llm_model)
+            branch_impl = self._get_node_implementation(
+                node_spec, graph.cleanup_llm_model, graph.prompt_injection_shield
+            )
 
             effective_max_retries = node_spec.max_retries
             # Only override for actual EventLoopNode instances, not custom NodeProtocol impls
@@ -2203,7 +2212,9 @@ class GraphExecutor:
                         node_registry=node_registry,
                         graph=graph,
                     )
-                    node_impl = self._get_node_implementation(node_spec, graph.cleanup_llm_model)
+                    node_impl = self._get_node_implementation(
+                        node_spec, graph.cleanup_llm_model, graph.prompt_injection_shield
+                    )
 
                     # Emit node-started event (skip event_loop nodes)
                     if self._event_bus and node_spec.node_type != "event_loop":

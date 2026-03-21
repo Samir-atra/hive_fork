@@ -414,6 +414,10 @@ class GraphSpec(BaseModel):
 
     # Cleanup LLM for JSON extraction fallback (fast/cheap model preferred)
     # If not set, uses CEREBRAS_API_KEY -> cerebras/llama-3.3-70b
+    prompt_injection_shield: str | None = Field(
+        default=None,
+        description="Configures prompt injection shield mode (warn, block, off/None).",
+    )
     cleanup_llm_model: str | None = None
 
     # Execution limits
