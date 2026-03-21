@@ -377,6 +377,35 @@ def _prompt_before_start(agent_path: str, runner, model: str | None = None):
             return None
 
 
+def _format_error(e: Exception) -> str:
+    """Format an exception into a user-friendly error message.
+
+    Args:
+        e: The exception to format.
+
+    Returns:
+        A concise error message string.
+    """
+    error_msg = str(e)
+
+    # Check for authentication errors common with LLMs
+    if (
+        "AuthenticationError" in str(type(e))
+        or "401" in error_msg
+        or "Incorrect API key provided" in error_msg
+    ):
+        return "Authentication failed - check your API key."
+
+    # Check for LiteLLM specific wrapper errors
+    if "litellm" in str(type(e)).lower():
+        # Strip some of the raw litellm prefix trace
+        if "AuthenticationError" in error_msg:
+            return "Authentication failed — check your API key"
+
+    # Return standard str representation if no specific match
+    return error_msg
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     """Run an exported agent."""
 
@@ -485,7 +514,15 @@ def cmd_run(args: argparse.Namespace) -> int:
         print("=" * 60)
         print()
 
-    result = asyncio.run(runner.run(context, session_state=session_state))
+    try:
+        result = asyncio.run(runner.run(context, session_state=session_state))
+    except KeyboardInterrupt:
+        print("\nAborted.", file=sys.stderr)
+        return 130
+    except Exception as e:
+        error_msg = _format_error(e)
+        print(f"\nError: {error_msg}", file=sys.stderr)
+        return 1
 
     # Format output
     output = {
@@ -793,7 +830,15 @@ def cmd_dispatch(args: argparse.Namespace) -> int:
         print()
 
     # Dispatch
-    result = asyncio.run(orchestrator.dispatch(context, intent=args.intent))
+    try:
+        result = asyncio.run(orchestrator.dispatch(context, intent=args.intent))
+    except KeyboardInterrupt:
+        print("\nAborted.", file=sys.stderr)
+        return 130
+    except Exception as e:
+        error_msg = _format_error(e)
+        print(f"\nError: {error_msg}", file=sys.stderr)
+        return 1
 
     # Output results
     if args.quiet:
@@ -1086,7 +1131,15 @@ def cmd_shell(args: argparse.Namespace) -> int:
         print("-" * 40)
 
         # Pass agent session state to enable resumption
-        result = asyncio.run(runner.run(run_context, session_state=agent_session_state))
+        try:
+            result = asyncio.run(runner.run(run_context, session_state=agent_session_state))
+        except KeyboardInterrupt:
+            print("\nAborted current run.")
+            continue
+        except Exception as e:
+            error_msg = _format_error(e)
+            print(f"\nError: {error_msg}")
+            continue
 
         status_str = "SUCCESS" if result.success else "FAILED"
         print(f"\nStatus: {status_str}")
@@ -1483,7 +1536,15 @@ def _interactive_multi(agents_dir: Path) -> int:
             print(f"Intent: {intent}")
         print("-" * 40)
 
-        result = asyncio.run(orchestrator.dispatch(context, intent=intent))
+        try:
+            result = asyncio.run(orchestrator.dispatch(context, intent=intent))
+        except KeyboardInterrupt:
+            print("\nAborted current dispatch.")
+            continue
+        except Exception as e:
+            error_msg = _format_error(e)
+            print(f"\nError: {error_msg}")
+            continue
 
         print(f"\nSuccess: {result.success}")
         print(f"Handled by: {', '.join(result.handled_by) or 'none'}")
