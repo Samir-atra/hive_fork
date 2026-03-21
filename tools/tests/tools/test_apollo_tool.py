@@ -40,34 +40,43 @@ class TestApolloClient:
         response = MagicMock()
         response.status_code = 200
         response.json.return_value = {"person": {"id": "123"}}
-        assert self.client._handle_response(response) == {"person": {"id": "123"}}
+        result = self.client._handle_response(response)
+        assert result == {"success": True, "data": {"person": {"id": "123"}}}
 
     @pytest.mark.parametrize(
-        "status_code,expected_substring",
+        "status_code,expected_substring,retryable",
         [
-            (401, "Invalid Apollo API key"),
-            (403, "Insufficient credits"),
-            (404, "not found"),
-            (422, "Invalid parameters"),
-            (429, "rate limit"),
+            (401, "Invalid Apollo API key", False),
+            (403, "Insufficient credits", False),
+            (404, "not found", False),
+            (422, "Invalid parameters", False),
+            (429, "rate limit", True),
         ],
     )
-    def test_handle_response_errors(self, status_code, expected_substring):
+    def test_handle_response_errors(self, status_code, expected_substring, retryable):
         response = MagicMock()
         response.status_code = status_code
         response.json.return_value = {"error": "Test error"}
         response.text = "Test error"
         result = self.client._handle_response(response)
+        assert result["success"] is False
         assert "error" in result
         assert expected_substring in result["error"]
+        assert result["status_code"] == status_code
+        assert result["details"] == "Test error"
+        assert result["retryable"] is retryable
 
     def test_handle_response_generic_error(self):
         response = MagicMock()
         response.status_code = 500
         response.json.return_value = {"error": "Internal Server Error"}
         result = self.client._handle_response(response)
+        assert result["success"] is False
         assert "error" in result
         assert "500" in result["error"]
+        assert result["status_code"] == 500
+        assert result["details"] == "Internal Server Error"
+        assert result["retryable"] is True
 
     @patch("aden_tools.tools.apollo_tool.apollo_tool.httpx.post")
     def test_enrich_person_by_email(self, mock_post):

@@ -43,31 +43,52 @@ class _ApolloClient:
         }
 
     def _handle_response(self, response: httpx.Response) -> dict[str, Any]:
-        """Handle common HTTP error codes."""
-        if response.status_code == 401:
-            return {"error": "Invalid Apollo API key"}
-        if response.status_code == 403:
-            return {
-                "error": "Insufficient credits or permissions. Check your Apollo plan.",
-                "help": "Apollo uses export credits for enrichment. Visit https://app.apollo.io/#/settings/plans",
-            }
-        if response.status_code == 404:
-            return {"error": "Resource not found"}
-        if response.status_code == 422:
-            try:
-                detail = response.json().get("error", response.text)
-            except Exception:
-                detail = response.text
-            return {"error": f"Invalid parameters: {detail}"}
-        if response.status_code == 429:
-            return {"error": "Apollo rate limit exceeded. Try again later."}
+        """
+        Handle HTTP responses and return a structured format.
+
+        Successful format:
+        { "success": True, "data": <parsed JSON> }
+
+        Error format:
+        { "success": False, "error": str, "status_code": int, "details": str,
+          "retryable": bool, ... }
+        """
         if response.status_code >= 400:
             try:
-                detail = response.json().get("error", response.text)
+                json_data = response.json()
+                details = json_data.get("error", response.text)
             except Exception:
-                detail = response.text
-            return {"error": f"Apollo API error (HTTP {response.status_code}): {detail}"}
-        return response.json()
+                details = response.text
+
+            error_msg = f"Apollo API error (HTTP {response.status_code})"
+            help_msg = None
+            retryable = response.status_code in (429, 500, 502, 503, 504)
+
+            if response.status_code == 401:
+                error_msg = "Invalid Apollo API key"
+            elif response.status_code == 403:
+                error_msg = "Insufficient credits or permissions. Check your Apollo plan."
+                help_msg = "Apollo uses export credits for enrichment. Visit https://app.apollo.io/#/settings/plans"
+            elif response.status_code == 404:
+                error_msg = "Resource not found"
+            elif response.status_code == 422:
+                error_msg = "Invalid parameters"
+            elif response.status_code == 429:
+                error_msg = "Apollo rate limit exceeded. Try again later."
+
+            result = {
+                "success": False,
+                "error": error_msg,
+                "status_code": response.status_code,
+                "details": details,
+                "retryable": retryable,
+            }
+            if help_msg:
+                result["help"] = help_msg
+
+            return result
+
+        return {"success": True, "data": response.json()}
 
     def enrich_person(
         self,
@@ -108,40 +129,41 @@ class _ApolloClient:
         )
         result = self._handle_response(response)
 
+        if not result.get("success"):
+            return result
+
+        data = result.get("data", {})
+
         # Handle "not found" gracefully
-        if "error" not in result and result.get("person") is None:
+        if data.get("person") is None:
             return {"match_found": False, "message": "No matching person found"}
 
-        if "error" not in result:
-            person = result.get("person", {})
-            return {
-                "match_found": True,
-                "person": {
-                    "id": person.get("id"),
-                    "first_name": person.get("first_name"),
-                    "last_name": person.get("last_name"),
-                    "name": person.get("name"),
-                    "title": person.get("title"),
-                    "email": person.get("email"),
-                    "email_status": person.get("email_status"),
-                    "phone_numbers": person.get("phone_numbers", []),
-                    "linkedin_url": person.get("linkedin_url"),
-                    "twitter_url": person.get("twitter_url"),
-                    "city": person.get("city"),
-                    "state": person.get("state"),
-                    "country": person.get("country"),
-                    "organization": {
-                        "id": person.get("organization", {}).get("id"),
-                        "name": person.get("organization", {}).get("name"),
-                        "domain": person.get("organization", {}).get("primary_domain"),
-                        "industry": person.get("organization", {}).get("industry"),
-                        "employee_count": person.get("organization", {}).get(
-                            "estimated_num_employees"
-                        ),
-                    },
+        person = data.get("person", {})
+        return {
+            "match_found": True,
+            "person": {
+                "id": person.get("id"),
+                "first_name": person.get("first_name"),
+                "last_name": person.get("last_name"),
+                "name": person.get("name"),
+                "title": person.get("title"),
+                "email": person.get("email"),
+                "email_status": person.get("email_status"),
+                "phone_numbers": person.get("phone_numbers", []),
+                "linkedin_url": person.get("linkedin_url"),
+                "twitter_url": person.get("twitter_url"),
+                "city": person.get("city"),
+                "state": person.get("state"),
+                "country": person.get("country"),
+                "organization": {
+                    "id": person.get("organization", {}).get("id"),
+                    "name": person.get("organization", {}).get("name"),
+                    "domain": person.get("organization", {}).get("primary_domain"),
+                    "industry": person.get("organization", {}).get("industry"),
+                    "employee_count": person.get("organization", {}).get("estimated_num_employees"),
                 },
-            }
-        return result
+            },
+        }
 
     def enrich_company(self, domain: str) -> dict[str, Any]:
         """Enrich a company by domain."""
@@ -157,43 +179,46 @@ class _ApolloClient:
         )
         result = self._handle_response(response)
 
+        if not result.get("success"):
+            return result
+
+        data = result.get("data", {})
+
         # Handle "not found" gracefully
-        if "error" not in result and result.get("organization") is None:
+        if data.get("organization") is None:
             return {"match_found": False, "message": "No matching company found"}
 
-        if "error" not in result:
-            org = result.get("organization", {})
-            return {
-                "match_found": True,
-                "organization": {
-                    "id": org.get("id"),
-                    "name": org.get("name"),
-                    "domain": org.get("primary_domain"),
-                    "website_url": org.get("website_url"),
-                    "linkedin_url": org.get("linkedin_url"),
-                    "twitter_url": org.get("twitter_url"),
-                    "facebook_url": org.get("facebook_url"),
-                    "industry": org.get("industry"),
-                    "keywords": org.get("keywords", []),
-                    "employee_count": org.get("estimated_num_employees"),
-                    "employee_count_range": org.get("employee_count_range"),
-                    "annual_revenue": org.get("annual_revenue"),
-                    "annual_revenue_printed": org.get("annual_revenue_printed"),
-                    "total_funding": org.get("total_funding"),
-                    "total_funding_printed": org.get("total_funding_printed"),
-                    "latest_funding_round_date": org.get("latest_funding_round_date"),
-                    "latest_funding_stage": org.get("latest_funding_stage"),
-                    "founded_year": org.get("founded_year"),
-                    "phone": org.get("phone"),
-                    "city": org.get("city"),
-                    "state": org.get("state"),
-                    "country": org.get("country"),
-                    "street_address": org.get("street_address"),
-                    "technologies": org.get("technologies", []),
-                    "short_description": org.get("short_description"),
-                },
-            }
-        return result
+        org = data.get("organization", {})
+        return {
+            "match_found": True,
+            "organization": {
+                "id": org.get("id"),
+                "name": org.get("name"),
+                "domain": org.get("primary_domain"),
+                "website_url": org.get("website_url"),
+                "linkedin_url": org.get("linkedin_url"),
+                "twitter_url": org.get("twitter_url"),
+                "facebook_url": org.get("facebook_url"),
+                "industry": org.get("industry"),
+                "keywords": org.get("keywords", []),
+                "employee_count": org.get("estimated_num_employees"),
+                "employee_count_range": org.get("employee_count_range"),
+                "annual_revenue": org.get("annual_revenue"),
+                "annual_revenue_printed": org.get("annual_revenue_printed"),
+                "total_funding": org.get("total_funding"),
+                "total_funding_printed": org.get("total_funding_printed"),
+                "latest_funding_round_date": org.get("latest_funding_round_date"),
+                "latest_funding_stage": org.get("latest_funding_stage"),
+                "founded_year": org.get("founded_year"),
+                "phone": org.get("phone"),
+                "city": org.get("city"),
+                "state": org.get("state"),
+                "country": org.get("country"),
+                "street_address": org.get("street_address"),
+                "technologies": org.get("technologies", []),
+                "short_description": org.get("short_description"),
+            },
+        }
 
     def search_people(
         self,
@@ -232,42 +257,45 @@ class _ApolloClient:
         )
         result = self._handle_response(response)
 
-        if "error" not in result:
-            people = result.get("people", [])
-            return {
-                "total": result.get("pagination", {}).get("total_entries", len(people)),
-                "page": result.get("pagination", {}).get("page", 1),
-                "per_page": result.get("pagination", {}).get("per_page", limit),
-                "results": [
-                    {
-                        "id": p.get("id"),
-                        "first_name": p.get("first_name"),
-                        "last_name": p.get("last_name"),
-                        "name": p.get("name"),
-                        "title": p.get("title"),
-                        "email": p.get("email"),
-                        "email_status": p.get("email_status"),
-                        "linkedin_url": p.get("linkedin_url"),
-                        "city": p.get("city"),
-                        "state": p.get("state"),
-                        "country": p.get("country"),
-                        "seniority": p.get("seniority"),
-                        "organization": {
-                            "id": p.get("organization", {}).get("id")
-                            if p.get("organization")
-                            else None,
-                            "name": p.get("organization", {}).get("name")
-                            if p.get("organization")
-                            else None,
-                            "domain": p.get("organization", {}).get("primary_domain")
-                            if p.get("organization")
-                            else None,
-                        },
-                    }
-                    for p in people
-                ],
-            }
-        return result
+        if not result.get("success"):
+            return result
+
+        data = result.get("data", {})
+
+        people = data.get("people", [])
+        return {
+            "total": data.get("pagination", {}).get("total_entries", len(people)),
+            "page": data.get("pagination", {}).get("page", 1),
+            "per_page": data.get("pagination", {}).get("per_page", limit),
+            "results": [
+                {
+                    "id": p.get("id"),
+                    "first_name": p.get("first_name"),
+                    "last_name": p.get("last_name"),
+                    "name": p.get("name"),
+                    "title": p.get("title"),
+                    "email": p.get("email"),
+                    "email_status": p.get("email_status"),
+                    "linkedin_url": p.get("linkedin_url"),
+                    "city": p.get("city"),
+                    "state": p.get("state"),
+                    "country": p.get("country"),
+                    "seniority": p.get("seniority"),
+                    "organization": {
+                        "id": p.get("organization", {}).get("id")
+                        if p.get("organization")
+                        else None,
+                        "name": p.get("organization", {}).get("name")
+                        if p.get("organization")
+                        else None,
+                        "domain": p.get("organization", {}).get("primary_domain")
+                        if p.get("organization")
+                        else None,
+                    },
+                }
+                for p in people
+            ],
+        }
 
     def get_person_activities(
         self,
@@ -281,26 +309,29 @@ class _ApolloClient:
             timeout=30.0,
         )
         result = self._handle_response(response)
-        if "error" not in result:
-            activities = result.get("activities", [])
-            return {
-                "contact_id": person_id,
-                "count": len(activities),
-                "activities": [
-                    {
-                        "id": a.get("id"),
-                        "type": a.get("type"),
-                        "subject": a.get("subject"),
-                        "body": (a.get("body") or "")[:500],
-                        "created_at": a.get("created_at"),
-                        "completed_at": a.get("completed_at"),
-                        "status": a.get("status"),
-                        "priority": a.get("priority"),
-                    }
-                    for a in activities[:50]
-                ],
-            }
-        return result
+
+        if not result.get("success"):
+            return result
+
+        data = result.get("data", {})
+        activities = data.get("activities", [])
+        return {
+            "contact_id": person_id,
+            "count": len(activities),
+            "activities": [
+                {
+                    "id": a.get("id"),
+                    "type": a.get("type"),
+                    "subject": a.get("subject"),
+                    "body": (a.get("body") or "")[:500],
+                    "created_at": a.get("created_at"),
+                    "completed_at": a.get("completed_at"),
+                    "status": a.get("status"),
+                    "priority": a.get("priority"),
+                }
+                for a in activities[:50]
+            ],
+        }
 
     def list_email_accounts(self) -> dict[str, Any]:
         """List email accounts connected to Apollo."""
@@ -310,25 +341,28 @@ class _ApolloClient:
             timeout=30.0,
         )
         result = self._handle_response(response)
-        if "error" not in result:
-            accounts = result.get("email_accounts", [])
-            return {
-                "count": len(accounts),
-                "email_accounts": [
-                    {
-                        "id": a.get("id"),
-                        "email": a.get("email"),
-                        "type": a.get("type"),
-                        "active": a.get("active"),
-                        "default": a.get("default"),
-                        "last_synced_at": a.get("last_synced_at"),
-                        "sending_daily_limit": a.get("sending_daily_limit"),
-                        "emails_sent_today": a.get("emails_sent_today"),
-                    }
-                    for a in accounts
-                ],
-            }
-        return result
+
+        if not result.get("success"):
+            return result
+
+        data = result.get("data", {})
+        accounts = data.get("email_accounts", [])
+        return {
+            "count": len(accounts),
+            "email_accounts": [
+                {
+                    "id": a.get("id"),
+                    "email": a.get("email"),
+                    "type": a.get("type"),
+                    "active": a.get("active"),
+                    "default": a.get("default"),
+                    "last_synced_at": a.get("last_synced_at"),
+                    "sending_daily_limit": a.get("sending_daily_limit"),
+                    "emails_sent_today": a.get("emails_sent_today"),
+                }
+                for a in accounts
+            ],
+        }
 
     def bulk_enrich_people(
         self,
@@ -343,27 +377,30 @@ class _ApolloClient:
             timeout=60.0,
         )
         result = self._handle_response(response)
-        if "error" not in result:
-            matches = result.get("matches", [])
-            enriched = []
-            for m in matches:
-                if m is None:
-                    enriched.append({"match_found": False})
-                    continue
-                enriched.append(
-                    {
-                        "match_found": True,
-                        "id": m.get("id"),
-                        "name": m.get("name"),
-                        "title": m.get("title"),
-                        "email": m.get("email"),
-                        "email_status": m.get("email_status"),
-                        "linkedin_url": m.get("linkedin_url"),
-                        "organization_name": (m.get("organization") or {}).get("name"),
-                    }
-                )
-            return {"count": len(enriched), "results": enriched}
-        return result
+
+        if not result.get("success"):
+            return result
+
+        data = result.get("data", {})
+        matches = data.get("matches", [])
+        enriched = []
+        for m in matches:
+            if m is None:
+                enriched.append({"match_found": False})
+                continue
+            enriched.append(
+                {
+                    "match_found": True,
+                    "id": m.get("id"),
+                    "name": m.get("name"),
+                    "title": m.get("title"),
+                    "email": m.get("email"),
+                    "email_status": m.get("email_status"),
+                    "linkedin_url": m.get("linkedin_url"),
+                    "organization_name": (m.get("organization") or {}).get("name"),
+                }
+            )
+        return {"count": len(enriched), "results": enriched}
 
     def search_companies(
         self,
@@ -396,32 +433,35 @@ class _ApolloClient:
         )
         result = self._handle_response(response)
 
-        if "error" not in result:
-            orgs = result.get("organizations", [])
-            return {
-                "total": result.get("pagination", {}).get("total_entries", len(orgs)),
-                "page": result.get("pagination", {}).get("page", 1),
-                "per_page": result.get("pagination", {}).get("per_page", limit),
-                "results": [
-                    {
-                        "id": o.get("id"),
-                        "name": o.get("name"),
-                        "domain": o.get("primary_domain"),
-                        "website_url": o.get("website_url"),
-                        "linkedin_url": o.get("linkedin_url"),
-                        "industry": o.get("industry"),
-                        "employee_count": o.get("estimated_num_employees"),
-                        "employee_count_range": o.get("employee_count_range"),
-                        "annual_revenue_printed": o.get("annual_revenue_printed"),
-                        "city": o.get("city"),
-                        "state": o.get("state"),
-                        "country": o.get("country"),
-                        "short_description": o.get("short_description"),
-                    }
-                    for o in orgs
-                ],
-            }
-        return result
+        if not result.get("success"):
+            return result
+
+        data = result.get("data", {})
+
+        orgs = data.get("organizations", [])
+        return {
+            "total": data.get("pagination", {}).get("total_entries", len(orgs)),
+            "page": data.get("pagination", {}).get("page", 1),
+            "per_page": data.get("pagination", {}).get("per_page", limit),
+            "results": [
+                {
+                    "id": o.get("id"),
+                    "name": o.get("name"),
+                    "domain": o.get("primary_domain"),
+                    "website_url": o.get("website_url"),
+                    "linkedin_url": o.get("linkedin_url"),
+                    "industry": o.get("industry"),
+                    "employee_count": o.get("estimated_num_employees"),
+                    "employee_count_range": o.get("employee_count_range"),
+                    "annual_revenue_printed": o.get("annual_revenue_printed"),
+                    "city": o.get("city"),
+                    "state": o.get("state"),
+                    "country": o.get("country"),
+                    "short_description": o.get("short_description"),
+                }
+                for o in orgs
+            ],
+        }
 
 
 def register_tools(
