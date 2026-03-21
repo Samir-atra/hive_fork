@@ -384,6 +384,8 @@ class GraphSpec(BaseModel):
     goal_id: str
     version: str = "1.0.0"
 
+    token_budget: int | None = Field(default=None, description="Maximum total tokens allowed for graph execution")
+
     # Graph structure
     entry_node: str = Field(description="ID of the first node to execute")
     entry_points: dict[str, str] = Field(

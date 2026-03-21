@@ -244,6 +244,7 @@ class LoopConfig:
     stall_detection_threshold: int = 3
     stall_similarity_threshold: float = 0.85
     max_context_tokens: int = 32_000
+    token_budget: int | None = Field(default=None, description="Maximum total tokens allowed for this event loop execution")
     store_prefix: str = ""
 
     # Overflow margin for max_tool_calls_per_turn.  Tool calls are only
