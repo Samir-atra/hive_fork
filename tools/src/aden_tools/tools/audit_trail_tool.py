@@ -92,31 +92,6 @@ def register_tools(mcp: FastMCP) -> None:
 
         return {"run_id": run_id, "events": events}
 
-    def _iter_all_runs(work_dir: Path):
-        """Yield parsed run data from both modern and legacy directory structures."""
-        # Check modern directory: runtime_logs/runs/<run_id>/run.json
-        modern_runs_dir = work_dir / "runtime_logs" / "runs"
-        if modern_runs_dir.exists():
-            for run_dir in modern_runs_dir.iterdir():
-                if run_dir.is_dir():
-                    run_file = run_dir / "run.json"
-                    if run_file.exists():
-                        try:
-                            with open(run_file, encoding="utf-8") as f:
-                                yield json.load(f)
-                        except (json.JSONDecodeError, OSError):
-                            continue
-
-        # Check legacy directory: runs/<run_id>.json
-        legacy_runs_dir = work_dir / "runs"
-        if legacy_runs_dir.exists():
-            for run_file in legacy_runs_dir.glob("*.json"):
-                try:
-                    with open(run_file, encoding="utf-8") as f:
-                        yield json.load(f)
-                except (json.JSONDecodeError, OSError):
-                    continue
-
     @mcp.tool()
     def get_node_history(agent_work_dir: str, node_id: str) -> dict[str, Any]:
         """
@@ -130,12 +105,22 @@ def register_tools(mcp: FastMCP) -> None:
             A dictionary containing the decisions made by the node.
         """
         work_dir = Path(agent_work_dir)
+        runs_dir = work_dir / "runs"
+
+        if not runs_dir.exists():
+            return {"error": f"No runs directory found in {agent_work_dir}"}
 
         history = []
-        for run_data in _iter_all_runs(work_dir):
-            for dec in run_data.get("decisions", []):
-                if dec.get("node_id") == node_id:
-                    history.append({"run_id": run_data.get("id"), "decision": dec})
+        for run_file in runs_dir.glob("*.json"):
+            try:
+                with open(run_file, encoding="utf-8") as f:
+                    run_data = json.load(f)
+
+                for dec in run_data.get("decisions", []):
+                    if dec.get("node_id") == node_id:
+                        history.append({"run_id": run_data.get("id"), "decision": dec})
+            except (json.JSONDecodeError, OSError):
+                continue
 
         history.sort(key=lambda x: x["decision"].get("timestamp", ""))
         return {"node_id": node_id, "history": history}
@@ -157,24 +142,34 @@ def register_tools(mcp: FastMCP) -> None:
             A dictionary containing matching decisions.
         """
         work_dir = Path(agent_work_dir)
+        runs_dir = work_dir / "runs"
+
+        if not runs_dir.exists():
+            return {"error": f"No runs directory found in {agent_work_dir}"}
 
         start_dt = _parse_datetime(start_time)
         end_dt = _parse_datetime(end_time)
 
         results = []
-        for run_data in _iter_all_runs(work_dir):
-            for dec in run_data.get("decisions", []):
-                if node_id and dec.get("node_id") != node_id:
-                    continue
+        for run_file in runs_dir.glob("*.json"):
+            try:
+                with open(run_file, encoding="utf-8") as f:
+                    run_data = json.load(f)
 
-                dec_dt = _parse_datetime(dec.get("timestamp"))
-                if dec_dt:
-                    if start_dt and dec_dt < start_dt:
-                        continue
-                    if end_dt and dec_dt > end_dt:
+                for dec in run_data.get("decisions", []):
+                    if node_id and dec.get("node_id") != node_id:
                         continue
 
-                results.append({"run_id": run_data.get("id"), "decision": dec})
+                    dec_dt = _parse_datetime(dec.get("timestamp"))
+                    if dec_dt:
+                        if start_dt and dec_dt < start_dt:
+                            continue
+                        if end_dt and dec_dt > end_dt:
+                            continue
+
+                    results.append({"run_id": run_data.get("id"), "decision": dec})
+            except (json.JSONDecodeError, OSError):
+                continue
 
         results.sort(key=lambda x: x["decision"].get("timestamp", ""))
         return {"results": results}
