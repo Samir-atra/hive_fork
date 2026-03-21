@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-pytest.importorskip("opentelemetry")
+pytest.importorskip("opentelemetry.sdk")
 
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
