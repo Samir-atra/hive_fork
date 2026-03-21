@@ -148,47 +148,18 @@ class EncryptedFileStorage(CredentialStorage):
         if encryption_key:
             self._key = encryption_key
         else:
-            strict_mode = os.getenv("HIVE_STRICT_CREDENTIAL_MODE", "false").lower() == "true"
-            if strict_mode and not os.getenv(key_env_var):
-                raise RuntimeError(
-                    f"Production mode requires {key_env_var} environment variable.\n"
-                    "Generate a key with: python -c 'from cryptography.fernet import Fernet; "
-                    "print(Fernet.generate_key().decode())'\n"
-                    f"Then: export {key_env_var}='<generated-key>'"
+            key_str = os.environ.get(key_env_var)
+            if key_str:
+                self._key = key_str.encode()
+            else:
+                # Generate new key
+                self._key = Fernet.generate_key()
+                logger.warning(
+                    f"Generated new encryption key. To persist credentials across restarts, "
+                    f"set {key_env_var}={self._key.decode()}"
                 )
-            self._key = self._get_or_create_key(key_env_var)
 
         self._fernet = Fernet(self._key)
-
-    def _get_or_create_key(self, key_env_var: str) -> bytes:
-        """Get encryption key from env var or generate and persist."""
-        # Check environment variable first
-        key_str = os.environ.get(key_env_var)
-        if key_str:
-            return key_str.encode()
-
-        # Check for persisted key file
-        key_file = self.base_path / ".encryption_key"
-        if key_file.exists():
-            logger.info(f"Loading encryption key from {key_file}")
-            return key_file.read_bytes()
-
-        # Generate new key and persist
-        from cryptography.fernet import Fernet
-        new_key = Fernet.generate_key()
-
-        # Save with restrictive permissions (owner read/write only)
-        key_file.touch(mode=0o600)
-        key_file.write_bytes(new_key)
-
-        logger.critical(
-            f"Generated new encryption key and saved to {key_file}\n"
-            f"CRITICAL: Back up this file immediately!\n"
-            f"Loss of this file means permanent loss of all credentials.\n"
-            f"For production, set {key_env_var} environment variable instead."
-        )
-
-        return new_key
 
     def _ensure_dirs(self) -> None:
         """Create directory structure."""
@@ -234,17 +205,9 @@ class EncryptedFileStorage(CredentialStorage):
             json_bytes = self._fernet.decrypt(encrypted)
             data = json.loads(json_bytes.decode("utf-8-sig"))
         except Exception as e:
-            # Log detailed error for debugging (server-side only)
-            logger.debug(
-                f"Decryption failed for '{credential_id}': {e}",
-                exc_info=True  # Include full traceback in debug logs
-            )
-
-            # Raise generic error to user (no implementation details)
             raise CredentialDecryptionError(
-                f"Failed to decrypt credential '{credential_id}'. "
-                "Verify HIVE_CREDENTIAL_KEY is correct and matches the key used during encryption."
-            ) from None
+                f"Failed to decrypt credential '{credential_id}': {e}"
+            ) from e
 
         # Deserialize
         return self._deserialize_credential(data)
@@ -272,6 +235,8 @@ class EncryptedFileStorage(CredentialStorage):
         """Check if credential exists."""
         return self._cred_path(credential_id).exists()
 
+<<<<<<< HEAD
+=======
     def rotate_key(self, new_key: bytes, audit_log_path: Path | None = None) -> dict:
         """
         Re-encrypt all credentials with a new encryption key.
@@ -351,6 +316,7 @@ class EncryptedFileStorage(CredentialStorage):
 
         return results
 
+>>>>>>> b583be1 (fix: multiple vulnerabilities in encrypted credential storage - closes #4654)
     def _serialize_credential(self, credential: CredentialObject) -> dict[str, Any]:
         """Convert credential to JSON-serializable dict, extracting secret values."""
         data = credential.model_dump(mode="json")
