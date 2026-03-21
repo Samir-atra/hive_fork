@@ -1,6 +1,9 @@
 from unittest.mock import MagicMock
 
 import pytest
+
+pytest.importorskip("opentelemetry")
+
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
 from framework.observability.otel_adapter import MetricsAdapter, OTELExporter
@@ -53,7 +56,7 @@ async def test_otel_exporter_spans(event_bus, mock_span_exporter):
             type=EventType.EXECUTION_STARTED,
             stream_id=stream_id,
             execution_id=execution_id,
-            data={}
+            data={},
         )
     )
 
