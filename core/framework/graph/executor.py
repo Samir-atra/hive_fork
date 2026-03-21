@@ -1911,6 +1911,7 @@ class GraphExecutor:
     VALID_NODE_TYPES = {
         "event_loop",
         "gcu",
+        "agent_invoke",
     }
     # Node types removed in v0.5 — provide migration guidance
     REMOVED_NODE_TYPES = {
@@ -1946,6 +1947,12 @@ class GraphExecutor:
             )
 
         # Create based on type
+        if node_spec.node_type == "agent_invoke":
+            from framework.graph.agent_invoke_node import AgentInvokeNode
+            node = AgentInvokeNode()
+            self.node_registry[node_spec.id] = node
+            return node
+
         if node_spec.node_type in ("event_loop", "gcu"):
             # Auto-create EventLoopNode with sensible defaults.
             # Custom configs can still be pre-registered via node_registry.

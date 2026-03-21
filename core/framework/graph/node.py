@@ -166,7 +166,17 @@ class NodeSpec(BaseModel):
     # Node behavior type
     node_type: str = Field(
         default="event_loop",
-        description="Type: 'event_loop' (recommended), 'gcu' (browser automation).",
+        description="Type: 'event_loop' (recommended), 'gcu' (browser automation), 'agent_invoke'.",
+    )
+
+    # Agent delegation
+    agent_ref: str | None = Field(
+        default=None,
+        description="The ID or path of the agent to invoke (required for 'agent_invoke' nodes)",
+    )
+    input_mapping: dict[str, str] = Field(
+        default_factory=dict,
+        description="Mapping of current memory keys to sub-agent memory keys",
     )
 
     # Data flow
