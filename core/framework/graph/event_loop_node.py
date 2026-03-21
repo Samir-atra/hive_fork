@@ -782,6 +782,9 @@ class EventLoopNode(NodeProtocol):
         if ctx.is_subagent_mode and ctx.report_callback is not None:
             tools.append(self._build_report_to_parent_tool())
 
+        # Add discover_nodes tool to allow nodes to inspect the graph topology
+        tools.append(self._build_discover_nodes_tool())
+
         logger.info(
             "[%s] Tools available (%d): %s | client_facing=%s | judge=%s",
             node_id,
@@ -2622,6 +2625,29 @@ class EventLoopNode(NodeProtocol):
                     )
                     pending_subagent.append(tc)
 
+                elif tc.tool_name == "discover_nodes":
+                    # --- Framework-level discover_nodes handling ---
+                    _tc_start = time.time()
+                    _tc_ts = datetime.now(UTC).isoformat()
+                    result = self._handle_discover_nodes(tc.tool_input, ctx)
+                    result = ToolResult(
+                        tool_use_id=tc.tool_use_id,
+                        content=result.content,
+                        is_error=result.is_error,
+                    )
+                    logged_tool_calls.append(
+                        {
+                            "tool_use_id": tc.tool_use_id,
+                            "tool_name": "discover_nodes",
+                            "tool_input": tc.tool_input,
+                            "content": result.content,
+                            "is_error": result.is_error,
+                            "start_timestamp": _tc_ts,
+                            "duration_s": round(time.time() - _tc_start, 3),
+                        }
+                    )
+                    results_by_id[tc.tool_use_id] = result
+
                 elif tc.tool_name == "report_to_parent":
                     # --- Report from sub-agent to parent (optionally blocking) ---
                     reported_to_parent = True
@@ -2844,6 +2870,7 @@ class EventLoopNode(NodeProtocol):
                     "escalate",
                     "delegate_to_sub_agent",
                     "report_to_parent",
+                    "discover_nodes",
                 ):
                     tool_entry = {
                         "tool_use_id": tc.tool_use_id,
@@ -3304,6 +3331,66 @@ class EventLoopNode(NodeProtocol):
                 },
                 "required": ["message"],
             },
+        )
+
+    def _build_discover_nodes_tool(self) -> Tool:
+        """Build the synthetic discover_nodes tool for graph topology introspection.
+
+        Returns:
+            Tool definition.
+        """
+        return Tool(
+            name="discover_nodes",
+            description=(
+                "Discover other nodes/agents available in the current graph. "
+                "Returns a list of nodes including their IDs, descriptions, "
+                "input requirements, and available tools. "
+                "Use this to understand the capabilities of other nodes, "
+                "which is useful for planning, dynamic routing, or "
+                "determining the appropriate sub-agent to delegate to."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {},
+            },
+        )
+
+    def _handle_discover_nodes(
+        self,
+        tool_input: dict[str, Any],
+        ctx: NodeContext,
+    ) -> ToolResult:
+        """Handle discover_nodes tool call. Returns ToolResult (sync)."""
+        nodes = []
+        # Get the full registry, prioritizing the shared one to see all nodes
+        registry = ctx.shared_node_registry or ctx.node_registry or {}
+
+        for node_id, spec in registry.items():
+            # Filter out temporary receivers like EscalationReceiver
+            if hasattr(spec, "description"):
+                nodes.append(
+                    {
+                        "id": node_id,
+                        "name": getattr(spec, "name", ""),
+                        "description": getattr(spec, "description", ""),
+                        "input_keys": getattr(spec, "input_keys", []),
+                        "output_keys": getattr(spec, "output_keys", []),
+                        "tools": getattr(spec, "tools", []),
+                        "sub_agents": getattr(spec, "sub_agents", []),
+                    }
+                )
+
+        if not nodes:
+            return ToolResult(
+                tool_use_id="",
+                content="No other nodes found in the graph.",
+                is_error=False,
+            )
+
+        return ToolResult(
+            tool_use_id="",
+            content=json.dumps({"nodes": nodes}, indent=2, default=str),
+            is_error=False,
         )
 
     def _handle_set_output(
