@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from framework.llm.provider import Tool, ToolResult, ToolUse
+from framework.runner.circuit_breaker import get_circuit_breaker
 
 logger = logging.getLogger(__name__)
 
@@ -232,6 +233,19 @@ class ToolRegistry:
     def get_tools(self) -> dict[str, Tool]:
         """Get all registered Tool objects."""
         return {name: rt.tool for name, rt in self._tools.items()}
+
+    def get_server_health(self, server_name: str) -> dict[str, Any]:
+        """Get health statistics for a specific MCP server."""
+        breaker = get_circuit_breaker(server_name)
+        return breaker.get_stats()
+
+    def get_health_report(self) -> dict[str, dict[str, Any]]:
+        """Get health statistics for all registered MCP servers."""
+        report = {}
+        for client in self._mcp_clients:
+            server_name = client.config.name
+            report[server_name] = self.get_server_health(server_name)
+        return report
 
     def get_executor(self) -> Callable[[ToolUse], ToolResult]:
         """

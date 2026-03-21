@@ -14,6 +14,8 @@ from typing import Any, Literal
 
 import httpx
 
+from framework.runner.circuit_breaker import CircuitOpenError, get_circuit_breaker
+
 logger = logging.getLogger(__name__)
 
 
@@ -458,17 +460,34 @@ class MCPClient:
         if tool_name not in self._tools:
             raise ValueError(f"Unknown tool: {tool_name}")
 
-        if self.config.transport == "stdio":
-            with self._stdio_call_lock:
-                return self._run_async(self._call_tool_stdio_async(tool_name, arguments))
-        elif self.config.transport == "sse":
-            return self._call_tool_with_retry(
-                lambda: self._run_async(self._call_tool_stdio_async(tool_name, arguments))
-            )
-        elif self.config.transport == "unix":
-            return self._call_tool_with_retry(lambda: self._call_tool_http(tool_name, arguments))
-        else:
-            return self._call_tool_http(tool_name, arguments)
+        breaker = get_circuit_breaker(self.config.name)
+        if breaker.is_open():
+            raise CircuitOpenError(f"Circuit breaker open for {self.config.name}")
+
+        try:
+            if self.config.transport == "stdio":
+                with self._stdio_call_lock:
+                    result = self._run_async(self._call_tool_stdio_async(tool_name, arguments))
+            elif self.config.transport == "sse":
+                result = self._call_tool_with_retry(
+                    lambda: self._run_async(self._call_tool_stdio_async(tool_name, arguments))
+                )
+            elif self.config.transport == "unix":
+                result = self._call_tool_with_retry(
+                    lambda: self._call_tool_http(tool_name, arguments)
+                )
+            else:
+                result = self._call_tool_http(tool_name, arguments)
+
+            breaker.record_success()
+            return result
+        except (ValueError, TypeError, KeyError):
+            # Non-failure exceptions (e.g. unknown tool) don't trip the breaker
+            raise
+        except Exception as e:
+            # Network or server-side failures trip the breaker
+            breaker.record_failure(e)
+            raise
 
     def _call_tool_with_retry(self, call: Any) -> Any:
         """Retry transient MCP transport failures once after reconnecting."""
