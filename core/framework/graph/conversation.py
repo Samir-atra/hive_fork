@@ -330,7 +330,7 @@ class NodeConversation:
         self,
         system_prompt: str = "",
         max_context_tokens: int = 32000,
-        compaction_threshold: float = 0.8,
+        compaction_threshold: float = 0.7,
         output_keys: list[str] | None = None,
         store: ConversationStore | None = None,
     ) -> None:
@@ -528,20 +528,41 @@ class NodeConversation:
 
         Uses actual API input token count when available (set via
         :meth:`update_token_count`), otherwise falls back to a
-        ``total_chars / 4`` heuristic that includes both message content
-        AND tool_call argument sizes.
+        heuristic that adapts based on content type (JSON/Code vs CJK vs English).
+        Includes both message content AND tool_call argument sizes.
         """
         if self._last_api_input_tokens is not None:
             return self._last_api_input_tokens
-        total_chars = 0
+
+        def _estimate_for_text(text: str) -> int:
+            if not text:
+                return 0
+            length = len(text)
+
+            # Heuristic for CJK text: ~1 token per char
+            # Sample first 1000 chars for efficiency if text is long
+            sample_len = min(length, 1000)
+            cjk_count = sum(1 for c in text[:sample_len] if "\u4e00" <= c <= "\u9fff")
+            if cjk_count > sample_len * 0.1:
+                return length
+
+            # Heuristic for JSON/Code: ~2.5 chars per token
+            code_chars = sum(1 for c in text[:sample_len] if c in '{}[];:<>/"=')
+            if code_chars > sample_len * 0.05:
+                return int(length / 2.5)
+
+            # Fallback for regular text: ~4 chars per token
+            return length // 4
+
+        tokens = 0
         for m in self._messages:
-            total_chars += len(m.content)
+            tokens += _estimate_for_text(m.content)
             if m.tool_calls:
                 for tc in m.tool_calls:
                     func = tc.get("function", {})
-                    total_chars += len(func.get("arguments", ""))
-                    total_chars += len(func.get("name", ""))
-        return total_chars // 4
+                    tokens += _estimate_for_text(func.get("arguments", ""))
+                    tokens += len(func.get("name", "")) // 4
+        return tokens
 
     def update_token_count(self, actual_input_tokens: int) -> None:
         """Store actual API input token count for more accurate compaction.
@@ -1097,7 +1118,7 @@ class NodeConversation:
         conv = cls(
             system_prompt=meta.get("system_prompt", ""),
             max_context_tokens=meta.get("max_context_tokens", 32000),
-            compaction_threshold=meta.get("compaction_threshold", 0.8),
+            compaction_threshold=meta.get("compaction_threshold", 0.7),
             output_keys=meta.get("output_keys"),
             store=store,
         )
