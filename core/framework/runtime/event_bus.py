@@ -118,6 +118,7 @@ class EventType(StrEnum):
     # Context management
     CONTEXT_COMPACTED = "context_compacted"
     CONTEXT_USAGE_UPDATED = "context_usage_updated"
+    MISSING_CONTEXT_REPORTED = "missing_context_reported"
 
     # External triggers
     WEBHOOK_RECEIVED = "webhook_received"
@@ -1149,6 +1150,30 @@ class EventBus:
                     "headers": headers,
                     "payload": payload,
                     "query_params": query_params or {},
+                },
+            )
+        )
+
+    async def emit_missing_context_reported(
+        self,
+        stream_id: str,
+        node_id: str,
+        missing_information: list[str],
+        reason: str = "",
+        resolution_actions: str = "",
+        execution_id: str | None = None,
+    ) -> None:
+        """Emit missing context reported event."""
+        await self.publish(
+            AgentEvent(
+                type=EventType.MISSING_CONTEXT_REPORTED,
+                stream_id=stream_id,
+                node_id=node_id,
+                execution_id=execution_id,
+                data={
+                    "missing_information": missing_information,
+                    "reason": reason,
+                    "resolution_actions": resolution_actions,
                 },
             )
         )
