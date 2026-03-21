@@ -102,6 +102,16 @@ def register_commands(subparsers: argparse._SubParsersAction) -> None:
         type=str,
         help="Path to agent folder (containing agent.json)",
     )
+    validate_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Fail on warnings as well as errors",
+    )
+    validate_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output validation report in JSON format",
+    )
     validate_parser.set_defaults(func=cmd_validate)
 
     # list command
@@ -632,40 +642,93 @@ def cmd_info(args: argparse.Namespace) -> int:
 
 def cmd_validate(args: argparse.Namespace) -> int:
     """Validate an exported agent."""
+    import json
+    import sys
+
     from framework.credentials.models import CredentialError
+    from framework.graph.analyzer import GraphAnalyzer
     from framework.runner import AgentRunner
 
     try:
         runner = AgentRunner.load(args.agent_path)
     except CredentialError as e:
-        print(f"\n{e}", file=sys.stderr)
+        if getattr(args, "json", False):
+            print(json.dumps({"valid": False, "errors": [str(e)]}, indent=2))
+        else:
+            print(f"\n{e}", file=sys.stderr)
         return 1
     except FileNotFoundError as e:
-        print(f"Error: {e}", file=sys.stderr)
+        if getattr(args, "json", False):
+            print(json.dumps({"valid": False, "errors": [str(e)]}, indent=2))
+        else:
+            print(f"Error: {e}", file=sys.stderr)
         return 1
 
     validation = runner.validate()
 
-    if validation.valid:
+    # Run static graph analysis
+    analyzer = GraphAnalyzer(runner.graph)
+    analysis_report = analyzer.analyze()
+
+    is_valid = validation.valid and analysis_report.passed()
+
+    # Check if strict mode fails validation
+    has_warnings = bool(validation.warnings) or bool(analysis_report.warnings)
+    has_missing_tools = bool(validation.missing_tools)
+
+    if getattr(args, "strict", False) and (has_warnings or has_missing_tools):
+        is_valid = False
+
+    if getattr(args, "json", False):
+        output = {
+            "valid": is_valid,
+            "errors": validation.errors + [i.message for i in analysis_report.errors],
+            "warnings": validation.warnings + [i.message for i in analysis_report.warnings],
+            "infos": [i.message for i in analysis_report.infos],
+            "missing_tools": validation.missing_tools,
+            "token_estimate": analysis_report.token_estimate,
+        }
+        print(json.dumps(output, indent=2))
+        runner.cleanup()
+        return 0 if is_valid else 1
+
+    # Standard CLI output
+    if is_valid:
         print("✓ Agent is valid")
     else:
-        print("✗ Agent has errors:")
+        print("✗ Agent has errors (or warnings in strict mode):")
+
         for error in validation.errors:
             print(f"  ERROR: {error}")
+        for error in analysis_report.errors:
+            print(f"  ERROR (Analysis): {error.message}")
 
-    if validation.warnings:
-        print("\nWarnings:")
-        for warning in validation.warnings:
-            print(f"  WARNING: {warning}")
+        if validation.warnings or analysis_report.warnings:
+            print("\nWarnings:")
+            for warning in validation.warnings:
+                print(f"  WARNING: {warning}")
+            for warning in analysis_report.warnings:
+                print(f"  WARNING (Analysis): {warning.message}")
 
-    if validation.missing_tools:
-        print("\nMissing tool implementations:")
-        for tool in validation.missing_tools:
-            print(f"  - {tool}")
-        print("\nTo fix: Create tools.py in the agent folder or register tools programmatically")
+        if analysis_report.infos:
+            print("\nInfo:")
+            for info in analysis_report.infos:
+                print(f"  INFO: {info.message}")
+
+        if validation.missing_tools:
+            print("\nMissing tool implementations:")
+            for tool in validation.missing_tools:
+                print(f"  - {tool}")
+            print(
+                "\nTo fix: Create tools.py in the agent folder or register tools programmatically"
+            )
+
+    # Token estimate
+    if analysis_report.token_estimate > 0:
+        print(f"\nEstimated Token Cost (per run): ~{analysis_report.token_estimate}")
 
     runner.cleanup()
-    return 0 if validation.valid else 1
+    return 0 if is_valid else 1
 
 
 def cmd_list(args: argparse.Namespace) -> int:
