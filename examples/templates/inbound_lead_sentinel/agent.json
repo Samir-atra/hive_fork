@@ -1,0 +1,9 @@
+{
+  "id": "inbound-lead-sentinel",
+  "name": "Inbound Lead Sentinel",
+  "description": "Automatically enriches new demo requests via Apollo.io, scores them against an ICP using the Queen Bee engine, and routes high-scoring leads into Salesforce as Opportunities.",
+  "author": "Aden HQ",
+  "version": "1.0.0",
+  "tags": ["sales", "inbound", "enrichment", "salesforce", "apollo"],
+  "entry_points": ["intake"]
+}

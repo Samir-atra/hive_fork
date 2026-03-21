@@ -1,0 +1,42 @@
+{
+  "nodes": [
+    {
+      "id": "intake",
+      "type": "tool",
+      "label": "Intake Demo Requests",
+      "description": "Fetches inbound demo requests and enforces the circuit breaker limit."
+    },
+    {
+      "id": "enrich",
+      "type": "tool",
+      "label": "Enrich Lead Data",
+      "description": "Uses Apollo.io (mocked) to add firmographic data to the lead."
+    },
+    {
+      "id": "score",
+      "type": "tool",
+      "label": "Score Leads",
+      "description": "Scores enriched leads against the Ideal Customer Profile (ICP)."
+    },
+    {
+      "id": "route",
+      "type": "tool",
+      "label": "Route Leads to Salesforce",
+      "description": "Creates Salesforce opportunities for leads exceeding the ICP threshold."
+    }
+  ],
+  "edges": [
+    {
+      "source": "intake",
+      "target": "enrich"
+    },
+    {
+      "source": "enrich",
+      "target": "score"
+    },
+    {
+      "source": "score",
+      "target": "route"
+    }
+  ]
+}
