@@ -1493,11 +1493,11 @@ class TestMarkCompleteViaReport:
         # Subagent should have completed (mark_complete bypasses output key check)
         assert result_data["metadata"]["success"] is True
 
-        # Only 2 LLM calls: the report_to_parent turn + text finish for inner loop exit.
-        # The outer loop should NOT iterate again because _evaluate returns ACCEPT.
-        assert subagent_llm._call_index == 2, (
-            f"Expected 2 LLM calls but got {subagent_llm._call_index}. "
-            "mark_complete should accept on the same outer iteration."
+        # Only 1 LLM call: the report_to_parent turn.
+        # Early exit prevents the useless text finish stream.
+        assert subagent_llm._call_index == 1, (
+            f"Expected 1 LLM call but got {subagent_llm._call_index}. "
+            "mark_complete should accept immediately and skip subsequent inner streams."
         )
 
     @pytest.mark.asyncio

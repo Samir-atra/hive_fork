@@ -1535,7 +1535,7 @@ class TestTransientErrorRetry:
         self, runtime, node_spec, memory
     ):
         """Client-facing non-transient errors should wait for input, not crash on token vars."""
-        node_spec.output_keys = []
+        node_spec.output_keys = ["result"]
         node_spec.client_facing = True
         llm = ErrorThenSuccessLLM(
             error=ValueError("bad request: blocked by policy"),
@@ -1554,9 +1554,8 @@ class TestTransientErrorRetry:
 
         result = await node.execute(ctx)
 
-        # With graceful winddown, a client facing node exits successfully
-        assert result.success is True
-        assert result.error is None
+        assert result.success is False
+        assert "Max iterations" in (result.error or "")
         node._await_user_input.assert_awaited_once()
 
     @pytest.mark.asyncio

@@ -818,8 +818,15 @@ class EventLoopNode(NodeProtocol):
             iter_start = time.time()
 
             # Inject graceful winddown warning at 80%
-            if ctx.node_spec.client_facing and iteration == int(self._config.max_iterations * 0.8):
-                await conversation.add_user_message("[System: We are approaching the conversation length limit. Please begin to wrap up the conversation naturally.]")
+            if (
+                ctx.node_spec.client_facing
+                and not ctx.node_spec.output_keys
+                and iteration == int(self._config.max_iterations * 0.8)
+            ):
+                await conversation.add_user_message(
+                    "[System: We are approaching the conversation length limit. "
+                    "Please begin to wrap up the conversation naturally.]"
+                )
 
             # 6a. Check pause (no current-iteration data yet — only log_node_complete needed)
             if await self._check_pause(ctx, conversation, iteration):
@@ -1414,9 +1421,13 @@ class EventLoopNode(NodeProtocol):
                 if user_input_requested:
                     _cf_block = True
                     _cf_prompt = ask_user_prompt
-                elif stream_id == "queen" and not real_tool_results and not outputs_set:
-                    # Auto-block: only for the queen (conversational node).
-                    # Workers are autonomous — they block only on explicit
+                elif (
+                    (stream_id == "queen" or not ctx.node_spec.output_keys)
+                    and not real_tool_results
+                    and not outputs_set
+                ):
+                    # Auto-block: for the queen and pure conversational nodes.
+                    # Task workers are autonomous — they block only on explicit
                     # ask_user().  Turns without tool calls or set_output
                     # (including empty ghost streams) are not work — block
                     # and wait for user input.
@@ -1949,10 +1960,14 @@ class EventLoopNode(NodeProtocol):
             stream_id, node_id, self._config.max_iterations, execution_id
         )
         latency_ms = int((time.time() - start_time) * 1000)
-        is_cf = ctx.node_spec.client_facing
-        success_val = is_cf
-        exit_status_val = "success" if is_cf else "failure"
-        error_val = None if is_cf else f"Max iterations ({self._config.max_iterations}) reached without acceptance"
+        is_pure_conv = ctx.node_spec.client_facing and not ctx.node_spec.output_keys
+        success_val = is_pure_conv
+        exit_status_val = "success" if is_pure_conv else "failure"
+        error_val = (
+            None
+            if is_pure_conv
+            else f"Max iterations ({self._config.max_iterations}) reached without acceptance"
+        )
 
         if ctx.runtime_logger:
             ctx.runtime_logger.log_node_complete(
@@ -3005,7 +3020,7 @@ class EventLoopNode(NodeProtocol):
 
             # If the turn requested external input (ask_user or queen handoff),
             # return immediately so the outer loop can block before judge eval.
-            if user_input_requested or queen_input_requested:
+            if user_input_requested or queen_input_requested or self._mark_complete_flag:
                 return (
                     final_text,
                     real_tool_results,
