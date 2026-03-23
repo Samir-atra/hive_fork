@@ -751,6 +751,8 @@ class EventLoopNode(NodeProtocol):
             tools.append(self._build_ask_user_tool())
             if stream_id == "queen":
                 tools.append(self._build_ask_user_multiple_tool())
+        if ctx.node_spec.client_facing and not ctx.node_spec.output_keys:
+            tools.append(self._build_end_conversation_tool())
         # Workers/subagents can escalate blockers to the queen.
         if stream_id not in ("queen", "judge"):
             tools.append(self._build_escalate_tool())
@@ -814,6 +816,10 @@ class EventLoopNode(NodeProtocol):
         # 6. Main loop
         for iteration in range(start_iteration, self._config.max_iterations):
             iter_start = time.time()
+
+            # Inject graceful winddown warning at 80%
+            if ctx.node_spec.client_facing and iteration == int(self._config.max_iterations * 0.8):
+                await conversation.add_user_message("[System: We are approaching the conversation length limit. Please begin to wrap up the conversation naturally.]")
 
             # 6a. Check pause (no current-iteration data yet — only log_node_complete needed)
             if await self._check_pause(ctx, conversation, iteration):
@@ -1943,27 +1949,32 @@ class EventLoopNode(NodeProtocol):
             stream_id, node_id, self._config.max_iterations, execution_id
         )
         latency_ms = int((time.time() - start_time) * 1000)
+        is_cf = ctx.node_spec.client_facing
+        success_val = is_cf
+        exit_status_val = "success" if is_cf else "failure"
+        error_val = None if is_cf else f"Max iterations ({self._config.max_iterations}) reached without acceptance"
+
         if ctx.runtime_logger:
             ctx.runtime_logger.log_node_complete(
                 node_id=node_id,
                 node_name=ctx.node_spec.name,
                 node_type="event_loop",
-                success=False,
-                error=f"Max iterations ({self._config.max_iterations}) reached without acceptance",
+                success=success_val,
+                error=error_val,
                 total_steps=self._config.max_iterations,
                 tokens_used=total_input_tokens + total_output_tokens,
                 input_tokens=total_input_tokens,
                 output_tokens=total_output_tokens,
                 latency_ms=latency_ms,
-                exit_status="failure",
+                exit_status=exit_status_val,
                 accept_count=_accept_count,
                 retry_count=_retry_count,
                 escalate_count=_escalate_count,
                 continue_count=_continue_count,
             )
         return NodeResult(
-            success=False,
-            error=(f"Max iterations ({self._config.max_iterations}) reached without acceptance"),
+            success=success_val,
+            error=error_val,
             output=accumulator.to_dict(),
             tokens_used=total_input_tokens + total_output_tokens,
             latency_ms=latency_ms,
@@ -2485,6 +2496,16 @@ class EventLoopNode(NodeProtocol):
                     result = ToolResult(
                         tool_use_id=tc.tool_use_id,
                         content="Waiting for user input...",
+                        is_error=False,
+                    )
+                    results_by_id[tc.tool_use_id] = result
+
+                elif tc.tool_name == "end_conversation":
+                    # --- Framework-level end_conversation handling ---
+                    self._mark_complete_flag = True
+                    result = ToolResult(
+                        tool_use_id=tc.tool_use_id,
+                        content="Conversation ended gracefully.",
                         is_error=False,
                     )
                     results_by_id[tc.tool_use_id] = result
@@ -3064,6 +3085,16 @@ class EventLoopNode(NodeProtocol):
             },
         )
 
+    def _build_end_conversation_tool(self) -> Tool:
+        """Build the synthetic end_conversation tool to gracefully exit a conversation."""
+        return Tool(
+            name="end_conversation",
+            description=(
+                "Call this tool when the conversation is naturally done and you are ready to exit."
+            ),
+            parameters={"type": "object", "properties": {}},
+        )
+
     def _build_ask_user_multiple_tool(self) -> Tool:
         """Build the synthetic ask_user_multiple tool for batched questions.
 
@@ -3449,17 +3480,11 @@ class EventLoopNode(NodeProtocol):
             )
 
         # Client-facing with no output keys → continuous interaction node.
-        # Inject tool-use pressure instead of auto-accepting.
+        # Return empty feedback to keep the node alive without injecting pressure.
         if not output_keys and ctx.node_spec.client_facing:
             return JudgeVerdict(
                 action="RETRY",
-                feedback=(
-                    "STOP describing what you will do. "
-                    "You have FULL access to all tools — file creation, "
-                    "shell commands, MCP tools — and you CAN call them "
-                    "directly in your response. Respond ONLY with tool "
-                    "calls, no prose. Execute the task now."
-                ),
+                feedback=None,
             )
 
         # Level 2b: conversation-aware quality check (if success_criteria set)

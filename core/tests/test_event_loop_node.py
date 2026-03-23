@@ -1554,8 +1554,9 @@ class TestTransientErrorRetry:
 
         result = await node.execute(ctx)
 
-        assert result.success is False
-        assert "Max iterations" in (result.error or "")
+        # With graceful winddown, a client facing node exits successfully
+        assert result.success is True
+        assert result.error is None
         node._await_user_input.assert_awaited_once()
 
     @pytest.mark.asyncio
