@@ -652,8 +652,6 @@ class TestConcurrentStorageEdgeCases:
             assert f"run:{run.id}" in storage._cache
 
             # Mock save_run to fail
-            original_save = storage._base_storage.save_run
-
             def fake_save(*args, **kwargs):
                 raise OSError("Disk full")
 
@@ -662,7 +660,7 @@ class TestConcurrentStorageEdgeCases:
             # Save should fail, cache should be evicted
             try:
                 await storage.save_run(run, immediate=True)
-                assert False, "Should raise"
+                raise AssertionError("Should raise")
             except OSError:
                 pass
 
