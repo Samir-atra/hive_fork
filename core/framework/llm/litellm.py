@@ -27,9 +27,10 @@ except ImportError:
     litellm = None  # type: ignore[assignment]
     RateLimitError = Exception  # type: ignore[assignment, misc]
 
-from framework.config import HIVE_LLM_ENDPOINT as HIVE_API_BASE
+from framework.config import HIVE_LLM_ENDPOINT as HIVE_API_BASE, get_llm_circuit_breaker_config
 from framework.llm.provider import LLMProvider, LLMResponse, Tool
 from framework.llm.stream_events import StreamEvent
+from framework.utils.circuit_breaker import CircuitBreaker
 
 logger = logging.getLogger(__name__)
 
@@ -438,6 +439,17 @@ def _is_stream_transient_error(exc: BaseException) -> bool:
     return isinstance(exc, transient_types)
 
 
+
+
+# Global LLM Circuit Breaker
+_llm_cb_config = get_llm_circuit_breaker_config()
+_llm_circuit_breaker = CircuitBreaker(
+    name="llm",
+    enabled=_llm_cb_config.get("enabled", False),
+    failure_threshold=_llm_cb_config.get("failure_threshold", 5),
+    recovery_timeout_seconds=_llm_cb_config.get("recovery_timeout_seconds", 60.0),
+)
+
 class LiteLLMProvider(LLMProvider):
     """
     LiteLLM-based LLM provider for multi-provider support.
@@ -557,20 +569,16 @@ class LiteLLMProvider(LLMProvider):
         self, max_retries: int | None = None, **kwargs: Any
     ) -> Any:
         """Call litellm.completion with retry on 429 rate limit errors and empty responses."""
+        _llm_circuit_breaker.check_state()
         model = kwargs.get("model", self.model)
         retries = max_retries if max_retries is not None else RATE_LIMIT_MAX_RETRIES
         for attempt in range(retries + 1):
             try:
                 response = litellm.completion(**kwargs)  # type: ignore[union-attr]
 
-                # Some providers (e.g. Gemini) return 200 with empty content on
-                # rate limit / quota exhaustion instead of a proper 429.  Treat
-                # empty responses the same as a rate-limit error and retry.
                 content = response.choices[0].message.content if response.choices else None
                 has_tool_calls = bool(response.choices and response.choices[0].message.tool_calls)
                 if not content and not has_tool_calls:
-                    # If the conversation ends with an assistant message,
-                    # an empty response is expected — don't retry.
                     messages = kwargs.get("messages", [])
                     last_role = next(
                         (m["role"] for m in reversed(messages) if m.get("role") != "system"),
@@ -581,12 +589,12 @@ class LiteLLMProvider(LLMProvider):
                             "[retry] Empty response after assistant message — "
                             "expected, not retrying."
                         )
+                        _llm_circuit_breaker.record_success()
                         return response
 
                     finish_reason = (
                         response.choices[0].finish_reason if response.choices else "unknown"
                     )
-                    # Dump full request to file for debugging
                     token_count, token_method = _estimate_tokens(model, messages)
                     dump_path = _dump_failed_request(
                         model=model,
@@ -594,76 +602,118 @@ class LiteLLMProvider(LLMProvider):
                         error_type="empty_response",
                         attempt=attempt,
                     )
+
+                    delay = _compute_retry_delay(attempt, None)
                     logger.warning(
                         f"[retry] Empty response - {len(messages)} messages, "
                         f"~{token_count} tokens ({token_method}). "
-                        f"Full request dumped to: {dump_path}"
+                        f"finish_reason={finish_reason}. Dumped to {dump_path}. "
+                        f"Retrying in {delay}s... ({attempt + 1}/{retries + 1})"
                     )
-
-                    # finish_reason=length means the model exhausted max_tokens
-                    # before producing content. Retrying with the same max_tokens
-                    # will never help — return immediately instead of looping.
-                    if finish_reason == "length":
-                        max_tok = kwargs.get("max_tokens", "unset")
-                        logger.error(
-                            f"[retry] {model} returned empty content with "
-                            f"finish_reason=length (max_tokens={max_tok}). "
-                            f"The model exhausted its token budget before "
-                            f"producing visible output. Increase max_tokens "
-                            f"or use a different model. Not retrying."
-                        )
-                        return response
-
-                    if attempt == retries:
-                        logger.error(
-                            f"[retry] GAVE UP on {model} after {retries + 1} "
-                            f"attempts — empty response "
-                            f"(finish_reason={finish_reason}, "
-                            f"choices={len(response.choices) if response.choices else 0})"
-                        )
-                        return response
-                    wait = _compute_retry_delay(attempt)
-                    logger.warning(
-                        f"[retry] {model} returned empty response "
-                        f"(finish_reason={finish_reason}, "
-                        f"choices={len(response.choices) if response.choices else 0}) — "
-                        f"likely rate limited or quota exceeded. "
-                        f"Retrying in {wait}s "
-                        f"(attempt {attempt + 1}/{retries})"
-                    )
-                    time.sleep(wait)
+                    time.sleep(delay)
                     continue
 
+                _llm_circuit_breaker.record_success()
                 return response
+
             except RateLimitError as e:
-                # Dump full request to file for debugging
-                messages = kwargs.get("messages", [])
-                token_count, token_method = _estimate_tokens(model, messages)
+                if attempt == retries:
+                    _llm_circuit_breaker.record_failure(e)
+                    raise
+                token_count, token_method = _estimate_tokens(model, kwargs.get("messages", []))
                 dump_path = _dump_failed_request(
                     model=model,
                     kwargs=kwargs,
                     error_type="rate_limit",
                     attempt=attempt,
                 )
-                if attempt == retries:
-                    logger.error(
-                        f"[retry] GAVE UP on {model} after {retries + 1} "
-                        f"attempts — rate limit error: {e!s}. "
-                        f"~{token_count} tokens ({token_method}). "
-                        f"Full request dumped to: {dump_path}"
-                    )
-                    raise
-                wait = _compute_retry_delay(attempt, exception=e)
+
+                delay = _compute_retry_delay(attempt, e)
                 logger.warning(
-                    f"[retry] {model} rate limited (429): {e!s}. "
-                    f"~{token_count} tokens ({token_method}). "
-                    f"Full request dumped to: {dump_path}. "
-                    f"Retrying in {wait}s "
-                    f"(attempt {attempt + 1}/{retries})"
+                    f"[retry] 429 RateLimitError - ~{token_count} tokens ({token_method}). "
+                    f"Dumped to {dump_path}. Retrying in {delay}s... "
+                    f"({attempt + 1}/{retries + 1})"
                 )
-                time.sleep(wait)
-        # unreachable, but satisfies type checker
-        raise RuntimeError("Exhausted rate limit retries")
+                time.sleep(delay)
+            except Exception as e:
+                _llm_circuit_breaker.record_failure(e)
+                raise
+
+    async def _acompletion_with_rate_limit_retry(
+        self, max_retries: int | None = None, **kwargs: Any
+    ) -> Any:
+        """Async version of _completion_with_rate_limit_retry.
+
+        Uses litellm.acompletion and asyncio.sleep instead of blocking calls.
+        """
+        _llm_circuit_breaker.check_state()
+        model = kwargs.get("model", self.model)
+        retries = max_retries if max_retries is not None else RATE_LIMIT_MAX_RETRIES
+        for attempt in range(retries + 1):
+            try:
+                response = await litellm.acompletion(**kwargs)  # type: ignore[union-attr]
+
+                content = response.choices[0].message.content if response.choices else None
+                has_tool_calls = bool(response.choices and response.choices[0].message.tool_calls)
+                if not content and not has_tool_calls:
+                    messages = kwargs.get("messages", [])
+                    last_role = next(
+                        (m["role"] for m in reversed(messages) if m.get("role") != "system"),
+                        None,
+                    )
+                    if last_role == "assistant":
+                        logger.debug(
+                            "[async-retry] Empty response after assistant message — "
+                            "expected, not retrying."
+                        )
+                        _llm_circuit_breaker.record_success()
+                        return response
+
+                    finish_reason = (
+                        response.choices[0].finish_reason if response.choices else "unknown"
+                    )
+                    token_count, token_method = _estimate_tokens(model, messages)
+                    dump_path = _dump_failed_request(
+                        model=model,
+                        kwargs=kwargs,
+                        error_type="empty_response",
+                        attempt=attempt,
+                    )
+                    delay = _compute_retry_delay(attempt, None)
+                    logger.warning(
+                        f"[async-retry] Empty response - {len(messages)} messages, "
+                        f"~{token_count} tokens ({token_method}). "
+                        f"finish_reason={finish_reason}. Dumped to {dump_path}. "
+                        f"Retrying in {delay}s... ({attempt + 1}/{retries + 1})"
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+
+                _llm_circuit_breaker.record_success()
+                return response
+
+            except RateLimitError as e:
+                if attempt == retries:
+                    _llm_circuit_breaker.record_failure(e)
+                    raise
+                token_count, token_method = _estimate_tokens(model, kwargs.get("messages", []))
+                dump_path = _dump_failed_request(
+                    model=model,
+                    kwargs=kwargs,
+                    error_type="rate_limit",
+                    attempt=attempt,
+                )
+
+                delay = _compute_retry_delay(attempt, e)
+                logger.warning(
+                    f"[async-retry] 429 RateLimitError - ~{token_count} tokens ({token_method}). "
+                    f"Dumped to {dump_path}. Retrying in {delay}s... "
+                    f"({attempt + 1}/{retries + 1})"
+                )
+                await asyncio.sleep(delay)
+            except Exception as e:
+                _llm_circuit_breaker.record_failure(e)
+                raise
 
     def complete(
         self,

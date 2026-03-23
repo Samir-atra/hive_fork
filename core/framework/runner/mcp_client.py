@@ -14,6 +14,9 @@ from typing import Any, Literal
 
 import httpx
 
+from framework.config import get_mcp_circuit_breaker_config
+from framework.utils.circuit_breaker import CircuitBreaker
+
 logger = logging.getLogger(__name__)
 
 
@@ -80,6 +83,14 @@ class MCPClient:
         self._loop_thread = None
         # Serialize STDIO tool calls (avoids races, helps on Windows)
         self._stdio_call_lock = threading.Lock()
+
+        mcp_cb_config = get_mcp_circuit_breaker_config()
+        self.circuit_breaker = CircuitBreaker(
+            name=f"mcp-{config.name}",
+            enabled=mcp_cb_config.get("enabled", False),
+            failure_threshold=mcp_cb_config.get("failure_threshold", 3),
+            recovery_timeout_seconds=mcp_cb_config.get("recovery_timeout_seconds", 30.0),
+        )
 
     def _run_async(self, coro):
         """
@@ -452,23 +463,34 @@ class MCPClient:
         Returns:
             Tool result
         """
-        if not self._connected:
-            self.connect()
+        self.circuit_breaker.check_state()
 
-        if tool_name not in self._tools:
-            raise ValueError(f"Unknown tool: {tool_name}")
+        try:
+            if not self._connected:
+                self.connect()
 
-        if self.config.transport == "stdio":
-            with self._stdio_call_lock:
-                return self._run_async(self._call_tool_stdio_async(tool_name, arguments))
-        elif self.config.transport == "sse":
-            return self._call_tool_with_retry(
-                lambda: self._run_async(self._call_tool_stdio_async(tool_name, arguments))
-            )
-        elif self.config.transport == "unix":
-            return self._call_tool_with_retry(lambda: self._call_tool_http(tool_name, arguments))
-        else:
-            return self._call_tool_http(tool_name, arguments)
+            if tool_name not in self._tools:
+                raise ValueError(f"Unknown tool: {tool_name}")
+
+            if self.config.transport == "stdio":
+                with self._stdio_call_lock:
+                    result = self._run_async(self._call_tool_stdio_async(tool_name, arguments))
+            elif self.config.transport == "sse":
+                result = self._call_tool_with_retry(
+                    lambda: self._run_async(self._call_tool_stdio_async(tool_name, arguments))
+                )
+            elif self.config.transport == "unix":
+                result = self._call_tool_with_retry(
+                    lambda: self._call_tool_http(tool_name, arguments)
+                )
+            else:
+                result = self._call_tool_http(tool_name, arguments)
+
+            self.circuit_breaker.record_success()
+            return result
+        except Exception as e:
+            self.circuit_breaker.record_failure(e)
+            raise
 
     def _call_tool_with_retry(self, call: Any) -> Any:
         """Retry transient MCP transport failures once after reconnecting."""

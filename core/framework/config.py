@@ -451,3 +451,15 @@ class RuntimeConfig:
     api_key: str | None = field(default_factory=get_api_key)
     api_base: str | None = field(default_factory=get_api_base)
     extra_kwargs: dict[str, Any] = field(default_factory=get_llm_extra_kwargs)
+
+
+def get_llm_circuit_breaker_config() -> dict[str, Any]:
+    """Return the LLM circuit breaker configuration."""
+    llm_config = get_hive_config().get("llm", {})
+    return llm_config.get("circuit_breaker", {})
+
+
+def get_mcp_circuit_breaker_config() -> dict[str, Any]:
+    """Return the MCP circuit breaker configuration."""
+    mcp_config = get_hive_config().get("mcp", {})
+    return mcp_config.get("circuit_breaker", {})
