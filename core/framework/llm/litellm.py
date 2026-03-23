@@ -439,8 +439,6 @@ def _is_stream_transient_error(exc: BaseException) -> bool:
     return isinstance(exc, transient_types)
 
 
-
-
 # Global LLM Circuit Breaker
 _llm_cb_config = get_llm_circuit_breaker_config()
 _llm_circuit_breaker = CircuitBreaker(
@@ -449,6 +447,7 @@ _llm_circuit_breaker = CircuitBreaker(
     failure_threshold=_llm_cb_config.get("failure_threshold", 5),
     recovery_timeout_seconds=_llm_cb_config.get("recovery_timeout_seconds", 60.0),
 )
+
 
 class LiteLLMProvider(LLMProvider):
     """
