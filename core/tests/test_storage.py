@@ -633,3 +633,93 @@ class TestConcurrentStorageStats:
             assert stats["running"] is True
         finally:
             await storage.stop()
+
+
+@pytest.mark.skip(reason="ConcurrentStorage is deprecated - wraps deprecated FileStorage")
+class TestConcurrentStorageEdgeCases:
+    """Test ConcurrentStorage specific edge cases."""
+
+    @pytest.mark.asyncio
+    async def test_save_run_evicts_cache_on_failure(self, tmp_path: Path):
+        """Test that if a save fails, the cache is evicted."""
+        storage = ConcurrentStorage(tmp_path)
+        await storage.start()
+
+        try:
+            run = create_test_run()
+            # Initial save to put in cache
+            await storage.save_run(run, immediate=True)
+            assert f"run:{run.id}" in storage._cache
+
+            # Mock save_run to fail
+            original_save = storage._base_storage.save_run
+
+            def fake_save(*args, **kwargs):
+                raise OSError("Disk full")
+
+            storage._base_storage.save_run = fake_save
+
+            # Save should fail, cache should be evicted
+            try:
+                await storage.save_run(run, immediate=True)
+                assert False, "Should raise"
+            except OSError:
+                pass
+
+            assert f"run:{run.id}" not in storage._cache
+        finally:
+            await storage.stop()
+
+    @pytest.mark.asyncio
+    async def test_queued_run_served_from_pending(self, tmp_path: Path):
+        """Test that queued runs can be loaded via pending_writes before batch executes."""
+        storage = ConcurrentStorage(tmp_path)
+        await storage.start()
+
+        try:
+            run = create_test_run()
+            # Save to queue (immediate=False)
+            await storage.save_run(run, immediate=False)
+
+            # Immediately load - should come from _pending_writes
+            loaded = await storage.load_run(run.id, use_cache=True)
+            assert loaded is run
+        finally:
+            await storage.stop()
+
+    @pytest.mark.asyncio
+    async def test_batch_writer_retries_and_evicts_on_failure(self, tmp_path: Path):
+        """Test that batch writer retries and evicts cache on complete failure."""
+        storage = ConcurrentStorage(tmp_path, batch_interval=0.01)
+        await storage.start()
+
+        try:
+            run = create_test_run()
+            # Initial save to ensure it's in cache
+            await storage.save_run(run, immediate=True)
+            assert f"run:{run.id}" in storage._cache
+
+            # Modify and save to queue
+            run.narrative = "Modified"
+
+            # Mock save_run to fail
+            def fake_save(*args, **kwargs):
+                raise OSError("Disk full")
+
+            storage._base_storage.save_run = fake_save
+
+            # Queue for batched save
+            await storage.save_run(run, immediate=False)
+
+            # Wait for batch writer to pick it up and fail all retries
+            # 3 retries with 0.5s delay = ~1.5 seconds. Wait 2 seconds.
+            import asyncio
+
+            await asyncio.sleep(2.0)
+
+            # Cache should be evicted after all retries failed
+            assert f"run:{run.id}" not in storage._cache
+            # Should be removed from pending writes
+            assert run.id not in storage._pending_writes
+        finally:
+            await storage.stop()

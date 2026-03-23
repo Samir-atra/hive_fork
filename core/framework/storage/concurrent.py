@@ -86,6 +86,7 @@ class ConcurrentStorage:
         self._batch_interval = batch_interval
         self._max_batch_size = max_batch_size
         self._batch_task: asyncio.Task | None = None
+        self._pending_writes: dict[str, Any] = {}
 
         # Locking - Use WeakValueDictionary to allow unused locks to be GC'd
         self._file_locks: WeakValueDictionary = WeakValueDictionary()
@@ -172,10 +173,17 @@ class ConcurrentStorage:
         self._cache.pop(f"summary:{run.id}", None)
 
         if immediate or not self._running:
-            await self._save_run_locked(run)
-            # Update cache only after successful immediate write
-            self._cache[f"run:{run.id}"] = CacheEntry(run, time.time())
+            try:
+                await self._save_run_locked(run)
+                # Update cache only after successful immediate write
+                self._cache[f"run:{run.id}"] = CacheEntry(run, time.time())
+            except Exception:
+                # Evict from cache if it was there and write failed
+                self._cache.pop(f"run:{run.id}", None)
+                raise
         else:
+            # Track pending write so load_run can serve it immediately
+            self._pending_writes[run.id] = run
             # For batched writes, cache will be updated in _flush_batch after successful write
             await self._write_queue.put(("run", run))
 
@@ -227,6 +235,9 @@ class ConcurrentStorage:
             Run object or None if not found
         """
         if use_cache:
+            if run_id in self._pending_writes:
+                return self._pending_writes[run_id]
+
             cache_key = f"run:{run_id}"
             cached = self._cache.get(cache_key)
             if cached and not cached.is_expired(self._cache_ttl):
@@ -277,9 +288,10 @@ class ConcurrentStorage:
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(None, self._base_storage.delete_run, run_id)
 
-        # Clear cache
+        # Clear cache and pending writes
         self._cache.pop(f"run:{run_id}", None)
         self._cache.pop(f"summary:{run_id}", None)
+        self._pending_writes.pop(run_id, None)
 
         return result
 
@@ -366,13 +378,32 @@ class ConcurrentStorage:
         for item_type, item in batch:
             try:
                 if item_type == "run":
-                    await self._save_run_locked(item)
+                    max_retries = 3
+                    retry_delay = 0.5
+                    for attempt in range(max_retries):
+                        try:
+                            await self._save_run_locked(item)
+                            break
+                        except Exception as e:
+                            if attempt == max_retries - 1:
+                                raise
+                            logger.warning(
+                                f"Retry {attempt + 1}/{max_retries} saving run {item.id}: {e}"
+                            )
+                            await asyncio.sleep(retry_delay)
+
                     # Update cache only after successful batched write
                     # This fixes the race condition where cache was updated before write completed
                     self._cache[f"run:{item.id}"] = CacheEntry(item, time.time())
             except Exception as e:
                 logger.error(f"Failed to save {item_type}: {e}")
-                # Cache is NOT updated on failure - prevents stale/inconsistent cache state
+                if item_type == "run":
+                    # Evict from cache if it was there and all retries failed
+                    self._cache.pop(f"run:{item.id}", None)
+            finally:
+                if item_type == "run":
+                    # Always remove from pending writes once batch processing is done
+                    self._pending_writes.pop(item.id, None)
 
     async def _flush_pending(self) -> None:
         """Flush all pending writes."""
