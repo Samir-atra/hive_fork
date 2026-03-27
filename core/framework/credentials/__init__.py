@@ -91,26 +91,6 @@ from .validation import (
 # Aden sync components (lazy import to avoid httpx dependency when not needed)
 # Usage: from core.framework.credentials.aden import AdenSyncProvider
 # Or: from core.framework.credentials import AdenSyncProvider
-try:
-    from .aden import (
-        AdenCachedStorage,
-        AdenClientConfig,
-        AdenCredentialClient,
-        AdenSyncProvider,
-    )
-
-    _ADEN_AVAILABLE = True
-except ImportError:
-    _ADEN_AVAILABLE = False
-
-# Local credential registry (named API key accounts with identity metadata)
-try:
-    from .local import LocalAccountInfo, LocalCredentialRegistry
-
-    _LOCAL_AVAILABLE = True
-except ImportError:
-    _LOCAL_AVAILABLE = False
-
 __all__ = [
     # Main store
     "CredentialStore",
@@ -156,15 +136,41 @@ __all__ = [
     "SetupResult",
     "load_agent_nodes",
     "run_credential_setup_cli",
-    # Aden sync (optional - requires httpx)
-    "AdenSyncProvider",
-    "AdenCredentialClient",
-    "AdenClientConfig",
-    "AdenCachedStorage",
-    # Local credential registry (optional - requires cryptography)
-    "LocalCredentialRegistry",
-    "LocalAccountInfo",
 ]
+
+try:
+    from .aden import (  # noqa: F401
+        AdenCachedStorage,
+        AdenClientConfig,
+        AdenCredentialClient,
+        AdenSyncProvider,
+    )
+
+    _ADEN_AVAILABLE = True
+    __all__.extend(
+        [
+            "AdenCachedStorage",
+            "AdenClientConfig",
+            "AdenCredentialClient",
+            "AdenSyncProvider",
+        ]
+    )
+except ImportError:
+    _ADEN_AVAILABLE = False
+
+# Local credential registry (named API key accounts with identity metadata)
+try:
+    from .local import LocalAccountInfo, LocalCredentialRegistry  # noqa: F401
+
+    _LOCAL_AVAILABLE = True
+    __all__.extend(
+        [
+            "LocalAccountInfo",
+            "LocalCredentialRegistry",
+        ]
+    )
+except ImportError:
+    _LOCAL_AVAILABLE = False
 
 # Track Aden availability for runtime checks
 ADEN_AVAILABLE = _ADEN_AVAILABLE
