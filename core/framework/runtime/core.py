@@ -7,6 +7,7 @@ handles all the structured logging.
 """
 
 import logging
+import threading
 import uuid
 from collections.abc import Callable
 from datetime import datetime
@@ -23,7 +24,9 @@ logger = logging.getLogger(__name__)
 
 class Runtime:
     """
-    The runtime environment that agents execute within.
+    The runtime environment that agents execute within. State is tracked using
+    thread-local storage, guaranteeing thread-safety when a single `Runtime` instance
+    is shared across execution threads.
 
     Usage:
         runtime = Runtime("/path/to/storage")
@@ -63,8 +66,7 @@ class Runtime:
             path.mkdir(parents=True, exist_ok=True)
 
         self.storage = FileStorage(storage_path)
-        self._current_run: Run | None = None
-        self._current_node: str = "unknown"
+        self._local = threading.local()
 
     @property
     def execution_id(self) -> str:
@@ -99,7 +101,7 @@ class Runtime:
             goal_id=goal_id,
         )
 
-        self._current_run = Run(
+        self._local.current_run = Run(
             id=run_id,
             goal_id=goal_id,
             goal_description=goal_description,
@@ -122,28 +124,29 @@ class Runtime:
             narrative: Human-readable summary of what happened
             output_data: Final output of the run
         """
-        if self._current_run is None:
+        current_run = getattr(self._local, "current_run", None)
+        if current_run is None:
             # Gracefully handle case where run was already ended or never started
             # This can happen during exception handling cascades
             logger.warning("end_run called but no run in progress (already ended or never started)")
             return
 
         status = RunStatus.COMPLETED if success else RunStatus.FAILED
-        self._current_run.output_data = output_data or {}
-        self._current_run.complete(status, narrative)
+        current_run.output_data = output_data or {}
+        current_run.complete(status, narrative)
 
         # Save to storage
-        self.storage.save_run(self._current_run)
-        self._current_run = None
+        self.storage.save_run(current_run)
+        self._local.current_run = None
 
     def set_node(self, node_id: str) -> None:
         """Set the current node context for subsequent decisions."""
-        self._current_node = node_id
+        self._local.current_node = node_id
 
     @property
     def current_run(self) -> Run | None:
         """Get the current run (for inspection)."""
-        return self._current_run
+        return getattr(self._local, "current_run", None)
 
     # === DECISION RECORDING ===
 
@@ -186,7 +189,8 @@ class Runtime:
         Returns:
             The decision ID (use to record outcome later), or empty string if no run
         """
-        if self._current_run is None:
+        current_run = getattr(self._local, "current_run", None)
+        if current_run is None:
             # Gracefully handle case where run ended during exception handling
             logger.warning(f"decide called but no run in progress: {intent}")
             return ""
@@ -207,10 +211,10 @@ class Runtime:
             )
 
         # Create decision
-        decision_id = f"dec_{len(self._current_run.decisions)}"
+        decision_id = f"dec_{len(current_run.decisions)}"
         decision = Decision(
             id=decision_id,
-            node_id=node_id or self._current_node,
+            node_id=node_id or getattr(self._local, "current_node", "unknown"),
             intent=intent,
             decision_type=decision_type,
             options=option_objects,
@@ -220,7 +224,7 @@ class Runtime:
             input_context=context or {},
         )
 
-        self._current_run.add_decision(decision)
+        current_run.add_decision(decision)
         return decision_id
 
     def record_outcome(
@@ -249,7 +253,8 @@ class Runtime:
             tokens_used: LLM tokens consumed
             latency_ms: Time taken in milliseconds
         """
-        if self._current_run is None:
+        current_run = getattr(self._local, "current_run", None)
+        if current_run is None:
             # Gracefully handle case where run ended during exception handling
             # This can happen in cascading error scenarios
             logger.warning(
@@ -267,7 +272,7 @@ class Runtime:
             latency_ms=latency_ms,
         )
 
-        self._current_run.record_outcome(decision_id, outcome)
+        current_run.record_outcome(decision_id, outcome)
 
     # === PROBLEM RECORDING ===
 
@@ -295,7 +300,8 @@ class Runtime:
         Returns:
             The problem ID, or empty string if no run in progress
         """
-        if self._current_run is None:
+        current_run = getattr(self._local, "current_run", None)
+        if current_run is None:
             # Gracefully handle case where run ended during exception handling
             # Log the problem since we can't store it, then return empty ID
             logger.warning(
@@ -303,7 +309,7 @@ class Runtime:
             )
             return ""
 
-        return self._current_run.add_problem(
+        return current_run.add_problem(
             severity=severity,
             description=description,
             decision_id=decision_id,
