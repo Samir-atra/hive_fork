@@ -2155,7 +2155,7 @@ class GraphExecutor:
             target_spec = graph.get_node(branch.node_id)
             self.logger.info(f"      • {target_spec.name if target_spec else branch.node_id}")
 
-        async def execute_single_branch(
+        async def execute_single_branch_core(
             branch: ParallelBranch,
         ) -> tuple[ParallelBranch, NodeResult | Exception]:
             """Execute a single branch with retry logic."""
@@ -2312,10 +2312,25 @@ class GraphExecutor:
 
                 return branch, e
 
+        async def execute_single_branch(
+            branch: ParallelBranch,
+        ) -> tuple[ParallelBranch, NodeResult | Exception]:
+            """Execute a single branch with timeout wrapper."""
+            timeout = self._parallel_config.branch_timeout_seconds
+            try:
+                return await asyncio.wait_for(execute_single_branch_core(branch), timeout=timeout)
+            except TimeoutError as e:
+                branch.status = "timed_out"
+                branch.error = f"Branch timed out after {timeout}s"
+                self.logger.warning(
+                    f"      ⏱ Branch {graph.get_node(branch.node_id).name}: "
+                    f"timed out after {timeout}s"
+                )
+                return branch, e
+
         # Execute all branches concurrently with per-branch timeout
-        timeout = self._parallel_config.branch_timeout_seconds
         branch_list = list(branches.values())
-        tasks = [asyncio.wait_for(execute_single_branch(b), timeout=timeout) for b in branch_list]
+        tasks = [execute_single_branch(b) for b in branch_list]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Process results
@@ -2327,17 +2342,7 @@ class GraphExecutor:
         for i, result in enumerate(results):
             branch = branch_list[i]
 
-            if isinstance(result, asyncio.TimeoutError):
-                # Branch timed out
-                branch.status = "timed_out"
-                branch.error = f"Branch timed out after {timeout}s"
-                self.logger.warning(
-                    f"      ⏱ Branch {graph.get_node(branch.node_id).name}: "
-                    f"timed out after {timeout}s"
-                )
-                path.append(branch.node_id)
-                failed_branches.append(branch)
-            elif isinstance(result, Exception):
+            if isinstance(result, Exception):
                 path.append(branch.node_id)
                 failed_branches.append(branch)
             else:
