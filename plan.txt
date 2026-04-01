@@ -1,0 +1,19 @@
+1. **Research** — N/A (The issue description already specifies the patterns, architecture, and constraints. I've located the `LiteLLMProvider` in `core/framework/llm/litellm.py`.)
+2. **Core Logic** — Create the `MultiModelRouterNode` class and related files.
+    - `core/framework/llm/router/__init__.py`: Exports the router node.
+    - `core/framework/llm/router/task_classifier.py`: Pattern-based task classifier using regex fast-path (e.g. math_reasoning, coding, function_calling).
+    - `core/framework/llm/router/model_registry.py`: `ModelProfile` dataclass and a default registry of models (e.g. tier-based simple, balanced, premium).
+    - `core/framework/llm/router/constraint_evaluator.py`: Budget, latency, context validation logic.
+    - `core/framework/llm/router/fallback_chain.py`: Fallback sequence builder.
+    - `core/framework/llm/router/routing_metrics.py`: Observability metrics, logging selected model and top-2 rejected candidates + rejection reason. Emit `router_decision` event.
+    - `core/framework/llm/router/router_node.py`: `MultiModelRouterNode` which evaluates constraints and picks a model, then uses `LiteLLMProvider` to fulfill the request. Respects `force_model`.
+    - `examples/templates/multi_model_router/agent.py`: Runnable demo agent.
+    - `examples/templates/multi_model_router/README.md`: Readme for the example.
+3. **Validation** —
+    - `core/tests/test_router/test_classifier.py`
+    - `core/tests/test_router/test_fallback_chain.py`
+    - `core/tests/test_router/test_constraint_evaluator.py`
+4. **Documentation** —
+    - `docs/key_concepts/multi_model_routing.md`
+5. **Pre-commit Steps** — Ensure tests, formatting, and linting pass.
+6. **Submit PR**
