@@ -8,10 +8,12 @@ class TaskClassifier:
         """Initialize the task classifier with regex patterns."""
         self.patterns = {
             "math_reasoning": re.compile(
-                r"(?i)\b(math|calculate|equation|algebra|calculus|geometry|probability|statistics|solve for|theorem|proof|formula)\b"
+                r"(?i)\b(math|calculate|equation|algebra|calculus|geometry|"
+                r"probability|statistics|solve for|theorem|proof|formula)\b"
             ),
             "coding": re.compile(
-                r"(?i)\b(code|function|class|method|variable|loop|array|script|debug|syntax|compiler|python|javascript|java|c\+\+|rust|go|html|css|sql|bash|git|regex)\b"
+                r"(?i)\b(code|function|class|method|variable|loop|array|script|debug|syntax|"
+                r"compiler|python|javascript|java|c\+\+|rust|go|html|css|sql|bash|git|regex)\b"
             ),
             "function_calling": re.compile(
                 r"(?i)\b(call|api|endpoint|request|json|payload|response|fetch|post|get|put|delete|tool|execute)\b"

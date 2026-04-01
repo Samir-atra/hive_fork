@@ -48,7 +48,8 @@ class ConstraintEvaluator:
             if missing:
                 return False, f"Missing required capabilities: {', '.join(missing)}"
 
-        # Latency constraint (stub: normally based on historical metrics, but using tier as proxy or ignoring for now if no historical data)
+        # Latency constraint (stub: normally based on historical metrics,
+        # but using tier as proxy or ignoring for now if no historical data)
         # For a full implementation, this might read from an observability backend.
         if constraints.max_latency_ms:
             # Placeholder logic, assuming premium is slower and simple is faster for heuristic

@@ -159,7 +159,8 @@ class MultiModelRouterNode:
                         break  # break the inner event loop to retry outer fallback
                     elif isinstance(event, StreamErrorEvent) and event.recoverable:
                         logger.warning(
-                            f"[router] Model {model} encountered recoverable stream error: {event.error}"
+                            f"[router] Model {model} encountered recoverable "
+                            f"stream error: {event.error}"
                         )
                         success = False
                         break  # Break to fallback, DO NOT yield the error to the client
