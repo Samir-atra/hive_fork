@@ -74,6 +74,7 @@ class Run(BaseModel):
 
     id: str
     goal_id: str
+    graph_version: str = "1.0.0"
     started_at: datetime = Field(default_factory=datetime.now)
 
     # Status
@@ -198,6 +199,7 @@ class RunSummary(BaseModel):
 
     run_id: str
     goal_id: str
+    graph_version: str = "1.0.0"
     status: RunStatus
     duration_ms: int
 
@@ -248,6 +250,7 @@ class RunSummary(BaseModel):
         return cls(
             run_id=run.id,
             goal_id=run.goal_id,
+            graph_version=run.graph_version,
             status=run.status,
             duration_ms=run.duration_ms,
             decision_count=run.metrics.total_decisions,

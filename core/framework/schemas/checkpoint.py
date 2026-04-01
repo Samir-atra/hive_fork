@@ -23,6 +23,7 @@ class Checkpoint(BaseModel):
     checkpoint_id: str  # Format: cp_{type}_{node_id}_{timestamp}
     checkpoint_type: str  # "node_start" | "node_complete" | "loop_iteration"
     session_id: str
+    graph_version: str = "1.0.0"
 
     # Timestamps
     created_at: str  # ISO 8601 format
@@ -58,6 +59,7 @@ class Checkpoint(BaseModel):
         metrics_snapshot: dict[str, Any] | None = None,
         is_clean: bool = True,
         description: str = "",
+        graph_version: str = "1.0.0",
     ) -> "Checkpoint":
         """
         Create a new checkpoint with generated ID and timestamp.
@@ -73,6 +75,7 @@ class Checkpoint(BaseModel):
             metrics_snapshot: Execution metrics at checkpoint time
             is_clean: Whether execution was clean up to this point
             description: Human-readable description
+            graph_version: The version of the graph executed
 
         Returns:
             New Checkpoint instance
@@ -87,6 +90,7 @@ class Checkpoint(BaseModel):
             checkpoint_id=checkpoint_id,
             checkpoint_type=checkpoint_type,
             session_id=session_id,
+            graph_version=graph_version,
             created_at=datetime.now().isoformat(),
             current_node=current_node,
             next_node=next_node,
@@ -114,6 +118,7 @@ class CheckpointSummary(BaseModel):
     next_node: str | None = None
     is_clean: bool = True
     description: str = ""
+    graph_version: str = "1.0.0"
 
     model_config = {"extra": "allow"}
 
@@ -128,6 +133,7 @@ class CheckpointSummary(BaseModel):
             next_node=checkpoint.next_node,
             is_clean=checkpoint.is_clean,
             description=checkpoint.description,
+            graph_version=checkpoint.graph_version,
         )
 
 

@@ -108,6 +108,7 @@ class SessionState(BaseModel):
     # Goal/Agent context
     goal_id: str
     agent_id: str = ""
+    graph_version: str = "1.0.0"
     entry_point: str = "start"
 
     # Timestamps
