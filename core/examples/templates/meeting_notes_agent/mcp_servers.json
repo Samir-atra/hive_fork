@@ -1,0 +1,16 @@
+{
+  "hive-tools": {
+    "transport": "stdio",
+    "command": "uv",
+    "args": ["run", "python", "mcp_server.py", "--stdio"],
+    "cwd": "../../../../tools",
+    "description": "Hive tools MCP server providing save_data and serve_file_to_user"
+  },
+  "slack-tools": {
+    "transport": "stdio",
+    "command": "uv",
+    "args": ["run", "python", "tools/slack_mcp_server.py"],
+    "cwd": ".",
+    "description": "Slack MCP server providing slack_post_message"
+  }
+}
