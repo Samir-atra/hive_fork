@@ -1,3 +1,8 @@
+---
+description: Learn how to install the Hive multi-agent framework, set up your Python environment, and build your first autonomous AI agent. Quick start guide and tutorials.
+keywords: [Hive, AI agents, multi-agent framework, getting started, autonomous agents, setup guide]
+---
+
 # Getting Started
 
 This guide will help you set up the Aden Agent Framework and build your first agent.
