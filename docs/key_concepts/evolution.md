@@ -47,3 +47,15 @@ Evolution can change almost anything about an agent:
 Evolution depends on good data. The runtime captures every decision an agent makes: what it was trying to do, what options it considered, what it chose, and what happened as a result. This isn't overhead — it's the signal that makes evolution possible.
 
 Without decision logging, failure analysis is guesswork. With it, the coding agent can trace a failure back to its root cause and make a targeted fix rather than a blind change.
+## Phase 1 Implementation
+
+Phase 1 of the GEA engine introduces the fundamental pure algorithm components necessary to drive the evolutionary process independently from the execution environment:
+
+1. **Evolution Archive (`core/framework/evolution/archive.py`)**
+   Provides standard data models using Pydantic, defining `EvolvedAgent` and `EvolutionCampaign`. It includes a SQLite-backed mechanism `EvolutionArchive` to persist evolutionary iterations, traces, and performance data.
+
+2. **Performance Vectors (`core/framework/evolution/vectors.py`)**
+   Evaluates how agents perform across an expected task suite by applying standard vector math. The implementation includes calculations for magnitude, dot products, cosine similarities, and cosine distances, enabling novelty measurements based on behavioral metrics.
+
+3. **Group-Level Selection (`core/framework/evolution/selection.py`)**
+   Implements a Performance-Novelty selection algorithm. It computes a candidate's novelty as the average distance to its nearest neighbors (`m`) in performance space, allowing GEA to balance raw performance against exploration (controlled by `novelty_weight`) when picking `k` parent agents for the next evolutionary iteration.
