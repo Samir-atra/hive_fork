@@ -436,6 +436,30 @@ def get_llm_extra_kwargs() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+
+
+@dataclass
+class ServerConfig:
+    """Server configuration loaded from ~/.hive/configuration.json under 'server'."""
+
+    api_key: str | None = None
+    rate_limit_requests: int = 100
+    rate_limit_window: int = 60
+    cors_origins: list[str] = field(
+        default_factory=lambda: ["http://localhost", "http://127.0.0.1"]
+    )
+
+
+def get_server_config() -> ServerConfig:
+    server_cfg = get_hive_config().get("server", {})
+    return ServerConfig(
+        api_key=server_cfg.get("api_key") or os.environ.get("HIVE_SERVER_API_KEY"),
+        rate_limit_requests=server_cfg.get("rate_limit_requests", 100),
+        rate_limit_window=server_cfg.get("rate_limit_window", 60),
+        cors_origins=server_cfg.get("cors_origins", ["http://localhost", "http://127.0.0.1"]),
+    )
+
+
 # RuntimeConfig – shared across agent templates
 # ---------------------------------------------------------------------------
 
