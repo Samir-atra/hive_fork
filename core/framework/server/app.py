@@ -6,6 +6,7 @@ from pathlib import Path
 
 from aiohttp import web
 
+from framework.server.middleware import api_key_auth_middleware, rate_limit_middleware
 from framework.server.session_manager import Session, SessionManager
 
 logger = logging.getLogger(__name__)
@@ -117,23 +118,23 @@ def cold_sessions_dir(session_id: str) -> Path | None:
         return None
 
 
-# Allowed CORS origins (localhost on any port)
-_CORS_ORIGINS = {"http://localhost", "http://127.0.0.1"}
-
-
-def _is_cors_allowed(origin: str) -> bool:
-    """Check if origin is localhost/127.0.0.1 on any port."""
+def _is_cors_allowed(origin: str, server_config) -> bool:
+    """Check if origin is allowed by server configuration."""
     if not origin:
         return False
-    for base in _CORS_ORIGINS:
+    if not server_config:
+        return False
+    allowed_origins = server_config.cors_origins
+    if "*" in allowed_origins:
+        return True
+    for base in allowed_origins:
         if origin == base or origin.startswith(base + ":"):
             return True
     return False
 
-
 @web.middleware
 async def cors_middleware(request: web.Request, handler):
-    """CORS middleware scoped to localhost origins."""
+    """CORS middleware scoped to allowed origins."""
     origin = request.headers.get("Origin", "")
 
     # Handle preflight
@@ -145,7 +146,7 @@ async def cors_middleware(request: web.Request, handler):
         except web.HTTPException as exc:
             response = exc
 
-    if _is_cors_allowed(origin):
+    if _is_cors_allowed(origin, request.app.get("server_config")):
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, DELETE, OPTIONS"
         response.headers["Access-Control-Allow-Headers"] = "Content-Type"
@@ -197,7 +198,14 @@ def create_app(model: str | None = None) -> web.Application:
     Returns:
         Configured aiohttp Application ready to run.
     """
-    app = web.Application(middlewares=[cors_middleware, error_middleware])
+    app = web.Application(
+        middlewares=[
+            cors_middleware,
+            rate_limit_middleware,
+            api_key_auth_middleware,
+            error_middleware,
+        ]
+    )
 
     # Initialize credential store (before SessionManager so it can be shared)
     from framework.credentials.store import CredentialStore
