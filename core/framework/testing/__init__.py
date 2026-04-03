@@ -16,6 +16,7 @@ then run with pytest and debugged with LLM assistance.
 - **Storage**: TestStorage for persisting tests and results
 - **Runner**: Test execution via pytest subprocess with pytest-xdist parallelization
 - **Debug**: Error categorization and fix suggestions
+- **Snapshot**: Execution snapshot serialization and CI validation
 
 ## MCP Tools
 
@@ -50,6 +51,9 @@ from framework.testing.categorizer import ErrorCategorizer
 # CLI
 from framework.testing.cli import register_testing_commands
 
+# Snapshot validation
+from framework.testing.snapshot import ExecutionSnapshot, SnapshotDiff, SnapshotValidator
+
 # Debug
 from framework.testing.debug_tool import DebugInfo, DebugTool
 
@@ -79,6 +83,10 @@ __all__ = [
     "TestSuiteResult",
     # Storage
     "TestStorage",
+    # Snapshot
+    "ExecutionSnapshot",
+    "SnapshotDiff",
+    "SnapshotValidator",
     # Approval types (pure types, no LLM)
     "ApprovalAction",
     "ApprovalRequest",
