@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, Protocol, runtime_checkable
 
+from framework.graph.token_ledger import TokenLedger
+
 
 @dataclass
 class Message:
@@ -31,6 +33,9 @@ class Message:
     # Phase-aware compaction metadata (continuous mode)
     phase_id: str | None = None
     is_transition_marker: bool = False
+
+    # Cost metadata for granular pruning
+    token_weight: float = 0.0
     # True when this message is real human input (from /chat), not a system prompt
     is_client_input: bool = False
     # Optional image content blocks (e.g. from browser_screenshot)
@@ -333,12 +338,14 @@ class NodeConversation:
         compaction_threshold: float = 0.8,
         output_keys: list[str] | None = None,
         store: ConversationStore | None = None,
+        ledger: TokenLedger | None = None,
     ) -> None:
         self._system_prompt = system_prompt
         self._max_context_tokens = max_context_tokens
         self._compaction_threshold = compaction_threshold
         self._output_keys = output_keys
         self._store = store
+        self._ledger = ledger or TokenLedger()
         self._messages: list[Message] = []
         self._next_seq: int = 0
         self._meta_persisted: bool = False
@@ -367,6 +374,10 @@ class NodeConversation:
     @property
     def current_phase(self) -> str | None:
         return self._current_phase
+
+    @property
+    def ledger(self) -> TokenLedger:
+        return self._ledger
 
     @property
     def messages(self) -> list[Message]:
@@ -562,7 +573,18 @@ class NodeConversation:
         return self.estimate_tokens() / self._max_context_tokens
 
     def needs_compaction(self) -> bool:
-        return self.estimate_tokens() >= self._max_context_tokens * self._compaction_threshold
+        """Check if compaction is needed based on token usage or ledger weights."""
+        if self.estimate_tokens() >= self._max_context_tokens * self._compaction_threshold:
+            return True
+
+        # Optional: Drive compaction based on highly weighted ledger blocks
+        if (
+            self._ledger.total_cost > 0.0
+            and self._ledger.total_prompt_tokens > self._max_context_tokens
+        ):
+            return True
+
+        return False
 
     # --- Output-key extraction ---------------------------------------------
 

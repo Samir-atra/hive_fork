@@ -76,6 +76,10 @@ class SessionMetrics(BaseModel):
     problem_count: int = 0
     total_input_tokens: int = 0
     total_output_tokens: int = 0
+    total_reasoning_tokens: int = 0
+    total_cache_read_tokens: int = 0
+    total_cache_write_tokens: int = 0
+    total_cost: float = 0.0
     nodes_executed: list[str] = Field(default_factory=list)
     edges_traversed: list[str] = Field(default_factory=list)
 

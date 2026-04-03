@@ -2135,7 +2135,13 @@ class EventLoopNode(NodeProtocol):
         stream_id = ctx.stream_id or ctx.node_id
         node_id = ctx.node_id
         execution_id = ctx.execution_id or ""
-        token_counts: dict[str, int] = {"input": 0, "output": 0, "cached": 0}
+        token_counts: dict[str, int] = {
+            "input": 0,
+            "output": 0,
+            "cached_read": 0,
+            "cached_write": 0,
+            "reasoning": 0,
+        }
         tool_call_count = 0
         final_text = ""
         final_system_prompt = conversation.system_prompt
@@ -2241,9 +2247,21 @@ class EventLoopNode(NodeProtocol):
                     elif isinstance(event, FinishEvent):
                         token_counts["input"] += event.input_tokens
                         token_counts["output"] += event.output_tokens
-                        token_counts["cached"] += event.cached_tokens
+                        token_counts["cached_read"] += event.cache_read_tokens
+                        token_counts["cached_write"] += event.cache_write_tokens
+                        token_counts["reasoning"] += event.reasoning_tokens
                         token_counts["stop_reason"] = event.stop_reason
                         token_counts["model"] = event.model
+
+                        conversation.ledger.record_turn(
+                            node_id=node_id,
+                            message_seq=conversation.next_seq,
+                            prompt_tokens=event.input_tokens,
+                            completion_tokens=event.output_tokens,
+                            reasoning_tokens=event.reasoning_tokens,
+                            cache_read_tokens=event.cache_read_tokens,
+                            cache_write_tokens=event.cache_write_tokens,
+                        )
 
                     elif isinstance(event, StreamErrorEvent):
                         if not event.recoverable:
