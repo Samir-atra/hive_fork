@@ -15,6 +15,8 @@ HUGGINGFACE_CREDENTIALS = {
             "huggingface_search_datasets",
             "huggingface_get_dataset",
             "huggingface_search_spaces",
+            "huggingface_search_kernels",
+            "huggingface_get_kernel",
             "huggingface_whoami",
             "huggingface_run_inference",
             "huggingface_run_embedding",
