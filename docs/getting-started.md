@@ -93,32 +93,90 @@ PYTHONPATH=exports uv run python -m my_agent validate
 
 ### Option 3: Manual Code-First (Minimal Example)
 
-If you prefer to start with code rather than CLI wizards, check out the manual agent example:
+If you prefer to start with code rather than CLI wizards, you can create a simple agent programmatically.
+This minimal example demonstrates the core runtime loop using pure Python functions without requiring LLM setup.
 
-```bash
-# View the minimal example
-cat core/examples/manual_agent.py
+Create a file named `manual_agent.py`:
 
-# Run it (no API keys required)
-uv run python core/examples/manual_agent.py
+```python
+import asyncio
+from framework.graph import EdgeCondition, EdgeSpec, Goal, GraphSpec, NodeSpec
+from framework.graph.executor import GraphExecutor
+from framework.graph.node import NodeContext, NodeProtocol, NodeResult
+from framework.runtime.core import Runtime
+
+# 1. Define Node Logic
+class GreeterNode(NodeProtocol):
+    async def execute(self, ctx: NodeContext) -> NodeResult:
+        name = ctx.input_data.get("name", "World")
+        return NodeResult(success=True, output={"greeting": f"Hello, {name}!"})
+
+async def main():
+    # 2. Define the Goal
+    goal = Goal(
+        id="greet-user",
+        name="Greet User",
+        description="Generate a friendly greeting",
+        success_criteria=[]
+    )
+
+    # 3. Define Nodes and Edges
+    node1 = NodeSpec(
+        id="greeter",
+        name="Greeter",
+        description="Generates a simple greeting",
+        node_type="event_loop",
+        input_keys=["name"],
+        output_keys=["greeting"],
+    )
+
+    # 4. Create Graph
+    graph = GraphSpec(
+        id="greeting-agent",
+        goal_id="greet-user",
+        entry_node="greeter",
+        terminal_nodes=["greeter"],
+        nodes=[node1],
+        edges=[],
+    )
+
+    # 5. Initialize Runtime & Executor
+    from pathlib import Path
+    runtime = Runtime(storage_path=Path("./agent_logs"))
+    executor = GraphExecutor(runtime=runtime)
+    executor.register_node("greeter", GreeterNode())
+
+    # 6. Execute Agent
+    result = await executor.execute(graph=graph, goal=goal, input_data={"name": "Alice"})
+    if result.success:
+        print(f"Final output: {result.output.get('greeting')}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
-This demonstrates the core runtime loop using pure Python functions, skipping the complexity of LLM setup and file-based configuration.
+Run it (no API keys required):
+
+```bash
+uv run python manual_agent.py
+```
 
 ## Project Structure
+
+Understanding the main components of the Hive framework will help you navigate the repository:
 
 ```
 hive/
 ├── core/                   # Core Framework
-│   ├── framework/          # Agent runtime, graph executor
+│   ├── framework/          # The heart of the AI agent framework
 │   │   ├── builder/        # Agent builder utilities
-│   │   ├── credentials/    # Credential management
-│   │   ├── graph/          # GraphExecutor - executes node graphs
-│   │   ├── llm/            # LLM provider integrations
-│   │   ├── mcp/            # MCP server integration
+│   │   ├── credentials/    # Credential management for external services
+│   │   ├── graph/          # GraphExecutor - executes the node graph logic
+│   │   ├── llm/            # Integrations with various LLM providers
+│   │   ├── mcp/            # MCP (Model Context Protocol) server integration
 │   │   ├── runner/         # AgentRunner - loads and runs agents
-│   │   ├── runtime/        # Runtime environment
-│   │   ├── schemas/        # Data schemas
+│   │   ├── runtime/        # Runtime environment and state management
+│   │   ├── schemas/        # Data schemas for internal objects
 │   │   ├── storage/        # File-based persistence
 │   │   ├── testing/        # Testing utilities
 │   │   └── tui/            # Terminal UI dashboard
@@ -126,19 +184,16 @@ hive/
 │
 ├── tools/                  # MCP Tools Package
 │   ├── mcp_server.py       # MCP server entry point
-│   └── src/aden_tools/     # Tools for agent capabilities
-│       └── tools/          # Individual tool implementations
-│           ├── web_search_tool/
-│           ├── web_scrape_tool/
-│           └── file_system_toolkits/
+│   └── src/aden_tools/     # Collection of tools for agent capabilities
+│       └── tools/          # Individual tool implementations (e.g., search, file system)
 │
-├── exports/                # Agent Packages (user-generated, not in repo)
-│   └── your_agent/         # Your agents created via coder-tools workflow
+├── exports/                # Agent Packages
+│   └── your_agent/         # Your generated or custom agents live here (gitignored)
 │
 ├── examples/
-│   └── templates/          # Pre-built template agents
+│   └── templates/          # Pre-built template agents to learn from
 │
-└── docs/                   # Documentation
+└── docs/                   # Detailed documentation
 ```
 
 ## Running an Agent
