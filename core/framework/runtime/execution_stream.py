@@ -23,6 +23,7 @@ from framework.graph.executor import ExecutionResult, GraphExecutor
 from framework.runtime.event_bus import EventBus
 from framework.runtime.shared_state import IsolationLevel, SharedStateManager
 from framework.runtime.stream_runtime import StreamRuntime, StreamRuntimeAdapter
+from framework.utils.resilience import CircuitBreaker, CircuitBreakerOpenError
 
 if TYPE_CHECKING:
     from framework.graph.edge import GraphSpec
@@ -280,6 +281,9 @@ class ExecutionStream:
         else:
             self._scoped_event_bus = None
 
+        # Resilience
+        self._circuit_breaker = CircuitBreaker()
+
         # State
         self._running = False
 
@@ -498,6 +502,11 @@ class ExecutionStream:
         """
         if not self._running:
             raise RuntimeError(f"ExecutionStream '{self.stream_id}' is not running")
+
+        if self._circuit_breaker.is_open:
+            raise CircuitBreakerOpenError(
+                f"ExecutionStream '{self.stream_id}' rejected execution because the circuit breaker is open."
+            )
 
         # Only one execution may run on a stream at a time — concurrent
         # executions corrupt shared session state.  Cancel any running
@@ -770,6 +779,13 @@ class ExecutionStream:
 
                     break  # success, fatal failure, or resurrections exhausted
 
+                # Update circuit breaker state based on result
+                if result.success:
+                    self._circuit_breaker.record_success()
+                else:
+                    if not result.paused_at and not self._is_fatal_error(result.error):
+                        self._circuit_breaker.record_failure()
+
                 # Store result with retention
                 self._record_execution_result(execution_id, result)
 
@@ -900,6 +916,10 @@ class ExecutionStream:
             except Exception as e:
                 ctx.status = "failed"
                 logger.error(f"Execution {execution_id} failed: {e}")
+
+                # Update circuit breaker on unhandled error
+                if not self._is_fatal_error(str(e)):
+                    self._circuit_breaker.record_failure()
 
                 # Store error result with retention
                 self._record_execution_result(

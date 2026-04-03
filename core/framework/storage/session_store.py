@@ -114,7 +114,20 @@ class SessionStore:
             if not state_path.exists():
                 return None
 
-            return SessionState.model_validate_json(state_path.read_text(encoding="utf-8"))
+            try:
+                return SessionState.model_validate_json(state_path.read_text(encoding="utf-8"))
+            except Exception as e:
+                logger.warning(f"Failed to load {state_path}: {e}")
+                # Corruption isolation
+                import shutil
+                corrupted_dir = state_path.parent / ".corrupted"
+                corrupted_dir.mkdir(parents=True, exist_ok=True)
+                corrupted_path = corrupted_dir / "state.json.corrupted"
+                try:
+                    shutil.move(str(state_path), str(corrupted_path))
+                except OSError:
+                    pass
+                return None
 
         return await asyncio.to_thread(_read)
 
@@ -164,6 +177,15 @@ class SessionStore:
 
                 except Exception as e:
                     logger.warning(f"Failed to load {state_path}: {e}")
+                    # Corruption isolation
+                    import shutil
+                    corrupted_dir = state_path.parent / ".corrupted"
+                    corrupted_dir.mkdir(parents=True, exist_ok=True)
+                    corrupted_path = corrupted_dir / "state.json.corrupted"
+                    try:
+                        shutil.move(str(state_path), str(corrupted_path))
+                    except OSError:
+                        pass
                     continue
 
             # Sort by updated_at descending (most recent first)
