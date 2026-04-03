@@ -74,11 +74,16 @@ class _IntercomClient:
 
     # --- Read operations ---
 
-    def search_conversations(self, query: dict[str, Any], limit: int = 20) -> dict[str, Any]:
+    def search_conversations(
+        self, query: dict[str, Any], limit: int = 20, starting_after: str | None = None
+    ) -> dict[str, Any]:
         """Search conversations using Intercom query syntax."""
+        pagination: dict[str, Any] = {"per_page": min(limit, 150)}
+        if starting_after:
+            pagination["starting_after"] = starting_after
         body: dict[str, Any] = {
             "query": query,
-            "pagination": {"per_page": min(limit, 150)},
+            "pagination": pagination,
         }
         response = httpx.post(
             f"{INTERCOM_API_BASE}/conversations/search",
@@ -107,11 +112,16 @@ class _IntercomClient:
         )
         return self._handle_response(response)
 
-    def search_contacts(self, query: dict[str, Any], limit: int = 50) -> dict[str, Any]:
+    def search_contacts(
+        self, query: dict[str, Any], limit: int = 50, starting_after: str | None = None
+    ) -> dict[str, Any]:
         """Search contacts using Intercom query syntax."""
+        pagination: dict[str, Any] = {"per_page": min(limit, 150)}
+        if starting_after:
+            pagination["starting_after"] = starting_after
         body: dict[str, Any] = {
             "query": query,
-            "pagination": {"per_page": min(limit, 150)},
+            "pagination": pagination,
         }
         response = httpx.post(
             f"{INTERCOM_API_BASE}/contacts/search",
@@ -159,6 +169,31 @@ class _IntercomClient:
         }
         response = httpx.post(
             f"{INTERCOM_API_BASE}/conversations/{conversation_id}/reply",
+            headers=self._headers,
+            json=payload,
+            timeout=30.0,
+        )
+        return self._handle_response(response)
+
+    def update_conversation_status(
+        self,
+        conversation_id: str,
+        status: str,
+        body: str = "",
+    ) -> dict[str, Any]:
+        """Update a conversation's status (close, snooze, open)."""
+        admin_id = self._get_admin_id()
+        if isinstance(admin_id, dict):
+            return admin_id
+        payload: dict[str, Any] = {
+            "type": "admin",
+            "admin_id": admin_id,
+            "message_type": status,
+        }
+        if body:
+            payload["body"] = body
+        response = httpx.post(
+            f"{INTERCOM_API_BASE}/conversations/{conversation_id}/parts",
             headers=self._headers,
             json=payload,
             timeout=30.0,
@@ -337,6 +372,7 @@ def register_tools(
         tag: str | None = None,
         created_after: str | None = None,
         limit: int = 20,
+        starting_after: str = "",
     ) -> dict:
         """
         Search Intercom conversations with optional filters.
@@ -348,6 +384,7 @@ def register_tools(
             created_after: ISO date string — only return conversations
                 created after this date (e.g., "2026-01-15")
             limit: Max conversations to return (1-150, default 20)
+            starting_after: Cursor for pagination from previous response (optional)
 
         Returns:
             Dict with conversation summaries or error
@@ -414,7 +451,9 @@ def register_tools(
             else:
                 query = {"operator": "AND", "value": filters}
 
-            return client.search_conversations(query, limit=limit)
+            return client.search_conversations(
+                query, limit=limit, starting_after=starting_after or None
+            )
         except httpx.TimeoutException:
             return {"error": "Request timed out"}
         except httpx.RequestError as e:
@@ -481,13 +520,14 @@ def register_tools(
             return {"error": f"Network error: {e}"}
 
     @mcp.tool()
-    def intercom_search_contacts(query: str, limit: int = 20) -> dict:
+    def intercom_search_contacts(query: str, limit: int = 20, starting_after: str = "") -> dict:
         """
         Search contacts by email, name, or custom attributes.
 
         Args:
             query: Search query string
             limit: Max contacts to return (1-150, default 20)
+            starting_after: Cursor for pagination from previous response (optional)
 
         Returns:
             Dict with matching contacts or error
@@ -505,7 +545,9 @@ def register_tools(
                     {"field": "name", "operator": "~", "value": query},
                 ],
             }
-            return client.search_contacts(search_query, limit=limit)
+            return client.search_contacts(
+                search_query, limit=limit, starting_after=starting_after or None
+            )
         except httpx.TimeoutException:
             return {"error": "Request timed out"}
         except httpx.RequestError as e:
@@ -617,6 +659,57 @@ def register_tools(
             return client
         try:
             return client.list_teams()
+        except httpx.TimeoutException:
+            return {"error": "Request timed out"}
+        except httpx.RequestError as e:
+            return {"error": f"Network error: {e}"}
+
+    @mcp.tool()
+    def intercom_reply_conversation(conversation_id: str, body: str) -> dict:
+        """
+        Send a visible reply to a conversation.
+
+        Args:
+            conversation_id: Intercom conversation ID
+            body: Reply content (supports HTML)
+
+        Returns:
+            Dict with reply details or error
+        """
+        client = _get_client()
+        if isinstance(client, dict):
+            return client
+        try:
+            return client.reply_to_conversation(conversation_id, body=body, message_type="comment")
+        except httpx.TimeoutException:
+            return {"error": "Request timed out"}
+        except httpx.RequestError as e:
+            return {"error": f"Network error: {e}"}
+
+    @mcp.tool()
+    def intercom_update_conversation_status(
+        conversation_id: str,
+        status: str,
+        body: str = "",
+    ) -> dict:
+        """
+        Close, snooze, or reopen a conversation.
+
+        Args:
+            conversation_id: Intercom conversation ID
+            status: "close", "snooze", or "open"
+            body: Optional message to include with the status update
+
+        Returns:
+            Dict with updated conversation or error
+        """
+        client = _get_client()
+        if isinstance(client, dict):
+            return client
+        if status not in ("close", "snooze", "open"):
+            return {"error": "status must be 'close', 'snooze', or 'open'"}
+        try:
+            return client.update_conversation_status(conversation_id, status=status, body=body)
         except httpx.TimeoutException:
             return {"error": "Request timed out"}
         except httpx.RequestError as e:
