@@ -15,6 +15,7 @@ from typing import Any
 
 from framework.observability import set_trace_context
 from framework.schemas.decision import Decision, DecisionType, Option, Outcome
+from framework.schemas.evaluation import EvaluationResult, FailureTaxonomy
 from framework.schemas.run import Run, RunStatus
 from framework.storage.backend import FileStorage
 
@@ -131,6 +132,35 @@ class Runtime:
         status = RunStatus.COMPLETED if success else RunStatus.FAILED
         self._current_run.output_data = output_data or {}
         self._current_run.complete(status, narrative)
+
+        # Generate EvaluationResult
+        failure_category = None
+        if not success:
+            # Simple heuristic: look at problems for category
+            problem_descs = [p.description.lower() for p in self._current_run.problems]
+            if any("timeout" in d for d in problem_descs):
+                failure_category = FailureTaxonomy.TIMEOUT
+            elif any("context limit" in d or "token" in d for d in problem_descs):
+                failure_category = FailureTaxonomy.CONTEXT_LIMIT_EXCEEDED
+            elif any("policy" in d for d in problem_descs):
+                failure_category = FailureTaxonomy.POLICY_VIOLATION
+            elif any("tool" in d for d in problem_descs):
+                failure_category = FailureTaxonomy.TOOL_ERROR
+            elif any("reasoning" in d or "logic" in d for d in problem_descs):
+                failure_category = FailureTaxonomy.REASONING_FAILURE
+            else:
+                failure_category = FailureTaxonomy.UNKNOWN
+
+        evaluation = EvaluationResult(
+            execution_id=self._current_run.id,
+            success=success,
+            confidence=1.0,
+            failure_category=failure_category,
+            cost=0.0,
+            latency_ms=self._current_run.duration_ms,
+            retry_count=0
+        )
+        self._current_run.evaluation = evaluation
 
         # Save to storage
         self.storage.save_run(self._current_run)

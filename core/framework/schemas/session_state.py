@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field, computed_field
 
+from framework.schemas.evaluation import EvaluationResult
+
 if TYPE_CHECKING:
     from framework.graph.executor import ExecutionResult
     from framework.schemas.run import Run
@@ -150,6 +152,9 @@ class SessionState(BaseModel):
     trigger_tasks: dict[str, str] = Field(default_factory=dict)
     # True after first successful worker execution (gates trigger delivery on restart)
     worker_configured: bool = Field(default=False)
+
+    # Evaluation
+    evaluation: EvaluationResult | None = None
 
     model_config = {"extra": "allow"}
 
