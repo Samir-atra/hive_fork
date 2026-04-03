@@ -99,6 +99,11 @@ def main():
 
     register_debugger_commands(subparsers)
 
+    # Register doctor command (doctor)
+    from framework.doctor.cli import register_doctor_commands
+
+    register_doctor_commands(subparsers)
+
     args = parser.parse_args()
 
     if hasattr(args, "func"):
