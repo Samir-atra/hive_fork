@@ -172,6 +172,95 @@ def register_tools(
         return {"models": models, "count": len(models)}
 
     @mcp.tool()
+    def huggingface_search_kernels(
+        query: str = "",
+        author: str = "",
+        sort: str = "downloads",
+        limit: int = 20,
+    ) -> dict[str, Any]:
+        """
+        Search for kernels on HuggingFace Hub.
+
+        Kernels are community-driven repositories for computation kernels,
+        technically stored as models with a specific library_name or filter.
+
+        Args:
+            query: Search query text (optional)
+            author: Filter by author/organization (optional)
+            sort: Sort by: downloads, likes, lastModified (default downloads)
+            limit: Max results (1-100, default 20)
+
+        Returns:
+            Dict with kernels list (id, author, downloads, likes, tags)
+        """
+        token = _get_token(credentials)
+        if not token:
+            return _auth_error()
+
+        params: dict[str, Any] = {
+            "filter": "kernels",
+            "sort": sort,
+            "direction": "-1",
+            "limit": max(1, min(limit, 100)),
+        }
+        if query:
+            params["search"] = query
+        if author:
+            params["author"] = author
+
+        data = _get("/models", token, params)
+        if isinstance(data, dict) and "error" in data:
+            return data
+
+        kernels = []
+        for m in data if isinstance(data, list) else []:
+            kernels.append(
+                {
+                    "id": m.get("id", ""),
+                    "author": m.get("author", ""),
+                    "downloads": m.get("downloads", 0),
+                    "likes": m.get("likes", 0),
+                    "tags": m.get("tags", [])[:10],
+                    "last_modified": m.get("lastModified", ""),
+                }
+            )
+        return {"kernels": kernels, "count": len(kernels)}
+
+    @mcp.tool()
+    def huggingface_get_kernel(kernel_id: str) -> dict[str, Any]:
+        """
+        Get detailed information about a specific HuggingFace kernel.
+
+        Args:
+            kernel_id: Kernel ID (e.g. "kernels-community/triton_kernels")
+
+        Returns:
+            Dict with kernel details
+        """
+        token = _get_token(credentials)
+        if not token:
+            return _auth_error()
+        if not kernel_id:
+            return {"error": "kernel_id is required"}
+
+        data = _get(f"/models/{kernel_id}", token)
+        if isinstance(data, dict) and "error" in data:
+            return data
+
+        d = data if isinstance(data, dict) else {}
+        return {
+            "id": d.get("id", ""),
+            "author": d.get("author", ""),
+            "downloads": d.get("downloads", 0),
+            "likes": d.get("likes", 0),
+            "tags": d.get("tags", []),
+            "card_data": d.get("cardData"),
+            "private": d.get("private", False),
+            "last_modified": d.get("lastModified", ""),
+            "created_at": d.get("createdAt", ""),
+        }
+
+    @mcp.tool()
     def huggingface_get_model(model_id: str) -> dict[str, Any]:
         """
         Get details about a specific model on HuggingFace Hub.

@@ -50,6 +50,77 @@ class TestHuggingFaceSearchModels:
         assert result["models"][0]["id"] == "meta-llama/Llama-3-8B"
 
 
+class TestHuggingFaceSearchKernels:
+    def test_missing_token(self, tool_fns):
+        with patch.dict("os.environ", {}, clear=True):
+            result = tool_fns["huggingface_search_kernels"]()
+        assert "error" in result
+
+    def test_successful_search(self, tool_fns):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = [
+            {
+                "id": "kernels-community/triton_kernels",
+                "author": "kernels-community",
+                "downloads": 500,
+                "likes": 10,
+                "tags": ["kernels", "triton"],
+                "lastModified": "2024-06-01T00:00:00Z",
+            }
+        ]
+        with (
+            patch.dict("os.environ", ENV),
+            patch(
+                "aden_tools.tools.huggingface_tool.huggingface_tool.httpx.get",
+                return_value=mock_resp,
+            ),
+        ):
+            result = tool_fns["huggingface_search_kernels"](query="triton")
+
+        assert len(result["kernels"]) == 1
+        assert result["kernels"][0]["id"] == "kernels-community/triton_kernels"
+        assert result["count"] == 1
+
+
+class TestHuggingFaceGetKernel:
+    def test_missing_token(self, tool_fns):
+        with patch.dict("os.environ", {}, clear=True):
+            result = tool_fns["huggingface_get_kernel"](
+                kernel_id="kernels-community/triton_kernels"
+            )
+        assert "error" in result
+
+    def test_missing_id(self, tool_fns):
+        with patch.dict("os.environ", ENV):
+            result = tool_fns["huggingface_get_kernel"](kernel_id="")
+        assert "error" in result
+
+    def test_successful_get(self, tool_fns):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "id": "kernels-community/triton_kernels",
+            "author": "kernels-community",
+            "downloads": 500,
+            "likes": 10,
+            "tags": ["kernels", "triton"],
+        }
+        with (
+            patch.dict("os.environ", ENV),
+            patch(
+                "aden_tools.tools.huggingface_tool.huggingface_tool.httpx.get",
+                return_value=mock_resp,
+            ),
+        ):
+            result = tool_fns["huggingface_get_kernel"](
+                kernel_id="kernels-community/triton_kernels"
+            )
+
+        assert result["id"] == "kernels-community/triton_kernels"
+        assert result["downloads"] == 500
+
+
 class TestHuggingFaceGetModel:
     def test_missing_id(self, tool_fns):
         with patch.dict("os.environ", ENV):
