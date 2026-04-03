@@ -30,6 +30,7 @@ except ImportError:
 from framework.config import HIVE_LLM_ENDPOINT as HIVE_API_BASE
 from framework.llm.provider import LLMProvider, LLMResponse, Tool
 from framework.llm.stream_events import StreamEvent
+from framework.llm.versioning import ModelVersionManager
 
 logger = logging.getLogger(__name__)
 
@@ -708,7 +709,7 @@ class LiteLLMProvider(LLMProvider):
 
         # Build kwargs
         kwargs: dict[str, Any] = {
-            "model": self.model,
+            "model": ModelVersionManager.default().get_current_model(self.model),
             "messages": full_messages,
             "max_tokens": max_tokens,
             **self.extra_kwargs,
@@ -907,7 +908,7 @@ class LiteLLMProvider(LLMProvider):
                 full_messages.insert(0, {"role": "system", "content": json_instruction.strip()})
 
         kwargs: dict[str, Any] = {
-            "model": self.model,
+            "model": ModelVersionManager.default().get_current_model(self.model),
             "messages": full_messages,
             "max_tokens": max_tokens,
             **self.extra_kwargs,
@@ -1365,7 +1366,7 @@ class LiteLLMProvider(LLMProvider):
         """Emulate tool calling via JSON when OpenRouter rejects native tools."""
         full_messages = self._build_openrouter_tool_compat_messages(messages, system, tools)
         kwargs: dict[str, Any] = {
-            "model": self.model,
+            "model": ModelVersionManager.default().get_current_model(self.model),
             "messages": full_messages,
             "max_tokens": max_tokens,
             **self.extra_kwargs,
@@ -1604,7 +1605,7 @@ class LiteLLMProvider(LLMProvider):
         ]
 
         kwargs: dict[str, Any] = {
-            "model": self.model,
+            "model": ModelVersionManager.default().get_current_model(self.model),
             "messages": full_messages,
             "max_tokens": max_tokens,
             "stream": True,

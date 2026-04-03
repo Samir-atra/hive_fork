@@ -12,6 +12,7 @@ from framework.llm.stream_events import (
     ToolCallEvent,
     ToolResultEvent,
 )
+from framework.llm.versioning import ModelVersion, ModelVersionManager
 
 __all__ = [
     "LLMProvider",
@@ -25,6 +26,8 @@ __all__ = [
     "ReasoningDeltaEvent",
     "FinishEvent",
     "StreamErrorEvent",
+    "ModelVersionManager",
+    "ModelVersion",
 ]
 
 try:
