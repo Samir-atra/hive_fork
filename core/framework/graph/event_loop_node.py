@@ -297,6 +297,13 @@ class LoopConfig:
     # blocking the entire event loop indefinitely.  0 = no timeout.
     tool_call_timeout_seconds: float = 60.0
 
+    # --- Tool call retry policy ---
+    # When a tool call times out or encounters a transient error, retry
+    # up to this many times with exponential backoff before failing.
+    tool_call_max_retries: int = 3
+    tool_call_retry_backoff_base: float = 2.0
+    tool_call_retry_max_delay: float = 60.0
+
     # --- Subagent delegation timeout ---
     # Maximum seconds a delegate_to_sub_agent call may run before being
     # killed.  Subagents run a full event-loop so they naturally take
@@ -3738,23 +3745,73 @@ class EventLoopNode(NodeProtocol):
                 result = await result
             return result
 
-        try:
-            if timeout > 0:
-                result = await asyncio.wait_for(_run(), timeout=timeout)
-            else:
-                result = await _run()
-        except TimeoutError:
-            logger.warning("Tool '%s' timed out after %.0fs", tc.tool_name, timeout)
-            return ToolResult(
-                tool_use_id=tc.tool_use_id,
-                content=(
-                    f"Tool '{tc.tool_name}' timed out after {timeout:.0f}s. "
-                    "The operation took too long and was cancelled. "
-                    "Try a simpler request or a different approach."
-                ),
-                is_error=True,
-            )
-        return result
+        max_retries = self._config.tool_call_max_retries
+        backoff_base = self._config.tool_call_retry_backoff_base
+        max_delay = self._config.tool_call_retry_max_delay
+
+        for attempt in range(max_retries + 1):
+            try:
+                if timeout > 0:
+                    result = await asyncio.wait_for(_run(), timeout=timeout)
+                else:
+                    result = await _run()
+                return result
+            except TimeoutError:
+                if attempt < max_retries:
+                    delay = min(max_delay, backoff_base**attempt)
+                    logger.warning(
+                        "Tool '%s' timed out (attempt %d/%d). Retrying in %.1fs...",
+                        tc.tool_name,
+                        attempt + 1,
+                        max_retries + 1,
+                        delay,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+
+                logger.warning(
+                    "Tool '%s' timed out after %.0fs (all %d retries exhausted)",
+                    tc.tool_name,
+                    timeout,
+                    max_retries,
+                )
+                return ToolResult(
+                    tool_use_id=tc.tool_use_id,
+                    content=(
+                        f"Tool '{tc.tool_name}' timed out after {timeout:.0f}s. "
+                        "The operation took too long and was cancelled. "
+                        "Try a simpler request or a different approach."
+                    ),
+                    is_error=True,
+                )
+            except Exception as e:
+                # Use EventLoopNode._is_transient_error since it's a static method
+                if EventLoopNode._is_transient_error(e) and attempt < max_retries:
+                    delay = min(max_delay, backoff_base**attempt)
+                    logger.warning(
+                        "Tool '%s' hit transient error: %s (attempt %d/%d). Retrying in %.1fs...",
+                        tc.tool_name,
+                        str(e),
+                        attempt + 1,
+                        max_retries + 1,
+                        delay,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+
+                logger.error("Tool '%s' failed: %s", tc.tool_name, str(e))
+                return ToolResult(
+                    tool_use_id=tc.tool_use_id,
+                    content=f"Tool '{tc.tool_name}' failed: {e}",
+                    is_error=True,
+                )
+
+        # Fallback (should not be reached)
+        return ToolResult(
+            tool_use_id=tc.tool_use_id,
+            content=f"Tool '{tc.tool_name}' failed after {max_retries} retries.",
+            is_error=True,
+        )
 
     def _record_learning(self, key: str, value: Any) -> None:
         """Append a set_output value to adapt.md as a learning entry.
