@@ -3007,6 +3007,34 @@ export default function Workspace() {
       if (prefetchedMessages.length > 0) {
         prefetchedMessages.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
       }
+
+      // Append an agent summary to provide context for existing agents
+      if (resolvedType !== "new-agent") {
+        try {
+          const sessionData = await sessionsApi.get(sessionId);
+          if (sessionData && (sessionData.description || sessionData.goal)) {
+            const summaryParts = [
+              `**Agent Summary**`,
+              `* **Agent:** ${sessionData.worker_name || agentName || agentPath}`,
+              sessionData.description ? `* **Description:** ${sessionData.description}` : '',
+              sessionData.goal ? `* **Goal:** ${sessionData.goal}` : ''
+            ].filter(Boolean);
+
+            prefetchedMessages.push({
+              id: `summary-${Date.now()}`,
+              agent: "System",
+              agentColor: "",
+              content: summaryParts.join("\n"),
+              timestamp: new Date().toISOString(),
+              type: "system",
+              thread: resolvedType,
+              createdAt: Date.now() + 1, // ensure it sorts to the end
+            });
+          }
+        } catch {
+          // If fetching session detail fails, just skip the summary
+        }
+      }
     } catch {
       // Not available — session will open empty and loadAgentForType will try again
     }
