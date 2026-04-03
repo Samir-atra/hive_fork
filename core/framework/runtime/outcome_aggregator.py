@@ -314,7 +314,7 @@ class OutcomeAggregator:
         """
         Evaluate a single success criterion.
         This is a heuristic evaluation based on decision outcomes.
-        More sophisticated evaluation can be added per criterion type.
+        Supports 'success_rate', 'structured_result', and 'state_change_check'.
         """
         status = CriterionStatus(
             criterion_id=criterion.id,
@@ -324,10 +324,7 @@ class OutcomeAggregator:
             evidence=[],
         )
 
-        # Guard: only apply this heuristic to success-rate criteria
         criterion_type = getattr(criterion, "type", "success_rate")
-        if criterion_type != "success_rate":
-            return status
 
         # Get relevant decisions (those mentioning this criterion or related intents)
         relevant_decisions = [
@@ -341,7 +338,22 @@ class OutcomeAggregator:
             # No evidence yet
             return status
 
-        # Calculate success rate for relevant decisions
+        if criterion_type == "success_rate":
+            return self._evaluate_success_rate(status, criterion, relevant_decisions)
+        elif criterion_type == "structured_result":
+            return self._evaluate_structured_result(status, criterion, relevant_decisions)
+        elif criterion_type == "state_change_check":
+            return self._evaluate_state_change_check(status, criterion, relevant_decisions)
+
+        return status
+
+    def _evaluate_success_rate(
+        self,
+        status: CriterionStatus,
+        criterion: Any,
+        relevant_decisions: list[DecisionRecord],
+    ) -> CriterionStatus:
+        """Evaluate a success_rate criterion."""
         outcomes = [d.outcome for d in relevant_decisions if d.outcome is not None]
         if outcomes:
             success_count = sum(1 for o in outcomes if o.success)
@@ -370,6 +382,84 @@ class OutcomeAggregator:
                 status.met = status.progress >= 0.8
         except (ValueError, AttributeError):
             status.met = status.progress >= 0.8
+
+        return status
+
+    def _evaluate_structured_result(
+        self,
+        status: CriterionStatus,
+        criterion: Any,
+        relevant_decisions: list[DecisionRecord],
+    ) -> CriterionStatus:
+        """Evaluate a structured_result criterion.
+
+        Checks if target structure exists in outcome result.
+        """
+        outcomes = [
+            d.outcome
+            for d in relevant_decisions
+            if d.outcome is not None and d.outcome.success
+        ]
+
+        for outcome in outcomes:
+            if outcome.result is not None:
+                # Basic validation: check if result matches target.
+                # If target is dict, check if result contains target subset.
+                is_match = False
+                target = getattr(criterion, "target", None)
+
+                if isinstance(target, dict) and isinstance(outcome.result, dict):
+                    # Check if all target items are in result
+                    is_match = all(
+                        k in outcome.result and outcome.result[k] == v
+                        for k, v in target.items()
+                    )
+                else:
+                    is_match = outcome.result == target
+
+                if is_match:
+                    status.met = True
+                    status.progress = 1.0
+                    status.evidence.append(f"Structured result matches target: {target}")
+                    return status
+
+        return status
+
+    def _evaluate_state_change_check(
+        self,
+        status: CriterionStatus,
+        criterion: Any,
+        relevant_decisions: list[DecisionRecord],
+    ) -> CriterionStatus:
+        """Evaluate a state_change_check criterion.
+
+        Verifies state_changes in outcomes.
+        """
+        outcomes = [
+            d.outcome
+            for d in relevant_decisions
+            if d.outcome is not None and d.outcome.success
+        ]
+
+        for outcome in outcomes:
+            if getattr(outcome, "state_changes", None):
+                is_match = False
+                target = getattr(criterion, "target", None)
+
+                if isinstance(target, dict) and isinstance(outcome.state_changes, dict):
+                    # Check if all target state changes occurred
+                    is_match = all(
+                        k in outcome.state_changes and outcome.state_changes[k] == v
+                        for k, v in target.items()
+                    )
+                else:
+                    is_match = outcome.state_changes == target
+
+                if is_match:
+                    status.met = True
+                    status.progress = 1.0
+                    status.evidence.append(f"State transition matches target: {target}")
+                    return status
 
         return status
 
