@@ -185,6 +185,45 @@ class TestLiteLLMProviderComplete:
         assert call_kwargs["tools"][0]["type"] == "function"
         assert call_kwargs["tools"][0]["function"]["name"] == "get_weather"
 
+    @patch("framework.llm.litellm.litellm.completion")
+    def test_complete_granular_tokens(self, mock_completion):
+        from types import SimpleNamespace
+
+        provider = LiteLLMProvider(model="gpt-4o", api_key="test-key")
+
+        mock_response = MagicMock()
+        mock_response.model = "gpt-4o"
+        mock_choice = MagicMock()
+        mock_choice.message = MagicMock()
+        mock_choice.message.content = "Detailed breakdown."
+        mock_choice.finish_reason = "stop"
+        mock_response.choices = [mock_choice]
+
+        # Mock nested usage object
+        mock_response.usage = SimpleNamespace(
+            prompt_tokens=100,
+            completion_tokens=200,
+            prompt_tokens_details=SimpleNamespace(cached_tokens=40),
+            completion_tokens_details=SimpleNamespace(reasoning_tokens=50),
+        )
+
+        mock_response.usage.cache_read_input_tokens = 0
+        mock_response.usage.cache_creation_input_tokens = 20
+
+        mock_completion.return_value = mock_response
+
+        result = provider.complete(
+            messages=[{"role": "user", "content": "Explain quantum computing."}]
+        )
+
+        assert result.content == "Detailed breakdown."
+        assert result.input_tokens == 100
+        assert result.output_tokens == 200
+        assert result.reasoning_tokens == 50
+        assert result.cache_read_tokens == 40
+        assert result.cache_write_tokens == 20
+        assert result.stop_reason == "stop"
+
 
 class TestToolConversion:
     """Test tool format conversion."""

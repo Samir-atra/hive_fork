@@ -122,6 +122,15 @@ class TestMessage:
 
 class TestNodeConversation:
     @pytest.mark.asyncio
+    async def test_needs_compaction_with_ledger(self):
+        """needs_compaction returns True when ledger dictates it."""
+        from framework.graph.token_ledger import TokenLedger
+
+        ledger = TokenLedger(total_cost=100.0, total_prompt_tokens=2000)
+        conv = NodeConversation(max_context_tokens=1000, compaction_threshold=0.8, ledger=ledger)
+        assert conv.needs_compaction() is True
+
+    @pytest.mark.asyncio
     async def test_multi_turn_build_and_export(self):
         conv = NodeConversation(system_prompt="You are helpful.")
         await conv.add_user_message("hello")

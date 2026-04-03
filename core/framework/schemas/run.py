@@ -50,6 +50,10 @@ class RunMetrics(BaseModel):
     failed_decisions: int = 0
 
     total_tokens: int = 0
+    total_reasoning_tokens: int = 0
+    total_cache_read_tokens: int = 0
+    total_cache_write_tokens: int = 0
+    total_cost: float = 0.0
     total_latency_ms: int = 0
 
     nodes_executed: list[str] = Field(default_factory=list)

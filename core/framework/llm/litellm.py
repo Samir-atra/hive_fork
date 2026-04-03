@@ -735,20 +735,38 @@ class LiteLLMProvider(LLMProvider):
         content = response.choices[0].message.content or ""
 
         # Get usage info.
-        # NOTE: completion_tokens includes reasoning/thinking tokens for models
-        # that use them (o1, gpt-5-mini, etc.). LiteLLM does not reliably expose
-        # usage.completion_tokens_details.reasoning_tokens across all providers.
-        # This means output_tokens may be inflated for reasoning models.
-        # Compaction is unaffected — it uses prompt_tokens (input-side only).
         usage = response.usage
         input_tokens = usage.prompt_tokens if usage else 0
         output_tokens = usage.completion_tokens if usage else 0
+
+        reasoning_tokens = 0
+        cache_read_tokens = 0
+        cache_write_tokens = 0
+
+        if usage:
+            # Extract reasoning tokens
+            _completion_details = getattr(usage, "completion_tokens_details", None)
+            if _completion_details:
+                reasoning_tokens = getattr(_completion_details, "reasoning_tokens", 0) or 0
+
+            # Extract cache tokens
+            _prompt_details = getattr(usage, "prompt_tokens_details", None)
+            if _prompt_details:
+                cache_read_tokens = getattr(_prompt_details, "cached_tokens", 0) or 0
+            else:
+                # Fallback for anthropic style
+                cache_read_tokens = getattr(usage, "cache_read_input_tokens", 0) or 0
+
+            cache_write_tokens = getattr(usage, "cache_creation_input_tokens", 0) or 0
 
         return LLMResponse(
             content=content,
             model=response.model or self.model,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
+            reasoning_tokens=reasoning_tokens,
+            cache_read_tokens=cache_read_tokens,
+            cache_write_tokens=cache_write_tokens,
             stop_reason=response.choices[0].finish_reason or "",
             raw_response=response,
         )
@@ -929,11 +947,31 @@ class LiteLLMProvider(LLMProvider):
         input_tokens = usage.prompt_tokens if usage else 0
         output_tokens = usage.completion_tokens if usage else 0
 
+        reasoning_tokens = 0
+        cache_read_tokens = 0
+        cache_write_tokens = 0
+
+        if usage:
+            _completion_details = getattr(usage, "completion_tokens_details", None)
+            if _completion_details:
+                reasoning_tokens = getattr(_completion_details, "reasoning_tokens", 0) or 0
+
+            _prompt_details = getattr(usage, "prompt_tokens_details", None)
+            if _prompt_details:
+                cache_read_tokens = getattr(_prompt_details, "cached_tokens", 0) or 0
+            else:
+                cache_read_tokens = getattr(usage, "cache_read_input_tokens", 0) or 0
+
+            cache_write_tokens = getattr(usage, "cache_creation_input_tokens", 0) or 0
+
         return LLMResponse(
             content=content,
             model=response.model or self.model,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
+            reasoning_tokens=reasoning_tokens,
+            cache_read_tokens=cache_read_tokens,
+            cache_write_tokens=cache_write_tokens,
             stop_reason=response.choices[0].finish_reason or "",
             raw_response=response,
         )
@@ -1637,6 +1675,9 @@ class LiteLLMProvider(LLMProvider):
             _last_tool_idx = 0  # tracks most recently opened tool call slot
             input_tokens = 0
             output_tokens = 0
+            reasoning_tokens = 0
+            cache_read_tokens = 0
+            cache_write_tokens = 0
             stream_finish_reason: str | None = None
 
             try:
@@ -1650,6 +1691,18 @@ class LiteLLMProvider(LLMProvider):
                         if usage:
                             input_tokens = getattr(usage, "prompt_tokens", 0) or 0
                             output_tokens = getattr(usage, "completion_tokens", 0) or 0
+                            _completion_details = getattr(usage, "completion_tokens_details", None)
+                            if _completion_details:
+                                reasoning_tokens = getattr(_completion_details, "reasoning_tokens", 0) or 0
+
+                            _prompt_details = getattr(usage, "prompt_tokens_details", None)
+                            if _prompt_details:
+                                cache_read_tokens = getattr(_prompt_details, "cached_tokens", 0) or 0
+                            else:
+                                cache_read_tokens = getattr(usage, "cache_read_input_tokens", 0) or 0
+
+                            cache_write_tokens = getattr(usage, "cache_creation_input_tokens", 0) or 0
+
                             logger.debug(
                                 "[tokens] trailing usage chunk: input=%d output=%d model=%s",
                                 input_tokens,
@@ -1740,22 +1793,27 @@ class LiteLLMProvider(LLMProvider):
                             usage,
                             type(usage).__name__,
                         )
-                        cached_tokens = 0
                         if usage:
                             input_tokens = getattr(usage, "prompt_tokens", 0) or 0
                             output_tokens = getattr(usage, "completion_tokens", 0) or 0
-                            _details = getattr(usage, "prompt_tokens_details", None)
-                            cached_tokens = (
-                                getattr(_details, "cached_tokens", 0) or 0
-                                if _details is not None
-                                else getattr(usage, "cache_read_input_tokens", 0) or 0
-                            )
+                            _completion_details = getattr(usage, "completion_tokens_details", None)
+                            if _completion_details:
+                                reasoning_tokens = getattr(_completion_details, "reasoning_tokens", 0) or 0
+
+                            _prompt_details = getattr(usage, "prompt_tokens_details", None)
+                            if _prompt_details:
+                                cache_read_tokens = getattr(_prompt_details, "cached_tokens", 0) or 0
+                            else:
+                                cache_read_tokens = getattr(usage, "cache_read_input_tokens", 0) or 0
+
+                            cache_write_tokens = getattr(usage, "cache_creation_input_tokens", 0) or 0
+
                             logger.debug(
                                 "[tokens] finish-chunk usage: "
                                 "input=%d output=%d cached=%d model=%s",
                                 input_tokens,
                                 output_tokens,
-                                cached_tokens,
+                                cache_read_tokens,
                                 self.model,
                             )
 
@@ -1763,7 +1821,7 @@ class LiteLLMProvider(LLMProvider):
                             "[tokens] finish event: input=%d output=%d cached=%d stop=%s model=%s",
                             input_tokens,
                             output_tokens,
-                            cached_tokens,
+                            cache_read_tokens,
                             choice.finish_reason,
                             self.model,
                         )
@@ -1772,7 +1830,9 @@ class LiteLLMProvider(LLMProvider):
                                 stop_reason=choice.finish_reason,
                                 input_tokens=input_tokens,
                                 output_tokens=output_tokens,
-                                cached_tokens=cached_tokens,
+                                reasoning_tokens=reasoning_tokens,
+                                cache_read_tokens=cache_read_tokens,
+                                cache_write_tokens=cache_write_tokens,
                                 model=self.model,
                             )
                         )
@@ -1792,18 +1852,25 @@ class LiteLLMProvider(LLMProvider):
                             _usage = calculate_total_usage(chunks=_chunks)
                             input_tokens = _usage.prompt_tokens or 0
                             output_tokens = _usage.completion_tokens or 0
-                            _details = getattr(_usage, "prompt_tokens_details", None)
-                            cached_tokens = (
-                                getattr(_details, "cached_tokens", 0) or 0
-                                if _details is not None
-                                else getattr(_usage, "cache_read_input_tokens", 0) or 0
-                            )
+
+                            _completion_details = getattr(_usage, "completion_tokens_details", None)
+                            if _completion_details:
+                                reasoning_tokens = getattr(_completion_details, "reasoning_tokens", 0) or 0
+
+                            _prompt_details = getattr(_usage, "prompt_tokens_details", None)
+                            if _prompt_details:
+                                cache_read_tokens = getattr(_prompt_details, "cached_tokens", 0) or 0
+                            else:
+                                cache_read_tokens = getattr(_usage, "cache_read_input_tokens", 0) or 0
+
+                            cache_write_tokens = getattr(_usage, "cache_creation_input_tokens", 0) or 0
+
                             logger.debug(
                                 "[tokens] post-loop chunks fallback:"
                                 " input=%d output=%d cached=%d model=%s",
                                 input_tokens,
                                 output_tokens,
-                                cached_tokens,
+                                cache_read_tokens,
                                 self.model,
                             )
                             # Patch the FinishEvent already queued with 0 tokens
@@ -1813,7 +1880,9 @@ class LiteLLMProvider(LLMProvider):
                                         stop_reason=_ev.stop_reason,
                                         input_tokens=input_tokens,
                                         output_tokens=output_tokens,
-                                        cached_tokens=cached_tokens,
+                                        reasoning_tokens=reasoning_tokens,
+                                        cache_read_tokens=cache_read_tokens,
+                                        cache_write_tokens=cache_write_tokens,
                                         model=_ev.model,
                                     )
                                     break
@@ -1947,6 +2016,9 @@ class LiteLLMProvider(LLMProvider):
         tool_calls: list[dict[str, Any]] = []
         input_tokens = 0
         output_tokens = 0
+        reasoning_tokens = 0
+        cache_read_tokens = 0
+        cache_write_tokens = 0
         stop_reason = ""
         model = self.model
 
@@ -1964,6 +2036,9 @@ class LiteLLMProvider(LLMProvider):
             elif isinstance(event, FinishEvent):
                 input_tokens = event.input_tokens
                 output_tokens = event.output_tokens
+                reasoning_tokens = event.reasoning_tokens
+                cache_read_tokens = event.cache_read_tokens
+                cache_write_tokens = event.cache_write_tokens
                 stop_reason = event.stop_reason
                 if event.model:
                     model = event.model
@@ -1976,6 +2051,9 @@ class LiteLLMProvider(LLMProvider):
             model=model,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
+            reasoning_tokens=reasoning_tokens,
+            cache_read_tokens=cache_read_tokens,
+            cache_write_tokens=cache_write_tokens,
             stop_reason=stop_reason,
             raw_response={"tool_calls": tool_calls} if tool_calls else None,
         )

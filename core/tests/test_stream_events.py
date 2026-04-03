@@ -240,7 +240,9 @@ class TestEventSerialization:
             "stop_reason": "stop",
             "input_tokens": 10,
             "output_tokens": 20,
-            "cached_tokens": 0,
+            "reasoning_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
             "model": "gpt-4",
         }
 
