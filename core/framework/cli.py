@@ -99,6 +99,11 @@ def main():
 
     register_debugger_commands(subparsers)
 
+    # Register version commands
+    from framework.llm.cli import register_version_commands
+
+    register_version_commands(subparsers)
+
     args = parser.parse_args()
 
     if hasattr(args, "func"):
