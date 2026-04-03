@@ -573,6 +573,21 @@ class TestConversationTools:
         assert "error" in result
 
     @patch("aden_tools.tools.intercom_tool.intercom_tool.httpx.post")
+    def test_search_conversations_pagination(self, mock_post):
+        mock_post.return_value = MagicMock(
+            status_code=200,
+            json=MagicMock(
+                return_value={"type": "conversation.list", "conversations": [{"id": "1"}]}
+            ),
+        )
+        result = self._fn("intercom_search_conversations")(
+            status="open", starting_after="cursor123"
+        )
+        assert result["type"] == "conversation.list"
+        call_payload = mock_post.call_args.kwargs["json"]
+        assert call_payload["pagination"]["starting_after"] == "cursor123"
+
+    @patch("aden_tools.tools.intercom_tool.intercom_tool.httpx.post")
     def test_search_conversations_timeout(self, mock_post):
         mock_post.side_effect = httpx.TimeoutException("timed out")
         result = self._fn("intercom_search_conversations")()
@@ -633,6 +648,17 @@ class TestContactTools:
         )
         result = self._fn("intercom_search_contacts")(query="john")
         assert result["type"] == "list"
+
+    @patch("aden_tools.tools.intercom_tool.intercom_tool.httpx.post")
+    def test_search_contacts_pagination(self, mock_post):
+        mock_post.return_value = MagicMock(
+            status_code=200,
+            json=MagicMock(return_value={"type": "list", "data": [{"id": "1"}]}),
+        )
+        result = self._fn("intercom_search_contacts")(query="john", starting_after="cursor123")
+        assert result["type"] == "list"
+        call_payload = mock_post.call_args.kwargs["json"]
+        assert call_payload["pagination"]["starting_after"] == "cursor123"
 
     def test_search_contacts_invalid_limit(self):
         result = self._fn("intercom_search_contacts")(query="john", limit=200)
@@ -722,6 +748,43 @@ class TestNoteTagAssignTools:
         call_payload = mock_post.call_args.kwargs["json"]
         assert call_payload["assignee_type"] == "team"
 
+    @patch("aden_tools.tools.intercom_tool.intercom_tool.httpx.get")
+    @patch("aden_tools.tools.intercom_tool.intercom_tool.httpx.post")
+    def test_reply_conversation(self, mock_post, mock_get):
+        mock_get.return_value = MagicMock(
+            status_code=200, json=MagicMock(return_value={"id": "admin-1"})
+        )
+        mock_post.return_value = MagicMock(
+            status_code=200, json=MagicMock(return_value={"type": "conversation", "id": "1"})
+        )
+        result = self._fn("intercom_reply_conversation")(conversation_id="1", body="Reply")
+        assert result["type"] == "conversation"
+        call_payload = mock_post.call_args.kwargs["json"]
+        assert call_payload["message_type"] == "comment"
+        assert call_payload["body"] == "Reply"
+
+    @patch("aden_tools.tools.intercom_tool.intercom_tool.httpx.get")
+    @patch("aden_tools.tools.intercom_tool.intercom_tool.httpx.post")
+    def test_update_conversation_status(self, mock_post, mock_get):
+        mock_get.return_value = MagicMock(
+            status_code=200, json=MagicMock(return_value={"id": "admin-1"})
+        )
+        mock_post.return_value = MagicMock(
+            status_code=200, json=MagicMock(return_value={"type": "conversation", "id": "1"})
+        )
+        result = self._fn("intercom_update_conversation_status")(
+            conversation_id="1", status="snooze"
+        )
+        assert result["type"] == "conversation"
+        call_payload = mock_post.call_args.kwargs["json"]
+        assert call_payload["message_type"] == "snooze"
+
+    def test_update_conversation_status_invalid(self):
+        result = self._fn("intercom_update_conversation_status")(
+            conversation_id="1", status="invalid"
+        )
+        assert "error" in result
+
     def test_assign_conversation_invalid_type(self):
         result = self._fn("intercom_assign_conversation")(
             conversation_id="1", assignee_id="2", assignee_type="invalid"
@@ -759,4 +822,4 @@ class TestCredentialSpec:
         spec = CREDENTIAL_SPECS["intercom"]
         assert "intercom_search_conversations" in spec.tools
         assert "intercom_list_teams" in spec.tools
-        assert len(spec.tools) == 8
+        assert len(spec.tools) == 13

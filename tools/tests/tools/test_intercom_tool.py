@@ -530,6 +530,8 @@ class TestToolRegistration:
         "intercom_close_conversation",
         "intercom_create_contact",
         "intercom_list_conversations",
+        "intercom_reply_conversation",
+        "intercom_update_conversation_status",
     ]
 
     def test_all_tools_registered(self, mcp):

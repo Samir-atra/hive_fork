@@ -20,6 +20,8 @@ INTERCOM_CREDENTIALS = {
             "intercom_list_teams",
             "intercom_close_conversation",
             "intercom_create_contact",
+            "intercom_reply_conversation",
+            "intercom_update_conversation_status",
             "intercom_list_conversations",
         ],
         required=True,
