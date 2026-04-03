@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Maximize2, LayoutTemplate } from "lucide-react";
 import type { DraftGraph as DraftGraphData, DraftNode } from "@/api/types";
 import { RunButton } from "./RunButton";
+import GraphVisualizer from "./GraphVisualizer";
 import type { GraphNode, RunState } from "./graph-types";
 import {
   cssVar,
@@ -244,6 +245,7 @@ export default function DraftGraph({ draft, originalDraft, onNodeClick, flowchar
   const containerRef = useRef<HTMLDivElement>(null);
   const runBtnRef = useRef<HTMLButtonElement>(null);
   const [containerW, setContainerW] = useState(484);
+  const [viewMode, setViewMode] = useState<"static" | "interactive">("interactive");
   const chrome = useDraftChromeColors();
   const triggerColors = useTriggerColors();
 
@@ -1114,13 +1116,23 @@ export default function DraftGraph({ draft, originalDraft, onNodeClick, flowchar
             </span>
           )}
         </div>
-        {onRun && (
-          <RunButton runState={runState} disabled={draft.nodes.length === 0} onRun={onRun} onPause={onPause ?? (() => {})} btnRef={runBtnRef} />
-        )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setViewMode(v => v === "interactive" ? "static" : "interactive")}
+            className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium rounded-md border border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+          >
+            {viewMode === "interactive" ? <LayoutTemplate className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+            {viewMode === "interactive" ? "Static View" : "Interactive View"}
+          </button>
+          {onRun && (
+            <RunButton runState={runState} disabled={draft ? draft.nodes.length === 0 : false} onRun={onRun} onPause={onPause ?? (() => {})} btnRef={runBtnRef} />
+          )}
+        </div>
       </div>
 
       {/* Graph */}
       <div ref={containerRef} className="flex-1 overflow-hidden px-2 pb-2 relative">
+        {viewMode === "static" ? (
         <div
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
@@ -1253,6 +1265,22 @@ export default function DraftGraph({ draft, originalDraft, onNodeClick, flowchar
           </g>
         </svg>
         </div>
+        ) : (
+        <div className="w-full h-full" style={{ opacity: building || loadingMessage ? 0.3 : 1 }}>
+          <GraphVisualizer
+            draft={draft}
+            runtimeNodes={runtimeNodes}
+            onNodeClick={(id) => {
+              if (typeof onRuntimeNodeClick !== 'undefined') {
+                onRuntimeNodeClick(id);
+              } else if (onNodeClick && draft?.nodes) {
+                const node = draft.nodes.find(n => n.id === id);
+                if (node) onNodeClick(node);
+              }
+            }}
+          />
+        </div>
+        )}
 
         {building && (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -1272,7 +1300,8 @@ export default function DraftGraph({ draft, originalDraft, onNodeClick, flowchar
           </div>
         )}
 
-        {/* Zoom controls */}
+        {viewMode === "static" && (
+        /* Zoom controls */
         <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-card/80 backdrop-blur-sm border border-border/40 rounded-lg p-0.5 shadow-sm">
           <button
             onClick={() => setZoom(z => Math.min(MAX_ZOOM, z * 1.2))}
@@ -1290,6 +1319,7 @@ export default function DraftGraph({ draft, originalDraft, onNodeClick, flowchar
             aria-label="Zoom out"
           >{"\u2212"}</button>
         </div>
+        )}
 
         {/* HTML tooltip — rendered outside SVG so it's not clipped */}
         {hoveredNodeData && mousePos && (() => {
