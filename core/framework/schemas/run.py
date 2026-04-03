@@ -12,6 +12,7 @@ from typing import Any
 from pydantic import BaseModel, Field, computed_field
 
 from framework.schemas.decision import Decision, Outcome
+from framework.schemas.evaluation import EvaluationResult
 
 
 class RunStatus(StrEnum):
@@ -96,6 +97,9 @@ class Run(BaseModel):
     goal_description: str = ""
     input_data: dict[str, Any] = Field(default_factory=dict)
     output_data: dict[str, Any] = Field(default_factory=dict)
+
+    # Evaluation
+    evaluation: EvaluationResult | None = None
 
     model_config = {"extra": "allow"}
 
@@ -219,6 +223,9 @@ class RunSummary(BaseModel):
     # What worked
     successes: list[str] = Field(default_factory=list)
 
+    # Evaluation
+    evaluation: EvaluationResult | None = None
+
     model_config = {"extra": "allow"}
 
     @classmethod
@@ -258,4 +265,5 @@ class RunSummary(BaseModel):
             critical_problems=critical,
             warnings=warnings,
             successes=successes,
+            evaluation=run.evaluation,
         )
