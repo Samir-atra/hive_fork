@@ -29,6 +29,8 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from framework.utils.io import atomic_write
+
 
 class FileConversationStore:
     """File-per-part ConversationStore.
@@ -46,7 +48,7 @@ class FileConversationStore:
 
     def _write_json(self, path: Path, data: dict) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
+        with atomic_write(path, mode="w", encoding="utf-8") as f:
             json.dump(data, f)
 
     def _read_json(self, path: Path) -> dict | None:
@@ -56,6 +58,14 @@ class FileConversationStore:
             with open(path, encoding="utf-8") as f:
                 return json.load(f)
         except (json.JSONDecodeError, ValueError):
+            # Corruption isolation
+            corrupted_dir = path.parent.parent / ".corrupted"
+            corrupted_dir.mkdir(parents=True, exist_ok=True)
+            corrupted_path = corrupted_dir / path.name
+            try:
+                shutil.move(str(path), str(corrupted_path))
+            except OSError:
+                pass  # Ignore failure to move
             return None
 
     # --- async wrapper -------------------------------------------------------
