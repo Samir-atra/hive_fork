@@ -22,10 +22,6 @@ Use templates when you want to:
 - Start from a known-good structure instead of from scratch
 - See how all the pieces (goal, nodes, edges, config, CLI) fit together in real code
 
-**Available Templates:**
-- `twitter_news_agent`: Monitors Twitter feeds for daily tech news digests.
-- `reddit_business_scanner`: Monitors subreddits for leads, scores posts, drafts outreach, and supports HITL.
-
 ## How to use a template
 
 ```bash
