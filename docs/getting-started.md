@@ -51,6 +51,38 @@ Agents are created using Claude Code or by manual creation in the
 exports/ directory. Until an agent exists, agent validation and run
 commands will fail.
 
+
+
+## Understanding Hive: Core Concepts (Visualized)
+
+Before diving into the code, it helps to understand how Hive operates at a high level.
+
+### 1. Goal to Node Graph
+In Hive, you start by defining a Goal. The framework (or the coding agent) translates this Goal into a structured Node Graph consisting of discrete tasks (Nodes) and the logic connecting them (Edges).
+
+```mermaid
+flowchart LR
+    G[User Goal\n"Summarize news"] --> Q[Queen Bee]
+    Q --> |Generates| N1[Node 1\nFetch News]
+    Q --> |Generates| N2[Node 2\nSummarize]
+    N1 --> |Edge\nCondition: Success| N2
+```
+
+### 2. Queen, Worker, and Judge Interaction
+During execution, Hive uses a triangulated architecture to ensure reliability:
+- **Queen Bee**: The orchestrator that creates and monitors the agent.
+- **Worker Bee**: The agent that executes the graph to accomplish the goal.
+- **Judge**: The evaluator that checks the worker's output against success criteria.
+
+```mermaid
+flowchart TD
+    Q[Queen Bee\nOrchestrator] --> |Deploys & Monitors| W[Worker Bee\nExecutes Graph]
+    W --> |Submits Output| J[Judge\nEvaluates]
+    J --> |Fails Criteria| W
+    J --> |Passes Criteria| O[Final Output]
+    J -.-> |Escalates on\nRepeated Failure| Q
+```
+
 ### Option 1: Using Claude Code Skills (Recommended)
 
 This is the recommended way to create your first agent.
@@ -91,19 +123,65 @@ cd exports/my_agent
 PYTHONPATH=exports uv run python -m my_agent validate
 ```
 
-### Option 3: Manual Code-First (Minimal Example)
+### Option 3: Manual Code-First ("Hello Agent" Walkthrough)
 
-If you prefer to start with code rather than CLI wizards, check out the manual agent example:
+If you prefer to start with code rather than CLI wizards, here is the absolute minimal "Hello Agent" in Hive. This demonstrates the core runtime loop using pure Python functions, skipping the complexity of LLM setup and file-based configuration.
 
-```bash
-# View the minimal example
-cat core/examples/manual_agent.py
+Create a file called `hello_agent.py`:
 
-# Run it (no API keys required)
-uv run python core/examples/manual_agent.py
+```python
+import asyncio
+from framework.graph import Goal, GraphSpec, NodeSpec, EdgeSpec, EdgeCondition
+from framework.graph.executor import GraphExecutor
+from framework.graph.node import NodeContext, NodeProtocol, NodeResult
+from framework.runtime.core import Runtime
+
+# 1. Define Node Logic
+class GreeterNode(NodeProtocol):
+    async def execute(self, ctx: NodeContext) -> NodeResult:
+        greeting = f"Hello, {ctx.input_data.get('name', 'World')}!"
+        return NodeResult(success=True, output={"greeting": greeting})
+
+async def main():
+    # 2. Define the Goal
+    goal = Goal(
+        id="greet-user",
+        name="Greet User",
+        description="Generate a friendly greeting",
+        success_criteria=[{"id": "greeting_generated", "description": "Greeting produced", "metric": "custom", "target": "any"}]
+    )
+
+    # 3. Define the Node & Graph
+    greeter_node = NodeSpec(id="greeter", name="Greeter", node_type="event_loop", input_keys=["name"], output_keys=["greeting"])
+    graph = GraphSpec(
+        id="greeting-agent",
+        goal_id="greet-user",
+        entry_node="greeter",
+        terminal_nodes=["greeter"],
+        nodes=[greeter_node],
+        edges=[]
+    )
+
+    # 4. Initialize Runtime and Execute
+    runtime = Runtime(storage_path="./agent_logs")
+    executor = GraphExecutor(runtime=runtime)
+    executor.register_node("greeter", GreeterNode())
+
+    result = await executor.execute(graph=graph, goal=goal, input_data={"name": "Alice"})
+    print(result.output) # {"greeting": "Hello, Alice!"}
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
-This demonstrates the core runtime loop using pure Python functions, skipping the complexity of LLM setup and file-based configuration.
+Run it using:
+```bash
+uv run python hello_agent.py
+```
+This script does three things:
+1. Creates a custom `NodeProtocol` (the actual task logic).
+2. Defines a `Goal` and a `GraphSpec` tying the node together.
+3. Uses `GraphExecutor` to run the graph and print the result.
 
 ## Project Structure
 
