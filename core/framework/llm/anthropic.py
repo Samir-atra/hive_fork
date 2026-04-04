@@ -61,6 +61,12 @@ class AnthropicProvider(LLMProvider):
             api_key=self.api_key,
         )
 
+    def with_model(self, model: str) -> "AnthropicProvider":
+        return AnthropicProvider(
+            api_key=self.api_key,
+            model=model,
+        )
+
     def complete(
         self,
         messages: list[dict[str, Any]],

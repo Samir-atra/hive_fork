@@ -1355,6 +1355,14 @@ class LiteLLMProvider(LLMProvider):
             )
         ]
 
+    def with_model(self, model: str) -> "LiteLLMProvider":
+        return LiteLLMProvider(
+            model=model,
+            api_key=self.api_key,
+            api_base=self.api_base,
+            **self.extra_kwargs,
+        )
+
     async def _acomplete_via_openrouter_tool_compat(
         self,
         messages: list[dict[str, Any]],

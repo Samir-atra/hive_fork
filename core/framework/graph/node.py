@@ -138,6 +138,11 @@ def find_json_object(text: str) -> str | None:
     return None
 
 
+class DegradationPolicy(BaseModel):
+    token_budget: int = Field(description="tokens before degradation triggers")
+    fallback_model: str = Field(description="model to use after budget exceeded")
+
+
 class NodeSpec(BaseModel):
     """
     Specification for a node in the graph.
@@ -202,6 +207,9 @@ class NodeSpec(BaseModel):
     tools: list[str] = Field(default_factory=list, description="Tool names this node can use")
     model: str | None = Field(
         default=None, description="Specific model to use (defaults to graph default)"
+    )
+    degradation_policy: DegradationPolicy | None = Field(
+        default=None, description="Optional fallback policy when token budget is exceeded"
     )
 
     # For subagent delegation

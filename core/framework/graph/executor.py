@@ -208,6 +208,8 @@ class GraphExecutor:
         self.protocols_prompt = protocols_prompt
         self.skill_dirs: list[str] = skill_dirs or []
 
+        self.node_token_counts: dict[str, int] = {}
+
         if protocols_prompt:
             self.logger.info(
                 "GraphExecutor[%s] received protocols_prompt (%d chars)",
@@ -1075,6 +1077,9 @@ class GraphExecutor:
                     self.logger.error(f"   ✗ Failed: {result.error}")
 
                 total_tokens += result.tokens_used
+                self.node_token_counts[node_spec.id] = (
+                    self.node_token_counts.get(node_spec.id, 0) + result.tokens_used
+                )
                 total_latency += result.latency_ms
 
                 # Handle failure
@@ -1875,13 +1880,28 @@ class GraphExecutor:
 
         goal_context = goal.to_prompt_context()
 
+        # Resolve per-node LLM
+        node_llm = self.llm
+        if node_spec.model:
+            node_llm = self.llm.with_model(node_spec.model)
+
+        if node_spec.degradation_policy:
+            spent = self.node_token_counts.get(node_spec.id, 0)
+            if spent >= node_spec.degradation_policy.token_budget:
+                self.logger.warning(
+                    f"Node '{node_spec.id}' exceeded token budget "
+                    f"({spent} >= {node_spec.degradation_policy.token_budget}). "
+                    f"Falling back to model '{node_spec.degradation_policy.fallback_model}'."
+                )
+                node_llm = self.llm.with_model(node_spec.degradation_policy.fallback_model)
+
         return NodeContext(
             runtime=self.runtime,
             node_id=node_spec.id,
             node_spec=node_spec,
             memory=scoped_memory,
             input_data=input_data,
-            llm=self.llm,
+            llm=node_llm,
             available_tools=available_tools,
             goal_context=goal_context,
             goal=goal,  # Pass Goal object for LLM-powered routers

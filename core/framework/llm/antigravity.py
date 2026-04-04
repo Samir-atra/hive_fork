@@ -495,6 +495,11 @@ class AntigravityProvider(LLMProvider):
 
         self._init_credentials()
 
+    def with_model(self, model: str) -> "AntigravityProvider":
+        return AntigravityProvider(
+            model=model,
+        )
+
     # --- Credential management -------------------------------------------- #
 
     def _init_credentials(self) -> None:
