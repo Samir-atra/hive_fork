@@ -61,6 +61,14 @@ class LLMProvider(ABC):
     """
 
     @abstractmethod
+    def with_model(self, model: str) -> "LLMProvider":
+        """
+        Return a new instance of the provider using a different model,
+        inheriting all other configuration (api_key, api_base, etc).
+        """
+        pass
+
+    @abstractmethod
     def complete(
         self,
         messages: list[dict[str, Any]],
