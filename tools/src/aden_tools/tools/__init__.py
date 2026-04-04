@@ -96,6 +96,7 @@ from .notion_tool import register_tools as register_notion
 from .obsidian_tool import register_tools as register_obsidian
 from .pagerduty_tool import register_tools as register_pagerduty
 from .pdf_read_tool import register_tools as register_pdf_read
+from .people_data_labs_tool import register_tools as register_people_data_labs
 from .pinecone_tool import register_tools as register_pinecone
 from .pipedrive_tool import register_tools as register_pipedrive
 from .plaid_tool import register_tools as register_plaid
@@ -129,6 +130,7 @@ from .trello_tool import register_tools as register_trello
 from .twilio_tool import register_tools as register_twilio
 from .twitter_tool import register_tools as register_twitter
 from .vercel_tool import register_tools as register_vercel
+from .vibe_prospecting_tool import register_tools as register_vibe_prospecting
 from .vision_tool import register_tools as register_vision
 from .web_scrape_tool import register_tools as register_web_scrape
 from .web_search_tool import register_tools as register_web_search
@@ -266,6 +268,8 @@ def _register_unverified(
     register_langfuse(mcp, credentials=credentials)
     register_linear(mcp, credentials=credentials)
     register_lusha(mcp, credentials=credentials)
+    register_people_data_labs(mcp, credentials=credentials)
+    register_vibe_prospecting(mcp, credentials=credentials)
     register_microsoft_graph(mcp, credentials=credentials)
     register_mongodb(mcp, credentials=credentials)
     register_n8n(mcp, credentials=credentials)

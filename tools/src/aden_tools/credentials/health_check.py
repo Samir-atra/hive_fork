@@ -1307,8 +1307,27 @@ class YouTubeHealthChecker(BaseHttpHealthChecker):
     AUTH_QUERY_PARAM_NAME = "key"
 
 
+class PeopleDataLabsHealthChecker(BaseHttpHealthChecker):
+    """Health checker for People Data Labs (X-Api-Key)."""
+
+    ENDPOINT = "https://api.peopledatalabs.com/v5/company/enrich?website=peopledatalabs.com"
+    SERVICE_NAME = "People Data Labs"
+    AUTH_TYPE = BaseHttpHealthChecker.AUTH_HEADER
+    AUTH_HEADER_NAME = "X-Api-Key"
+
+
+class VibeProspectingHealthChecker(BaseHttpHealthChecker):
+    """Health checker for VibeProspecting."""
+
+    ENDPOINT = "https://api.vibeprospecting.com/v1/prospects/search?limit=1"
+    SERVICE_NAME = "VibeProspecting"
+    AUTH_TYPE = BaseHttpHealthChecker.AUTH_BEARER
+
+
 # Registry of health checkers
 HEALTH_CHECKERS: dict[str, CredentialHealthChecker] = {
+    "pdl_api_key": PeopleDataLabsHealthChecker(),
+    "vibe_api_key": VibeProspectingHealthChecker(),
     "apify": ApifyHealthChecker(),
     "apollo": ApolloHealthChecker(),
     "asana": AsanaHealthChecker(),
