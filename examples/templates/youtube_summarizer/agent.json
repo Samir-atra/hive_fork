@@ -1,0 +1,45 @@
+{
+  "name": "youtube_summarizer",
+  "description": "An agent that automatically produces a structured Markdown summary of a YouTube video based on its transcript.",
+  "version": "1.0.0",
+  "goal": "\nYou are a YouTube Summarizer Agent.\nYour goal is to take a YouTube URL, fetch its transcript, and generate a structured Markdown summary.\nThe summary should include a TL;DW, key technical takeaways, and a draft for a social media or blog post.\n",
+  "entry_point": "fetch_transcript",
+  "nodes": [
+    {
+      "name": "fetch_transcript",
+      "description": "Fetches the transcript for a YouTube video URL.",
+      "input_keys": [
+        "url"
+      ],
+      "output_keys": [
+        "transcript",
+        "video_id",
+        "error"
+      ]
+    },
+    {
+      "name": "summarizer",
+      "description": "Summarizes the YouTube transcript into a structured format.",
+      "input_keys": [
+        "transcript",
+        "error",
+        "model",
+        "temperature"
+      ],
+      "output_keys": [
+        "summary"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "source": "fetch_transcript",
+      "target": "summarizer",
+      "condition": "ALWAYS"
+    }
+  ],
+  "config": {
+    "model": "gpt-4o",
+    "temperature": 0.7
+  }
+}
