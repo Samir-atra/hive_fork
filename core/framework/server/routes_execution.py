@@ -124,6 +124,19 @@ async def handle_chat(request: web.Request) -> web.Response:
     if not message and not image_content:
         return web.json_response({"error": "message is required"}, status=400)
 
+    # 1) If worker is waiting for input, we will inject there in addition to queen.
+    worker_node_id = None
+    worker_graph_id = None
+    if session.worker_runtime:
+        worker_node_id, worker_graph_id = session.worker_runtime.find_awaiting_node()
+        if worker_node_id:
+            await session.worker_runtime.inject_input(
+                worker_node_id,
+                message,
+                graph_id=worker_graph_id,
+                is_client_input=True,
+            )
+
     queen_executor = session.queen_executor
     if queen_executor is not None:
         node = queen_executor.node_registry.get("queen")
@@ -146,9 +159,9 @@ async def handle_chat(request: web.Request) -> web.Response:
             )
             return web.json_response(
                 {
-                    "status": "queen",
+                    "status": "injected" if worker_node_id else "queen",
                     "delivered": True,
-                }
+                } | ({"node_id": worker_node_id} if worker_node_id else {})
             )
 
     # Queen is dead — try to revive her
@@ -157,9 +170,9 @@ async def handle_chat(request: web.Request) -> web.Response:
         await manager.revive_queen(session, initial_prompt=message)
         return web.json_response(
             {
-                "status": "queen_revived",
+                "status": "injected" if worker_node_id else "queen_revived",
                 "delivered": True,
-            }
+            } | ({"node_id": worker_node_id} if worker_node_id else {})
         )
     except Exception as e:
         logger.error("Failed to revive queen: %s", e)
