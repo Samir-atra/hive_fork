@@ -207,6 +207,66 @@ flowchart LR
 4. **Control Plane Monitors** → Real-time metrics, budget enforcement, policy management
 5. **[Adaptiveness](docs/key_concepts/evolution.md)** → On failure, the system evolves the graph and redeploys automatically
 
+## Architecture
+
+The Hive framework is designed around modular, collaborative subsystems that manage goal-driven agents. For a deep dive into the system's design, see the [Architecture Overview](docs/architecture/README.md).
+
+### System Architecture Overview
+
+```mermaid
+flowchart TB
+    User([User])
+
+    subgraph ExtEventSource [External Events]
+        Events["Schedulers / Webhooks / SSE"]
+    end
+
+    subgraph WorkerBees [Worker Bees]
+        Graph["Agent Node Graph"]
+        Active["Active Node (Event Loop)"]
+        Graph -.-> Active
+    end
+
+    subgraph JudgeNode [Judge]
+        Eval["2-Min Timer Evaluation"]
+    end
+
+    subgraph QueenBee [Queen Bee]
+        Orchestrator["Orchestration Layer"]
+    end
+
+    subgraph Infra [Shared Infrastructure]
+        Mem["Memory & Event Bus"]
+        Tools["Tool Registry"]
+    end
+
+    %% Data Flow
+    Events --> Active
+    User --> WorkerBees
+    User --> QueenBee
+    Active -->|Publishes Events| Mem
+    Mem -->|Subscribes| QueenBee
+    Active -->|Reads/Writes| Tools
+    Eval -->|Monitors via Logs| Active
+    Eval -.->|Escalates via Event Bus| QueenBee
+```
+
+### Core Components & Modules
+
+- **Worker Bees (Execution):** A graph of SDK-wrapped nodes executing tasks. They manage their own conversation context and system prompts, interacting with tools and shared memory.
+- **Event Loop Node (Entry Point):** Listens to external events and drives the execution loop, delegating tasks to agents.
+- **Judge (Evaluation):** An isolated graph that evaluates worker performance periodically. It monitors logs for degradation or stalling and raises escalations without interfering with runtime execution directly.
+- **Queen Bee (Oversight):** Subscribes to the Event Bus to oversee worker progress and handle escalations from the Judge. Users can interact directly with the Queen.
+- **Shared Infrastructure:** Includes the Tool Registry, Event Bus for publish/subscribe messaging, and shared Memory/Credential stores.
+
+### Typical Agent Lifecycle & Module Interaction
+
+1. **Triggering:** An external event or user prompt triggers the Event Loop Node.
+2. **Execution (Worker Bees):** The Active Node in the graph processes the task, interacting with tools and updating shared memory. Parent nodes may delegate work to specialized sub-agents.
+3. **Monitoring (Judge):** In parallel, the Judge evaluates the worker's session logs based on predefined criteria. If it detects failure loops, it emits an escalation ticket to the Event Bus.
+4. **Oversight (Queen Bee):** The Queen Bee observes progress via the Event Bus and steps in if the Judge escalates an issue.
+5. **Completion:** Results are returned to the user or passed to subsequent nodes in the graph.
+
 ## Documentation
 
 - **[Developer Guide](docs/developer-guide.md)** - Comprehensive guide for developers
