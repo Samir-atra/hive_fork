@@ -65,6 +65,7 @@ class EventType(StrEnum):
     EXECUTION_FAILED = "execution_failed"
     EXECUTION_PAUSED = "execution_paused"
     EXECUTION_RESUMED = "execution_resumed"
+    SESSION_COMPLETED = "session_completed"
 
     # State changes
     STATE_CHANGED = "state_changed"
@@ -1126,6 +1127,20 @@ class EventBus:
                 node_id=node_id,
                 execution_id=execution_id,
                 data={},
+            )
+        )
+
+    async def emit_session_completed(
+        self,
+        stream_id: str,
+        outcome: str = "completed",
+    ) -> None:
+        """Emit session completed event to trigger memory extraction."""
+        await self.publish(
+            AgentEvent(
+                type=EventType.SESSION_COMPLETED,
+                stream_id=stream_id,
+                data={"outcome": outcome},
             )
         )
 
