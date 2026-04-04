@@ -9,10 +9,36 @@ Uses Pydantic's built-in serialization.
 """
 
 import json
+import sqlite3
 from pathlib import Path
 
 from framework.schemas.run import Run, RunStatus, RunSummary
 from framework.utils.io import atomic_write
+
+
+def migrate_agent_memories_table(db_path: str | Path) -> None:
+    """
+    Ensure the agent_memories table exists in the given SQLite database.
+
+    Args:
+        db_path: Path to the SQLite database file.
+    """
+    con = sqlite3.connect(str(db_path))
+    try:
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS agent_memories (
+                id TEXT PRIMARY KEY,
+                agent_id TEXT NOT NULL,
+                learning TEXT NOT NULL,
+                embedding TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        con.commit()
+    finally:
+        con.close()
 
 
 class FileStorage:

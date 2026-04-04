@@ -15,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from framework.agents.memory_extractor import MemoryExtractor
 from framework.graph.checkpoint_config import CheckpointConfig
 from framework.graph.executor import ExecutionResult
 from framework.runtime.event_bus import EventBus
@@ -23,6 +24,7 @@ from framework.runtime.outcome_aggregator import OutcomeAggregator
 from framework.runtime.runtime_log_store import RuntimeLogStore
 from framework.runtime.shared_state import SharedStateManager
 from framework.storage.concurrent import ConcurrentStorage
+from framework.storage.memory_store import SQLiteMemoryStore
 from framework.storage.session_store import SessionStore
 
 if TYPE_CHECKING:
@@ -226,6 +228,10 @@ class AgentRuntime:
         self._state_manager = SharedStateManager()
         self._event_bus = event_bus or EventBus(max_history=self._config.max_history)
         self._outcome_aggregator = OutcomeAggregator(goal, self._event_bus)
+
+        # Initialize persistent memory extraction
+        self._memory_store = SQLiteMemoryStore(self._storage_path)
+        self._memory_extractor = MemoryExtractor(self._event_bus, self._memory_store, self._storage_path.name)
 
         # LLM and tools
         self._llm = llm
@@ -806,6 +812,13 @@ class AgentRuntime:
             await self._storage.stop()
 
             self._running = False
+
+            # Emit session completed event for MemoryExtractor
+            # We use the storage path name as a stream/session ID for aggregation
+            session_id = self._storage_path.name
+            import asyncio
+            asyncio.create_task(self._event_bus.emit_session_completed(stream_id=session_id))
+
             logger.info("AgentRuntime stopped")
 
     def pause_timers(self) -> None:
