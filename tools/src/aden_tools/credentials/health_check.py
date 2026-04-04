@@ -1348,6 +1348,7 @@ HEALTH_CHECKERS: dict[str, CredentialHealthChecker] = {
     "vercel": VercelHealthChecker(),
     "youtube": YouTubeHealthChecker(),
     "zoho_crm": ZohoCRMHealthChecker(),
+    "zoho_books": ZohoCRMHealthChecker(),
 }
 
 

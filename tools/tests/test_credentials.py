@@ -480,6 +480,7 @@ class TestSpecCompleteness:
                 "aws_secret_key",
                 "redshift_access_key",
                 "redshift_secret_key",
+                "zoho_books",
             ):
                 assert spec.credential_group == "", (
                     f"Credential '{name}' has unexpected credential_group='{spec.credential_group}'"
