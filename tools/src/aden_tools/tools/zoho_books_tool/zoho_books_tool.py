@@ -40,15 +40,27 @@ def get_org_params() -> dict[str, str]:
     return {"organization_id": org_id}
 
 
+def _auth_error() -> dict[str, Any]:
+    return {
+        "error": "ZOHO_BOOKS_ORGANIZATION_ID or credentials not set",
+        "help": "Set ZOHO_CRM_ACCESS_TOKEN and ZOHO_BOOKS_ORGANIZATION_ID or configure oauth.",
+    }
+
+
+def _auth_error() -> dict[str, Any]:
+    return {
+        "error": "ZOHO_BOOKS_ORGANIZATION_ID or credentials not set",
+        "help": "Set ZOHO_CRM_ACCESS_TOKEN and ZOHO_BOOKS_ORGANIZATION_ID or configure oauth.",
+    }
+
+
 def register_tools(mcp: FastMCP, credentials: CredentialStoreAdapter | None = None) -> None:
     @mcp.tool()
     def zoho_books_get_contact(contact_id: str) -> dict[str, Any]:
         """Get details of a specific contact from Zoho Books."""
         token = credentials.get("zoho_books") if credentials else os.getenv("ZOHO_CRM_ACCESS_TOKEN")
         if not token:
-            return {
-                "error": "Missing access token. Must set ZOHO_CRM_ACCESS_TOKEN or configure oauth."
-            }
+            return _auth_error()
 
         url = get_zoho_books_url(f"/contacts/{contact_id}")
         try:
@@ -71,9 +83,7 @@ def register_tools(mcp: FastMCP, credentials: CredentialStoreAdapter | None = No
         """List invoices from Zoho Books. Optionally filter by customer_id."""
         token = credentials.get("zoho_books") if credentials else os.getenv("ZOHO_CRM_ACCESS_TOKEN")
         if not token:
-            return {
-                "error": "Missing access token. Must set ZOHO_CRM_ACCESS_TOKEN or configure oauth."
-            }
+            return _auth_error()
 
         url = get_zoho_books_url("/invoices")
         try:
@@ -103,9 +113,7 @@ def register_tools(mcp: FastMCP, credentials: CredentialStoreAdapter | None = No
         """Create a new invoice in Zoho Books."""
         token = credentials.get("zoho_books") if credentials else os.getenv("ZOHO_CRM_ACCESS_TOKEN")
         if not token:
-            return {
-                "error": "Missing access token. Must set ZOHO_CRM_ACCESS_TOKEN or configure oauth."
-            }
+            return _auth_error()
 
         url = get_zoho_books_url("/invoices")
         try:
