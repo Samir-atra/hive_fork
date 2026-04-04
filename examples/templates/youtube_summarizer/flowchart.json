@@ -1,0 +1,35 @@
+{
+  "nodes": [
+    {
+      "id": "fetch_transcript",
+      "type": "custom",
+      "position": {
+        "x": 250,
+        "y": 100
+      },
+      "data": {
+        "label": "fetch_transcript"
+      }
+    },
+    {
+      "id": "summarizer",
+      "type": "custom",
+      "position": {
+        "x": 250,
+        "y": 250
+      },
+      "data": {
+        "label": "summarizer"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_fetch_transcript_summarizer",
+      "source": "fetch_transcript",
+      "target": "summarizer",
+      "label": "ALWAYS",
+      "type": "smoothstep"
+    }
+  ]
+}
